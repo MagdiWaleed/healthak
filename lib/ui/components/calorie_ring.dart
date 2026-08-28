@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../domain/nutrition/macros.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../motion/eat_toggle/ring_ripple.dart';
 
 /// The day's headline figure: a sweeping calorie arc with three macro rings
 /// nested inside it.
@@ -27,6 +28,8 @@ class CalorieRing extends StatelessWidget {
 
   final double? plannedKcal;
   final Macros? plannedMacros;
+  final Color ringAccent;
+  final int rippleTrigger;
 
   /// Set false for a ring rebuilt on every eat-toggle, where a sweep from zero
   /// would fight the user.
@@ -41,6 +44,8 @@ class CalorieRing extends StatelessWidget {
     this.targetMacros = Macros.zero,
     this.plannedKcal,
     this.plannedMacros,
+    this.ringAccent = AppPalette.emerald,
+    this.rippleTrigger = 0,
     this.animateFromZero = true,
   });
 
@@ -62,49 +67,56 @@ class CalorieRing extends StatelessWidget {
         final over = progress > 1;
         final remaining = (target - kcal).round();
 
-        return SizedBox.square(
-          dimension: size,
-          child: CustomPaint(
-            painter: _RingPainter(
-              progress: progress,
-              plannedProgress: plannedProgress,
-              consumedMacros: consumedMacros,
-              targetMacros: targetMacros,
-              plannedMacros: plannedMacros,
-            ),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    kcal.round().toString(),
-                    style: text.displayLarge?.copyWith(
-                      fontSize: size * .19,
-                      fontWeight: FontWeight.w900,
-                      height: 1.05,
-                      letterSpacing: -1,
-                      fontFeatures: AppTypography.tabular,
-                      color: over ? AppPalette.amber : AppPalette.text,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    over
-                        ? '${AppRingLabels.over} ${-remaining}'
-                        : '$remaining ${AppRingLabels.remaining}',
-                    style: text.bodyMedium?.copyWith(
-                      color: over ? AppPalette.amber : AppPalette.muted,
-                      fontFeatures: AppTypography.tabular,
-                    ),
-                  ),
-                  if (plannedProgress != null && plannedProgress > progress + 0.005) ...[
-                    const SizedBox(height: 1),
+        return RingRipple(
+          trigger: rippleTrigger,
+          color: ringAccent,
+          child: SizedBox.square(
+            dimension: size,
+            child: CustomPaint(
+              painter: _RingPainter(
+                progress: progress,
+                plannedProgress: plannedProgress,
+                consumedMacros: consumedMacros,
+                targetMacros: targetMacros,
+                plannedMacros: plannedMacros,
+                ringAccent: ringAccent,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      '${AppRingLabels.plannedTo} ${planned!.round()}',
-                      style: text.labelSmall?.copyWith(color: AppPalette.muted),
+                      kcal.round().toString(),
+                      style: text.displayLarge?.copyWith(
+                        fontSize: size * .19,
+                        fontWeight: FontWeight.w900,
+                        height: 1.05,
+                        letterSpacing: -1,
+                        fontFeatures: AppTypography.tabular,
+                        color: over ? AppPalette.amber : AppPalette.text,
+                      ),
                     ),
+                    const SizedBox(height: 2),
+                    Text(
+                      over
+                          ? '${AppRingLabels.over} ${-remaining}'
+                          : '$remaining ${AppRingLabels.remaining}',
+                      style: text.bodyMedium?.copyWith(
+                        color: over ? AppPalette.amber : AppPalette.muted,
+                        fontFeatures: AppTypography.tabular,
+                      ),
+                    ),
+                    if (plannedProgress != null &&
+                        plannedProgress > progress + 0.005) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        '${AppRingLabels.plannedTo} ${planned!.round()}',
+                        style:
+                            text.labelSmall?.copyWith(color: AppPalette.muted),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -128,6 +140,7 @@ class _RingPainter extends CustomPainter {
   final Macros consumedMacros;
   final Macros targetMacros;
   final Macros? plannedMacros;
+  final Color ringAccent;
 
   const _RingPainter({
     required this.progress,
@@ -135,6 +148,7 @@ class _RingPainter extends CustomPainter {
     required this.targetMacros,
     this.plannedProgress,
     this.plannedMacros,
+    required this.ringAccent,
   });
 
   /// Twelve o'clock. Every arc and the sweep gradient are anchored here.
@@ -149,17 +163,17 @@ class _RingPainter extends CustomPainter {
   /// The rotation is load-bearing: a SweepGradient starts at 3 o'clock while
   /// the arc starts at 12, so without it the sweep began mid-palette instead
   /// of on emerald.
-  static const _sweep = SweepGradient(
-    colors: [
-      AppPalette.emerald,
-      AppPalette.mint,
-      AppPalette.amber,
-      AppPalette.violet,
-      AppPalette.emerald,
-    ],
-    stops: [0.0, 0.28, 0.58, 0.82, 1.0],
-    transform: GradientRotation(_start),
-  );
+  SweepGradient get _sweep => SweepGradient(
+        colors: [
+          ringAccent,
+          AppPalette.mint,
+          AppPalette.amber,
+          AppPalette.violet,
+          ringAccent,
+        ],
+        stops: const [0.0, 0.28, 0.58, 0.82, 1.0],
+        transform: const GradientRotation(_start),
+      );
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -198,7 +212,7 @@ class _RingPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
           ..strokeWidth = stroke * .55
-          ..color = AppPalette.danger.withValues(alpha: .85),
+          ..color = AppPalette.amber.withValues(alpha: .85),
       );
     }
 
@@ -379,5 +393,6 @@ class _RingPainter extends CustomPainter {
       old.plannedProgress != plannedProgress ||
       old.consumedMacros != consumedMacros ||
       old.targetMacros != targetMacros ||
-      old.plannedMacros != plannedMacros;
+      old.plannedMacros != plannedMacros ||
+      old.ringAccent != ringAccent;
 }

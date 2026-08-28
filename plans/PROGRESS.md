@@ -9,6 +9,47 @@ is deleted. Not yet committed to git; not yet walked by hand on a device/emulato
 **Side Plan 1:** the first-launch guest preview is complete. It is local and read-only; see
 `sideplan1_guest_mode.md`.
 
+**Living Glass:** Kimi's Phase 1 foundations are implemented: shared springs, haptics, mood
+tokens, reduced-motion gate, ticker number, and the requested glass/typography/copy tokens.
+They remain deliberately opt-in apart from routing existing haptics and `Pressable` through the
+central systems. `flutter analyze` is clean, `flutter test` has 98 passing tests, and the debug
+APK builds. The emulator eye check and logcat smoke test passed; real-device profile raster data
+remains a separate cross-phase performance gate.
+
+**Living Glass Phase 2:** implemented and emulator-smoke-tested: `ReactiveAurora` lerps the
+existing painter's colors/alpha/vignette/grain only (no new blur); Today publishes hysteretic
+progress mood to the shell; the calorie-ring accent follows it; and `SpecularBorder` uses one
+throttled scroll-angle notifier per `GlassScaffold`. `GlassCard` / `GlassSurface` now consume
+L0-L3 elevation tokens without adding a `BackdropFilter`. Analyzer, all 98 tests, and the debug
+APK pass. The remaining Phase 2 exit gate is baseline-versus-new profile raster p95 on a **real
+mid-range device**; the desktop-mode emulator is not valid evidence for that measurement.
+
+**Living Glass Phase 3:** implemented and verified by analyzer, all 98 tests, and a debug APK
+build. A positive Today check now has the contained check morph, deterministic overlay burst,
+ring ripple, and central tick phrase; undo remains deliberately flat. `TodayController` owns an
+in-memory, per-date edge trigger at 95% of target, so the 24-particle goal celebration and ring
+double-pulse play once per day/session rather than on Firestore echoes or rotation. All new
+painters have `RepaintBoundary` and value-equality repaint checks; no new package or blur was
+added. The Phase 3 real-device rapid-toggle raster stress measurement remains open.
+
+**Today regression fix (2026-08-28):** the Phase 3 rollout exposed two interaction-path issues.
+`selectDate` awaited the schedule-materialization transaction before subscribing to `days/{date}`;
+that made the Today tab look stalled on a slow or unavailable network. It now starts the
+cache-backed day stream first and materializes in the background, guarded against stale date
+selections. The eat-toggle transaction also could not complete offline, so the optimistic tick
+eventually rolled back. The hot path now writes the already-updated `DayLog` with Firestore's
+offline-capable `set`, which queues sync while retaining the visible eaten state. Verified on the
+emulator with Firestore DNS unavailable: the meal remained ticked and the calorie ring stayed at
+152 kcal after five seconds; no Flutter exception was emitted.
+
+**Living Glass Phase 4 (in progress):** the route transition now has fade-through-scale behavior,
+staggered entries resolve their start edge in RTL and add the planned subtle rotation, steppers use
+the shared direction-aware `TickerNumber`, and pull-to-refresh uses the emerald ring language.
+The existing splash already materializes the logo/ring; onboarding now shows the first-filling arc
+across its authentication/profile stages. The Today collapsing sliver header, full route/sheet
+vocabulary, and a real-device RTL/reduced-motion walk remain to be completed before this phase can
+be called done.
+
 Read this first, then `general.md`, then the `stepN.md` for whatever step is current.
 If you are a fresh agent picking this up: **everything you need is in this directory.** Do not
 re-derive the architecture — it is already decided and written down in `general.md`.
@@ -588,6 +629,8 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 | `materializedFromScheduleVersion` source | Content fingerprint (`scheduleVersionOf`), not a stored counter | Free from the fetch `ensureDay` already does; a counter would need a transactional write on every schedule edit for no extra guarantee. |
 | Step 2.7's deletion list | Also deleted `create_meals_repository.dart` + `user_auth_repository.dart` | Found orphaned by dependency analysis; not in the plan's list but unreachable after the listed deletions. |
 | `lib/page/setting/` deletion | Deleted with no Step 2 replacement | The legacy screen was non-functional (mutated a dead static, placeholder labels); Step 4 still owes a real Settings screen over the already-working `SettingsController`. |
+| Living Glass Phase 1 user-motion preference | OS reduced-motion/accessibility is honoured now; no persisted user toggle yet | `AppSettings` has no motion/haptics fields. Adding them would change the profile model, mapper, and persistence, conflicting with the Kimi plan's explicit Phase 1 no-data-model boundary. Wire the setting in Step 4. |
+| Kimi phases must wait for the previous real-device raster p95 exit gate | Phase 3 and the safe Phase 4 motion primitives proceeded before that measurement | The user explicitly directed the implementation to continue one phase at a time without stopping. The p95 baseline/new measurement remains an explicit release gate, not replaced by emulator or automated evidence. |
 
 ---
 

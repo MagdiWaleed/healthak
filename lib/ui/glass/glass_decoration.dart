@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+import '../theme/glass_tokens.dart';
+
 /// Shared surface treatment for every glass widget.
 ///
 /// The light source is fixed at the top-left and is deliberately **not**
@@ -52,12 +55,28 @@ abstract final class GlassDecoration {
     stops: [0.0, 0.32, 0.68, 1.0],
   );
 
-  static const shadows = <BoxShadow>[
-    // Contact shadow: tight, keeps the surface anchored.
-    BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2)),
-    // Ambient: wide and soft, gives the float.
-    BoxShadow(color: Color(0x4D000000), blurRadius: 28, offset: Offset(0, 14)),
-  ];
+  static List<BoxShadow> shadowsFor(GlassElevation level) => switch (level) {
+        GlassElevation.flush => const [],
+        GlassElevation.card => const [
+            BoxShadow(
+                color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 3)),
+          ],
+        GlassElevation.panel => const [
+            BoxShadow(
+                color: Color(0x4D000000), blurRadius: 18, offset: Offset(0, 8)),
+          ],
+        GlassElevation.hero => [
+            const BoxShadow(
+                color: Color(0x59000000),
+                blurRadius: 32,
+                offset: Offset(0, 14)),
+            BoxShadow(
+              color: AppPalette.emerald.withValues(alpha: .18),
+              blurRadius: 24,
+              spreadRadius: -2,
+            ),
+          ],
+      };
 }
 
 /// Strokes the surface outline with [GlassDecoration.edge].

@@ -59,8 +59,7 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
   void _onScroll() {
     // Trigger the next page a little before the physical end, so the network
     // round trip has time to land before the user hits blank space.
-    if (_scroll.position.pixels >
-        _scroll.position.maxScrollExtent - 400) {
+    if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
       widget.controller.loadMore();
     }
   }
@@ -131,11 +130,11 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
             }
             return RefreshIndicator(
               onRefresh: c.reload,
+              color: AppPalette.emerald,
               child: ListView.separated(
                 controller: _scroll,
-                padding: EdgeInsets.fromLTRB(
-                    AppSpacing.md, AppSpacing.xs, AppSpacing.md,
-                    widget.bottomPadding),
+                padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xs,
+                    AppSpacing.md, widget.bottomPadding),
                 itemCount: c.items.length + (c.hasMore.value ? 1 : 0),
                 separatorBuilder: (_, __) =>
                     const SizedBox(height: AppSpacing.sm),
@@ -158,8 +157,8 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
                     maxStaggered: 6,
                     child: _FoodRow(
                       food: food,
-                      onTap: () => (widget.onSelect ?? widget.onOpenDetail)
-                          ?.call(food),
+                      onTap: () =>
+                          (widget.onSelect ?? widget.onOpenDetail)?.call(food),
                     ),
                   );
                 },
@@ -187,7 +186,8 @@ class _FoodRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(food.name, style: Theme.of(context).textTheme.titleMedium),
+                  Text(food.name,
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 2),
                   Text(
                     '${food.per100.kcal.round()} سعرة  •  '

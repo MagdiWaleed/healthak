@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../domain/day/day_log.dart';
@@ -7,10 +8,14 @@ import '../../service/auth_service.dart';
 import '../../ui/components/calorie_ring.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
+import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/staggered_entry.dart';
+import '../../ui/motion/celebration.dart';
+import '../../ui/motion/eat_toggle/eat_check.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
+import '../../ui/theme/mood_palette.dart';
 import 'edit_entry_sheet.dart';
 import 'quick_add_sheet.dart';
 import 'today_controller.dart';
@@ -29,9 +34,9 @@ class TodayTab extends StatefulWidget {
 }
 
 class _TodayTabState extends State<TodayTab> {
-  late final TodayController controller = Get.put(
-    TodayController(uid: Get.find<AuthService>().currentUser!.uid),
-  );
+  late final TodayController controller = Get.isRegistered<TodayController>()
+      ? Get.find<TodayController>()
+      : Get.put(TodayController(uid: Get.find<AuthService>().currentUser!.uid));
 
   @override
   void dispose() {
@@ -49,6 +54,8 @@ class _TodayTabState extends State<TodayTab> {
           return ErrorState(message: error, onRetry: controller.retry);
         }
         final day = controller.day.value;
+        final ringAccent =
+            MoodPalette.forMood(controller.mood.value).ringAccent;
         if (day == null) {
           // Loading has finished (the branch above already returned otherwise)
           // and there is no error, so this is a real, valid state: a past day
@@ -87,28 +94,37 @@ class _TodayTabState extends State<TodayTab> {
         // Every item below carries an explicit, content-stable key -- see
         // the comment on `findChildIndexCallback` further down for why.
         final header = <Widget>[
-          _Greeting(key: const ValueKey('greeting'), date: controller.selectedDate.value),
-          const SizedBox(key: ValueKey('spacer-greeting'), height: AppSpacing.md),
+          _Greeting(
+              key: const ValueKey('greeting'),
+              date: controller.selectedDate.value),
+          const SizedBox(
+              key: ValueKey('spacer-greeting'), height: AppSpacing.md),
           _WeekStrip(key: const ValueKey('weekstrip'), controller: controller),
-          const SizedBox(key: ValueKey('spacer-weekstrip'), height: AppSpacing.lg),
+          const SizedBox(
+              key: ValueKey('spacer-weekstrip'), height: AppSpacing.lg),
           Stack(
             key: const ValueKey('ring'),
             alignment: Alignment.topCenter,
             children: [
               Center(
-                child: CalorieRing(
-                  consumed: day.consumedKcal,
-                  target: day.targets.kcal,
-                  consumedMacros: day.consumedTotals,
-                  targetMacros: day.targets.macros,
-                  // The faded band: everything today's plan adds up to, ticked
-                  // off or not, so "do I need to add or remove something" is
-                  // answerable before it's actually eaten.
-                  plannedKcal: day.plannedKcal,
-                  plannedMacros: day.plannedTotals,
-                  // A ring rebuilt on every eat-toggle shouldn't re-sweep from
-                  // zero every time -- only the very first render does.
-                  animateFromZero: false,
+                child: GoalCelebration(
+                  trigger: controller.goalCelebration.value,
+                  child: CalorieRing(
+                    consumed: day.consumedKcal,
+                    target: day.targets.kcal,
+                    consumedMacros: day.consumedTotals,
+                    targetMacros: day.targets.macros,
+                    // The faded band: everything today's plan adds up to, ticked
+                    // off or not, so "do I need to add or remove something" is
+                    // answerable before it's actually eaten.
+                    plannedKcal: day.plannedKcal,
+                    plannedMacros: day.plannedTotals,
+                    ringAccent: ringAccent,
+                    rippleTrigger: controller.eatPulse.value,
+                    // A ring rebuilt on every eat-toggle shouldn't re-sweep from
+                    // zero every time -- only the very first render does.
+                    animateFromZero: false,
+                  ),
                 ),
               ),
               // A literal top-right screen position, not a text-flow one --
@@ -119,7 +135,8 @@ class _TodayTabState extends State<TodayTab> {
             ],
           ),
           const SizedBox(key: ValueKey('spacer-ring'), height: AppSpacing.md),
-          _TargetSummary(key: const ValueKey('target-summary'), controller: controller),
+          _TargetSummary(
+              key: const ValueKey('target-summary'), controller: controller),
         ];
 
         // A `ListView` top-aligns short content, and the FAB is docked at a
@@ -138,7 +155,8 @@ class _TodayTabState extends State<TodayTab> {
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, AppSpacing.lg, 22, 130),
+                  padding:
+                      const EdgeInsets.fromLTRB(22, AppSpacing.lg, 22, 130),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -229,7 +247,9 @@ class _Greeting extends StatelessWidget {
 
   bool get _isToday {
     final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 
   String get _greeting {
@@ -287,7 +307,8 @@ class _WeekStrip extends StatelessWidget {
             final isSelected = date.year == selected.year &&
                 date.month == selected.month &&
                 date.day == selected.day;
-            final isFuture = date.isAfter(DateTime(now.year, now.month, now.day));
+            final isFuture =
+                date.isAfter(DateTime(now.year, now.month, now.day));
             return GestureDetector(
               onTap: isFuture ? null : () => controller.selectDate(date),
               child: AnimatedContainer(
@@ -299,7 +320,8 @@ class _WeekStrip extends StatelessWidget {
                       : Colors.white.withValues(alpha: .06),
                   borderRadius: BorderRadius.circular(14),
                   border: isSelected
-                      ? Border.all(color: AppPalette.emerald.withValues(alpha: .5))
+                      ? Border.all(
+                          color: AppPalette.emerald.withValues(alpha: .5))
                       : null,
                 ),
                 child: Opacity(
@@ -354,18 +376,21 @@ class _EntryTile extends StatelessWidget {
         onDismissed: (_) => controller.deleteEntry(entry.entryId),
         child: GestureDetector(
           onLongPress: () {
-            HapticFeedback.mediumImpact();
+            unawaited(HapticPhrase.play(AppHaptics.lift));
             EditEntrySheet.show(
               context,
               entry: entry,
-              onSave: (items) => controller.updateEntryItems(entry.entryId, items),
+              onSave: (items) =>
+                  controller.updateEntryItems(entry.entryId, items),
             );
           },
           child: GlassCard(
-            onTap: () => controller.toggleEaten(entry.entryId),
             child: Row(
               children: [
-                _EatCheckbox(eaten: entry.eaten),
+                EatCheck(
+                  eaten: entry.eaten,
+                  onToggle: () => controller.toggleEaten(entry.entryId),
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: AnimatedOpacity(
@@ -386,29 +411,6 @@ class _EntryTile extends StatelessWidget {
             ),
           ),
         ),
-      );
-}
-
-class _EatCheckbox extends StatelessWidget {
-  final bool eaten;
-  const _EatCheckbox({required this.eaten});
-
-  @override
-  Widget build(BuildContext context) => AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 26,
-        height: 26,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: eaten ? AppPalette.emerald : Colors.transparent,
-          border: Border.all(
-            color: eaten ? AppPalette.emerald : Colors.white.withValues(alpha: .3),
-            width: 2,
-          ),
-        ),
-        child: eaten
-            ? const Icon(Icons.check_rounded, size: 16, color: AppPalette.ink)
-            : null,
       );
 }
 
@@ -480,7 +482,8 @@ class _StatColumn extends StatelessWidget {
   final String value;
   final String unit;
 
-  const _StatColumn({required this.label, required this.value, required this.unit});
+  const _StatColumn(
+      {required this.label, required this.value, required this.unit});
 
   @override
   Widget build(BuildContext context) => Column(
@@ -501,7 +504,8 @@ class _StatColumn extends StatelessWidget {
                       color: AppPalette.text)),
               const SizedBox(width: 4),
               Text(unit,
-                  style: const TextStyle(fontSize: 11, color: AppPalette.muted)),
+                  style:
+                      const TextStyle(fontSize: 11, color: AppPalette.muted)),
             ],
           ),
         ],

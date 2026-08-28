@@ -25,8 +25,8 @@ void _onFabPressed(BuildContext context, int tabIndex) {
     case 0:
       final today = Get.find<TodayController>();
       if (!today.isViewingToday) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('يمكنك الإضافة لليوم الحالي فقط')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('يمكنك الإضافة لليوم الحالي فقط')));
         return;
       }
       QuickAddSheet.show(context, today);
@@ -56,60 +56,70 @@ class HomeShell extends GetView<HomeController> {
   ];
 
   @override
-  Widget build(BuildContext context) => Obx(() {
-        final index = controller.tabIndex.value;
-        return GlassScaffold(
-          // IndexedStack, not a torn-down-and-rebuilt switcher: My Meals and
-          // Today both hold live Firestore stream subscriptions and scroll
-          // position that must survive a tab switch, not restart on every
-          // tap. The nav bar's own icon-swap and pill already carry the
-          // "something changed" feedback for a tab switch.
-          body: IndexedStack(
-            index: index,
-            children: [
-              const TodayTab(),
-              const MyMealsTab(),
-              const _Placeholder(
-                  title: AppStrings.market, icon: Icons.storefront_outlined),
-              _AccountTab(
-                onGallery: () => Get.toNamed(AppRoutes.gallery),
-                onSignOut: () async {
-                  await Get.find<AuthService>().signOut();
-                  await Get.find<PrefsService>().clearProfile();
-                  await Get.offAllNamed(AppRoutes.guest);
-                },
-              ),
-            ],
-          ),
-          bottomNavigationBar: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-            child: GlassPanel(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-              child: Row(
-                children: [
-                  for (var i = 0; i < _destinations.length; i++) ...[
-                    Expanded(
-                      child: _NavDestination(
-                        selected: i == index,
-                        filledIcon: _destinations[i].$1,
-                        outlineIcon: _destinations[i].$2,
-                        label: _destinations[i].$3,
-                        onTap: () => controller.selectTab(i),
-                      ),
+  Widget build(BuildContext context) {
+    // The shell owns the ambient response. Today keeps the controller's
+    // lifecycle, while the shell observes its mood so the background can
+    // change without rebuilding or resubscribing the tab subtree.
+    final today = Get.isRegistered<TodayController>()
+        ? Get.find<TodayController>()
+        : Get.put(
+            TodayController(uid: Get.find<AuthService>().currentUser!.uid));
+
+    return Obx(() {
+      final index = controller.tabIndex.value;
+      return GlassScaffold(
+        mood: today.mood.value,
+        // IndexedStack, not a torn-down-and-rebuilt switcher: My Meals and
+        // Today both hold live Firestore stream subscriptions and scroll
+        // position that must survive a tab switch, not restart on every
+        // tap. The nav bar's own icon-swap and pill already carry the
+        // "something changed" feedback for a tab switch.
+        body: IndexedStack(
+          index: index,
+          children: [
+            const TodayTab(),
+            const MyMealsTab(),
+            const _Placeholder(
+                title: AppStrings.market, icon: Icons.storefront_outlined),
+            _AccountTab(
+              onGallery: () => Get.toNamed(AppRoutes.gallery),
+              onSignOut: () async {
+                await Get.find<AuthService>().signOut();
+                await Get.find<PrefsService>().clearProfile();
+                await Get.offAllNamed(AppRoutes.guest);
+              },
+            ),
+          ],
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          child: GlassPanel(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Row(
+              children: [
+                for (var i = 0; i < _destinations.length; i++) ...[
+                  Expanded(
+                    child: _NavDestination(
+                      selected: i == index,
+                      filledIcon: _destinations[i].$1,
+                      outlineIcon: _destinations[i].$2,
+                      label: _destinations[i].$3,
+                      onTap: () => controller.selectTab(i),
                     ),
-                    if (i == 1) const SizedBox(width: 64),
-                  ],
+                  ),
+                  if (i == 1) const SizedBox(width: 64),
                 ],
-              ),
+              ],
             ),
           ),
-          floatingActionButton: _QuickAddFab(
-            onPressed: () => _onFabPressed(context, index),
-          ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerDocked,
-        );
-      });
+        ),
+        floatingActionButton: _QuickAddFab(
+          onPressed: () => _onFabPressed(context, index),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      );
+    });
+  }
 }
 
 /// One nav bar destination: an indicator pill that grows in behind the icon,
@@ -146,7 +156,8 @@ class _NavDestination extends StatelessWidget {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   color: selected
@@ -245,7 +256,8 @@ class _AccountTab extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.fromLTRB(22, 88, 22, 120),
         children: [
-          Text(AppStrings.account, style: Theme.of(context).textTheme.headlineMedium),
+          Text(AppStrings.account,
+              style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: AppSpacing.md),
           _AccountRow(
             icon: Icons.person_outline,
@@ -303,7 +315,8 @@ class _AccountRow extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(label,
-                  style: TextStyle(color: danger ? AppPalette.danger : AppPalette.text)),
+                  style: TextStyle(
+                      color: danger ? AppPalette.danger : AppPalette.text)),
             ),
             if (!danger)
               const Icon(Icons.chevron_left_rounded, color: AppPalette.muted),

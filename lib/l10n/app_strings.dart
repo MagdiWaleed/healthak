@@ -31,4 +31,11 @@ abstract final class AppStrings {
   static const account = 'حسابي';
   static const comingNext = 'سيكتمل هذا القسم في الخطوة التالية';
   static const retry = 'إعادة المحاولة';
+  static const newDay = 'يوم جديد';
+  static const emptyDay = 'لم يُسجَّل أي شيء في هذا اليوم';
+  static const goalReached = [
+    'وصلت لهدفك اليوم! 🎯',
+    'يوم مثالي، استمر!',
+    'الحلقة اكتملت ✨',
+  ];
 }

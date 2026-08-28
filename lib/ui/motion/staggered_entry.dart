@@ -52,10 +52,6 @@ class _StaggeredEntryState extends State<StaggeredEntry>
     curve: Curves.easeOutCubic,
   );
 
-  late final Animation<Offset> _offset = _eased.drive(
-    Tween(begin: const Offset(0, .10), end: Offset.zero),
-  );
-
   late final Animation<double> _scale = _eased.drive(
     Tween(begin: .97, end: 1.0),
   );
@@ -82,11 +78,26 @@ class _StaggeredEntryState extends State<StaggeredEntry>
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(
-        opacity: _eased,
-        child: SlideTransition(
-          position: _offset,
-          child: ScaleTransition(scale: _scale, child: widget.child),
+  Widget build(BuildContext context) {
+    // "Start" is a physical right edge in Arabic and physical left in LTR.
+    // Resolve it here (not in a stored Offset) so test and locale changes are
+    // mirrored by the same entry choreography.
+    final fromStart =
+        Directionality.of(context) == TextDirection.rtl ? .06 : -.06;
+    return FadeTransition(
+      opacity: _eased,
+      child: AnimatedBuilder(
+        animation: _eased,
+        child: ScaleTransition(scale: _scale, child: widget.child),
+        builder: (_, child) => Transform.translate(
+          offset: Offset(
+              fromStart * (1 - _eased.value) * 100, (1 - _eased.value) * 4),
+          child: Transform.rotate(
+            angle: (1 - _eased.value) * -.02618,
+            child: child,
+          ),
         ),
-      );
+      ),
+    );
+  }
 }

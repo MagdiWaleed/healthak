@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
@@ -101,12 +102,23 @@ class AuroraBackground extends StatefulWidget {
   /// tier to halve the tick rate's perceptual cost without stopping motion.
   final double speedScale;
 
+  /// Optional Phase-2 color treatment. The geometry remains fixed so mood
+  /// changes do not add painter work or a second animation layer.
+  final List<Color>? blobColors;
+  final double blobAlphaMultiplier;
+  final double vignetteAlpha;
+  final double grainOpacity;
+
   const AuroraBackground({
     required this.child,
     super.key,
     this.animate = true,
     this.showGrain = true,
     this.speedScale = 1.0,
+    this.blobColors,
+    this.blobAlphaMultiplier = 1.0,
+    this.vignetteAlpha = .55,
+    this.grainOpacity = .045,
   });
 
   @override
@@ -177,16 +189,19 @@ class _AuroraBackgroundState extends State<AuroraBackground>
             child: AnimatedBuilder(
               animation: _merged,
               builder: (context, _) => CustomPaint(
-                painter: _AuroraPainter([
-                  for (final c in _controllers) c.value,
-                ]),
+                painter: _AuroraPainter(
+                  t: [for (final c in _controllers) c.value],
+                  colors: widget.blobColors,
+                  alphaMultiplier: widget.blobAlphaMultiplier,
+                  vignetteAlpha: widget.vignetteAlpha,
+                ),
                 isComplex: true,
                 willChange: widget.animate,
                 size: Size.infinite,
               ),
             ),
           ),
-          if (widget.showGrain) const GrainTexture(),
+          if (widget.showGrain) GrainTexture(opacity: widget.grainOpacity),
           widget.child,
         ],
       );
@@ -195,8 +210,16 @@ class _AuroraBackgroundState extends State<AuroraBackground>
 class _AuroraPainter extends CustomPainter {
   /// One 0..1 ping-pong value per blob, in `_blobs` order.
   final List<double> t;
+  final List<Color>? colors;
+  final double alphaMultiplier;
+  final double vignetteAlpha;
 
-  const _AuroraPainter(this.t);
+  const _AuroraPainter({
+    required this.t,
+    required this.colors,
+    required this.alphaMultiplier,
+    required this.vignetteAlpha,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -226,10 +249,16 @@ class _AuroraPainter extends CustomPainter {
       final radius = shortest * blob.radius * breathe;
       final alpha = 0.34 + 0.10 * math.sin(phase + 1.0);
 
-      _blobPaint(canvas, center, radius, blob.color, alpha);
+      _blobPaint(
+        canvas,
+        center,
+        radius,
+        colors?[i] ?? blob.color,
+        alpha * alphaMultiplier,
+      );
     }
 
-    _vignette(canvas, rect);
+    _vignette(canvas, rect, vignetteAlpha);
   }
 
   void _blobPaint(
@@ -258,7 +287,7 @@ class _AuroraPainter extends CustomPainter {
   }
 
   /// Darkens the corners so glass surfaces have something to sit against.
-  void _vignette(Canvas canvas, Rect rect) {
+  void _vignette(Canvas canvas, Rect rect, double alpha) {
     canvas.drawRect(
       rect,
       Paint()
@@ -266,7 +295,7 @@ class _AuroraPainter extends CustomPainter {
           radius: 0.95,
           colors: [
             AppPalette.ink.withValues(alpha: 0),
-            AppPalette.ink.withValues(alpha: 0.55),
+            AppPalette.ink.withValues(alpha: alpha),
           ],
           stops: const [0.55, 1.0],
         ).createShader(rect),
@@ -275,8 +304,15 @@ class _AuroraPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _AuroraPainter old) {
+    if (!listEquals(old.colors, colors) ||
+        old.alphaMultiplier != alphaMultiplier ||
+        old.vignetteAlpha != vignetteAlpha) {
+      return true;
+    }
     for (var i = 0; i < t.length; i++) {
-      if (old.t[i] != t[i]) return true;
+      if (old.t[i] != t[i]) {
+        return true;
+      }
     }
     return false;
   }

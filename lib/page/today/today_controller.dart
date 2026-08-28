@@ -11,6 +11,8 @@ import '../../domain/meal/meal_math.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../domain/nutrition/macros.dart';
 import '../../service/session_controller.dart';
+import '../../ui/feedback/haptics.dart';
+import '../../ui/theme/mood_palette.dart';
 
 /// Backs the Today screen: materializes "today" from the schedule on open,
 /// lets the user browse nearby days read-only, and owns the eat-toggle hot
@@ -43,12 +45,24 @@ class TodayController extends GetxController {
   final day = Rxn<DayLog>();
   final loading = true.obs;
   final error = RxnString();
+  final progress = 0.0.obs;
+  final mood = DayMood.fresh.obs;
+
+  /// Increasing tokens let short-lived visual effects replay without keeping
+  /// animation state in the Firestore-backed [DayLog].
+  final eatPulse = 0.obs;
+  final goalCelebration = 0.obs;
+  final goalCelebratedToday = false.obs;
+  final _celebratedDateKeys = <String>{};
 
   StreamSubscription<DayLog?>? _watchSub;
+  int _selectionEpoch = 0;
 
   bool _isToday(DateTime date) {
     final now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 
   @override
@@ -64,45 +78,98 @@ class TodayController extends GetxController {
   }
 
   Future<void> selectDate(DateTime date) async {
+    final epoch = ++_selectionEpoch;
     selectedDate.value = date;
-    loading.value = true;
+    // Do not leave a previous day's content visible while the new local
+    // Firestore snapshot is arriving.
+    day.value = null;
+    // Materialization can require a schedule read + transaction. The Today
+    // screen must not wait for that network round trip before it starts its
+    // own cache-backed day stream.
+    loading.value = false;
     error.value = null;
     await _watchSub?.cancel();
+
+    _watchSub = _days.watch(date).listen((value) {
+      if (epoch != _selectionEpoch) return;
+      day.value = value;
+      _syncMood(value);
+      goalCelebratedToday.value =
+          value != null && _celebratedDateKeys.contains(value.dateKey);
+    }, onError: (Object e) {
+      if (epoch != _selectionEpoch) return;
+      error.value = e.toString();
+    });
 
     if (_isToday(date)) {
       final profile = _session.profile.value;
       if (profile != null) {
-        try {
-          await _days.ensureDay(date: date, targets: profile.targets);
-        } catch (e) {
-          error.value = e.toString();
-        }
+        unawaited(_materializeToday(
+          date: date,
+          targets: profile.targets,
+          epoch: epoch,
+        ));
       }
     }
+  }
 
-    _watchSub = _days.watch(date).listen((value) {
-      day.value = value;
-      loading.value = false;
-    }, onError: (Object e) {
-      error.value = e.toString();
-      loading.value = false;
-    });
+  Future<void> _materializeToday({
+    required DateTime date,
+    required NutritionTargets targets,
+    required int epoch,
+  }) async {
+    try {
+      await _days.ensureDay(date: date, targets: targets);
+    } catch (e) {
+      if (epoch == _selectionEpoch) error.value = e.toString();
+    }
   }
 
   Future<void> retry() => selectDate(selectedDate.value);
+
+  void _syncMood(DayLog? value, {double? previousProgress}) {
+    final target = value?.targets.kcal ?? 0;
+    final nextProgress =
+        target <= 0 ? 0.0 : (value?.consumedKcal ?? 0) / target;
+    progress.value = nextProgress;
+    mood.value = MoodPalette.moodFor(nextProgress, previous: mood.value);
+
+    // Crossing into the final 5% is a one-shot per day/session. Watching the
+    // stream must never re-trigger it after rotation or a Firestore echo.
+    if (value != null &&
+        previousProgress != null &&
+        previousProgress < .95 &&
+        nextProgress >= .95 &&
+        !_celebratedDateKeys.contains(value.dateKey)) {
+      goalCelebratedToday.value = true;
+      _celebratedDateKeys.add(value.dateKey);
+      goalCelebration.value++;
+      unawaited(HapticPhrase.play(AppHaptics.goal));
+    }
+  }
 
   Future<void> toggleEaten(String entryId) async {
     final current = day.value;
     if (current == null) return;
     // Optimistic: flip locally first so the ring re-tweens immediately, then
     // reconcile with what the transaction actually wrote.
-    final entry = current.entries.where((e) => e.entryId == entryId).firstOrNull;
+    final entry =
+        current.entries.where((e) => e.entryId == entryId).firstOrNull;
     if (entry == null) return;
-    day.value = current.withEntry(entry.toggleEaten());
+    final before = progress.value;
+    final updated = current.withEntry(entry.toggleEaten());
+    day.value = updated;
+    _syncMood(day.value, previousProgress: before);
+    if (!entry.eaten) eatPulse.value++;
     try {
-      await _days.toggleEaten(current.dateKey, entryId);
+      // A transaction cannot complete while Firestore is offline, so the old
+      // hot path visibly flipped and then rolled itself back. A normal set is
+      // accepted by Firestore's local cache and queued for sync, preserving
+      // the one-tap contract even through a short network outage.
+      await _days.save(updated);
     } catch (e) {
       day.value = current; // roll back on failure
+      _syncMood(current);
       error.value = e.toString();
     }
   }
@@ -120,10 +187,12 @@ class TodayController extends GetxController {
     // after `Dismissible` already reported it gone, which Flutter throws on:
     // "A dismissed Dismissible widget is still part of the tree."
     day.value = current.withoutEntry(entryId);
+    _syncMood(day.value);
     try {
       await _days.removeEntry(current.dateKey, entryId);
     } catch (e) {
       day.value = current; // roll back on failure
+      _syncMood(current);
       error.value = e.toString();
     }
   }
@@ -135,13 +204,15 @@ class TodayController extends GetxController {
   Future<void> updateEntryItems(String entryId, List<FrozenItem> items) async {
     final current = day.value;
     if (current == null) return;
-    final entry = current.entries.where((e) => e.entryId == entryId).firstOrNull;
+    final entry =
+        current.entries.where((e) => e.entryId == entryId).firstOrNull;
     if (entry == null) return;
     await _days.upsertEntry(current.dateKey, entry.copyWith(items: items));
   }
 
   /// "أضف مكوّناً سريعاً": one food, logged with no meal around it.
-  Future<void> quickAddFood(FoodItem food, {double grams = 100, MealSlot? slot}) async {
+  Future<void> quickAddFood(FoodItem food,
+      {double grams = 100, MealSlot? slot}) async {
     final current = day.value;
     if (current == null || !_isToday(selectedDate.value)) return;
     await _days.upsertEntry(

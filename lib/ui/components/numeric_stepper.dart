@@ -1,11 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../feedback/haptics.dart';
 import '../motion/pressable.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import 'ticker_number.dart';
 
 /// Tap-either-arrow-to-step, long-press-to-repeat, tap-the-number-to-type
 /// numeric input. [GramStepper] and the meal editor's scale control are both
@@ -86,13 +87,13 @@ class _NumericStepperState extends State<NumericStepper> {
   }
 
   void _startRepeat(double direction) {
-    HapticFeedback.selectionClick();
+    unawaited(HapticPhrase.play(AppHaptics.step));
     _set(_clamped + widget.step * direction);
     // A short initial delay before repeating, so a normal tap never fires a
     // second step it didn't ask for.
     _repeat = Timer(const Duration(milliseconds: 350), () {
       _repeat = Timer.periodic(const Duration(milliseconds: 90), (_) {
-        HapticFeedback.selectionClick();
+        unawaited(HapticPhrase.play(AppHaptics.step));
         _set(_clamped + widget.step * direction);
       });
     });
@@ -150,8 +151,9 @@ class _NumericStepperState extends State<NumericStepper> {
                 : Pressable(
                     onTap: _startEditing,
                     child: Center(
-                      child: Text(
-                        widget.format(_clamped),
+                      child: TickerNumber(
+                        value: _clamped.round(),
+                        format: (_) => widget.format(_clamped),
                         style: const TextStyle(
                           fontFamily: AppTypography.family,
                           fontWeight: FontWeight.w700,
