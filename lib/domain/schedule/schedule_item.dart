@@ -85,3 +85,23 @@ class ScheduleItem {
   @override
   int get hashCode => id.hashCode;
 }
+
+/// A content fingerprint over a day's scheduled items, used to decide whether
+/// [DayLog.materializedFromScheduleVersion] is stale.
+///
+/// There is deliberately no persisted counter for this. A stored version would
+/// need its own document (or a field on the profile) that every schedule write
+/// updates transactionally, which is exactly the extra read/write the flat,
+/// one-read day model exists to avoid. Since [ensureDay] already has to fetch
+/// today's active items to materialize them, hashing that same list is free.
+///
+/// `updatedAt` is included so editing an item in place -- same id, same slot,
+/// same order, different snapshot -- still produces a new version. `id` and
+/// `order` alone would miss that.
+int scheduleVersionOf(List<ScheduleItem> items) {
+  final sorted = [...items]..sort((a, b) => a.id.compareTo(b.id));
+  return Object.hashAll([
+    for (final item in sorted)
+      Object.hash(item.id, item.order, item.updatedAt.millisecondsSinceEpoch),
+  ]);
+}

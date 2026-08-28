@@ -2,19 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../app/app_routes.dart';
-import '../../domain/nutrition/macros.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
-import '../../ui/components/calorie_ring.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_panel.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/motion/pressable.dart';
-import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
+import '../meal_editor/meal_editor_screen.dart';
+import '../my_meals/my_meals_tab.dart';
+import '../today/quick_add_sheet.dart';
+import '../today/today_controller.dart';
+import '../today/today_tab.dart';
 import 'home_controller.dart';
+
+/// The FAB means something different per tab: quick-add on Today, a new meal
+/// on My Meals, and "not yet" (Step 3) on Market and Account.
+void _onFabPressed(BuildContext context, int tabIndex) {
+  switch (tabIndex) {
+    case 0:
+      final today = Get.find<TodayController>();
+      if (!today.isViewingToday) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('يمكنك الإضافة لليوم الحالي فقط')));
+        return;
+      }
+      QuickAddSheet.show(context, today);
+    case 1:
+      Get.to(() => const MealEditorScreen());
+    default:
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text(AppStrings.comingNext)));
+  }
+}
 
 /// Keys for widgets that widget tests need to locate directly, because they
 /// are shared components (e.g. [Pressable]) rather than a distinct type
@@ -37,39 +59,27 @@ class HomeShell extends GetView<HomeController> {
   Widget build(BuildContext context) => Obx(() {
         final index = controller.tabIndex.value;
         return GlassScaffold(
-          body: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: animation.drive(
-                  Tween(begin: const Offset(0, .015), end: Offset.zero),
-                ),
-                child: child,
+          // IndexedStack, not a torn-down-and-rebuilt switcher: My Meals and
+          // Today both hold live Firestore stream subscriptions and scroll
+          // position that must survive a tab switch, not restart on every
+          // tap. The nav bar's own icon-swap and pill already carry the
+          // "something changed" feedback for a tab switch.
+          body: IndexedStack(
+            index: index,
+            children: [
+              const TodayTab(),
+              const MyMealsTab(),
+              const _Placeholder(
+                  title: AppStrings.market, icon: Icons.storefront_outlined),
+              _AccountTab(
+                onGallery: () => Get.toNamed(AppRoutes.gallery),
+                onSignOut: () async {
+                  await Get.find<AuthService>().signOut();
+                  await Get.find<PrefsService>().clearProfile();
+                  await Get.offAllNamed(AppRoutes.guest);
+                },
               ),
-            ),
-            // Keying by tab is what tells AnimatedSwitcher a new page arrived
-            // rather than the same one rebuilding.
-            child: KeyedSubtree(
-              key: ValueKey(index),
-              child: switch (index) {
-                0 => const _TodayTab(),
-                1 => const _Placeholder(
-                    title: AppStrings.myMeals, icon: Icons.restaurant_menu),
-                2 => const _Placeholder(
-                    title: AppStrings.market, icon: Icons.storefront_outlined),
-                _ => _AccountTab(
-                    onGallery: () => Get.toNamed(AppRoutes.gallery),
-                    onSignOut: () async {
-                      await Get.find<AuthService>().signOut();
-                      await Get.find<PrefsService>().clearProfile();
-                      await Get.offAllNamed(AppRoutes.guest);
-                    },
-                  ),
-              },
-            ),
+            ],
           ),
           bottomNavigationBar: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
@@ -94,9 +104,7 @@ class HomeShell extends GetView<HomeController> {
             ),
           ),
           floatingActionButton: _QuickAddFab(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text(AppStrings.comingNext)),
-            ),
+            onPressed: () => _onFabPressed(context, index),
           ),
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerDocked,
@@ -211,45 +219,6 @@ class _QuickAddFab extends StatelessWidget {
       );
 }
 
-class _TodayTab extends StatelessWidget {
-  const _TodayTab();
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Theme.of(context).textTheme;
-    final rows = <Widget>[
-      Text('صباح الخير', style: text.headlineMedium),
-      const SizedBox(height: 4),
-      Text('خطتك الغذائية واضحة أمامك', style: text.bodyLarge),
-      const SizedBox(height: AppSpacing.xl),
-      const Center(
-        child: CalorieRing(
-          consumed: 840,
-          target: 2000,
-          consumedMacros: Macros(protein: 62, carbs: 88, fat: 31),
-          targetMacros: Macros(protein: 130, carbs: 230, fat: 65),
-        ),
-      ),
-      const SizedBox(height: AppSpacing.xl),
-      const GlassCard(
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.lock_clock_outlined, color: AppPalette.emerald),
-          title: Text('وجبات اليوم'),
-          subtitle: Text(AppStrings.comingNext),
-        ),
-      ),
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 120),
-      itemCount: rows.length,
-      itemBuilder: (context, i) =>
-          StaggeredEntry(index: i, child: rows[i]),
-    );
-  }
-}
-
 class _Placeholder extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -273,19 +242,72 @@ class _AccountTab extends StatelessWidget {
   const _AccountTab({required this.onGallery, required this.onSignOut});
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          FilledButton.icon(
-            onPressed: onGallery,
-            icon: const Icon(Icons.palette_outlined),
-            label: const Text('معرض التصميم'),
+  Widget build(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(22, 88, 22, 120),
+        children: [
+          Text(AppStrings.account, style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: AppSpacing.md),
+          _AccountRow(
+            icon: Icons.person_outline,
+            label: 'الملف الشخصي والأهداف',
+            onTap: () => Get.toNamed(AppRoutes.profile),
           ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: onSignOut,
-            icon: const Icon(Icons.logout),
-            label: const Text('تسجيل الخروج'),
+          const SizedBox(height: AppSpacing.sm),
+          _AccountRow(
+            icon: Icons.calendar_month_outlined,
+            label: 'السجل',
+            onTap: () => Get.toNamed(AppRoutes.history),
           ),
-        ]),
+          const SizedBox(height: AppSpacing.sm),
+          _AccountRow(
+            icon: Icons.egg_alt_outlined,
+            label: 'تصفح المكوّنات',
+            onTap: () => Get.toNamed(AppRoutes.foods),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _AccountRow(
+            icon: Icons.palette_outlined,
+            label: 'معرض التصميم',
+            onTap: onGallery,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          _AccountRow(
+            icon: Icons.logout,
+            label: 'تسجيل الخروج',
+            danger: true,
+            onTap: onSignOut,
+          ),
+        ],
+      );
+}
+
+class _AccountRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool danger;
+
+  const _AccountRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => GlassCard(
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, color: danger ? AppPalette.danger : AppPalette.emerald),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(label,
+                  style: TextStyle(color: danger ? AppPalette.danger : AppPalette.text)),
+            ),
+            if (!danger)
+              const Icon(Icons.chevron_left_rounded, color: AppPalette.muted),
+          ],
+        ),
       );
 }

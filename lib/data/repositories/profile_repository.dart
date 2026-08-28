@@ -26,4 +26,12 @@ class ProfileRepository {
   }
 
   Future<void> clearCache() async => _cache?.clearProfile();
+
+  /// Removes the Firestore profile document. Does not touch the Firebase
+  /// Auth account itself -- callers delete the auth user separately and are
+  /// expected to call this alongside it, so neither is left orphaned.
+  Future<void> delete(String uid) async {
+    await _refs.profiles.doc(uid).delete();
+    await _cache?.clearProfile();
+  }
 }

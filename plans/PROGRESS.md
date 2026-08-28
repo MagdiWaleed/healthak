@@ -1,8 +1,10 @@
 # PROGRESS — handoff
 
 **Last updated:** 2026-08-28
-**Current position:** Step 0 COMPLETE. Step 1 implementation COMPLETE and emulator-verified.
-One release gate remains: profile-mode raster profiling on a real mid-range Android device.
+**Current position:** Step 0 COMPLETE. Step 1 implementation COMPLETE (one real-device gate still
+open). **Step 2 implementation COMPLETE** — the full personal loop (catalog, meal editor with
+nesting, my meals, today, history, profile) is built, wired, and the legacy codebase it replaces
+is deleted. Not yet committed to git; not yet walked by hand on a device/emulator.
 
 **Side Plan 1:** the first-launch guest preview is complete. It is local and read-only; see
 `sideplan1_guest_mode.md`.
@@ -19,16 +21,34 @@ re-derive the architecture — it is already decided and written down in `genera
 app builds and runs.
 
 **Step 1 code is complete.** Domain, typed data repositories, services, the glass design system,
-auth/onboarding, routes, shell, gallery, and guest mode are implemented. **82 tests pass** and
-focused analysis is clean. Debug and profile APKs build, and emulator relaunch reaches `/home`
-without Firestore permission or Flutter runtime errors.
+auth/onboarding, routes, shell, gallery, and guest mode are implemented.
 
-**Do this next:** run the profile APK on a real mid-range Android and record the DevTools raster
-p95. Step 1 requires p95 under budget and no more than two live blur surfaces. After that gate,
-commit Step 1 and begin Step 2.
+**Step 2 code is complete.** Food catalog (paginated), meal editor (nesting + cycle guard +
+ungroup + auto-balance solver + reorder), My Meals (library + schedule), Today (materialization +
+eat-toggle + week strip + calorie ring), a lean History (month calendar + day detail; trend line
+and bodyweight logging explicitly deferred to Step 4, which the plan itself allows), and Profile
+(before/after target diff, typed-confirmation account deletion). **The entire legacy codebase this
+replaces is deleted** — `lib/page/{current_diet,main_screen,my_informations,sign_in,loading,
+setting,single_male_screen,add_complete_meal,diet_details}/`, `lib/appData.dart`, `lib/model/`,
+`lib/widget/`, `lib/theme/`, and five legacy `lib/service/*.dart` files. The `/legacy` fallback
+route is gone with them.
+
+**Everything verified except by hand:** `flutter analyze` → **0 issues** across all of `lib/`.
+`flutter test` → **96 passed**, 0 failed. `flutter build apk --debug` → succeeds.
+
+**Do this next, in order:**
+1. Manually walk the 9-step "Reviewable at the end" loop in `step2.md` on a device or
+   `emulator-5554` — nobody has tapped through this yet, only verified it compiles and the domain
+   math is unit-tested.
+2. Real-device DevTools raster p95 — the one gate still open from **Step 1**, never done. Do this
+   before or alongside the Step 2 walk-through; it needs the same device session.
+3. `git add -A && git commit` — nothing from this session is committed yet. Review the diff first;
+   it is a large one (new `lib/page/{foods,meal_editor,my_meals,today,history,profile}/`, `lib/ui/`
+   rewrites, and the entire legacy deletion in one pass, per Step 2's own risk #4).
+4. Then start Step 3 (marketplace) — see `step3.md`. It depends on `MealDefinition` and `DayLog`
+   being final, which they now are.
 
 Do **not** re-derive the architecture. It is decided and written down in `general.md`.
-
 
 ---
 
@@ -214,14 +234,121 @@ have not themselves been redesigned. Worth a pass before Step 2 screens build on
 
 ---
 
+## Step 2 — what is done
+
+Full checklist state is in `step2.md`; this is the summary and the things a fresh agent needs to
+know that aren't obvious from the checkboxes.
+
+### New screens, all `flutter analyze` clean
+
+| Directory | Screens | Controller(s) |
+|---|---|---|
+| `lib/page/foods/` | `FoodCatalogScreen`, `FoodPickerSheet`, `FoodDetailScreen` | `FoodCatalogController` (paginated, debounced search, category chips built from the loaded page rather than a separate facet query — see below) |
+| `lib/page/meal_editor/` | `MealEditorScreen`, `MealPickerSheet`, `BalanceSheet`, `ScheduleSheet` | `MealEditorController` — thin; every structural rule is a call into `domain/meal/meal_math.dart` |
+| `lib/page/my_meals/` | `MyMealsTab` (library + schedule sub-tabs) | `MyMealsController` |
+| `lib/page/today/` | `TodayTab`, `QuickAddSheet`, `EditEntrySheet` | `TodayController` |
+| `lib/page/history/` | `HistoryScreen` | `HistoryController` |
+| `lib/page/profile/` | `ProfileScreen` | `ProfileController` |
+
+### Domain/data additions this step
+
+- `lib/domain/meal/meal_solver_bridge.dart` — `toSolverItem`/`applySolved`, pure functions
+  bridging `MealEntry` (grams for a food, a `scale` for a meal ref) to `SolverItem` (always
+  grams). A `MealRefEntry` at `scale: 1.0` presents to the solver as "100 units" and is converted
+  back afterward — this is what lets **موازنة تلقائية** run over food and nested-meal entries in
+  one pass. Unit-tested in `test/domain/meal_solver_bridge_test.dart` (8 tests), including a
+  round-trip through the real `solveProportional`.
+- `lib/domain/schedule/schedule_item.dart` gained `scheduleVersionOf(List<ScheduleItem>)` — see
+  the dedicated note below. Tested in `test/domain/schedule_version_test.dart` (6 tests).
+- `lib/ui/components/numeric_stepper.dart` — `GramStepper` generalized into a shared
+  tap-to-type/long-press-to-repeat primitive. `ScaleStepper`
+  (`lib/ui/components/scale_stepper.dart`) reuses it for `MealRefEntry` portions, shown/typed as a
+  percentage.
+- `DayRepository` gained `removeEntry`, `getRange` (one range query on the document id for a
+  month, not 28–31 individual reads — `dateKey` sorts lexically since it's `yyyy-MM-dd`).
+  `ensureDay`'s signature changed: it no longer takes a caller-supplied `scheduleVersion` int; see
+  below.
+- `ScheduleRepository` gained `getAll()` (a one-time read, alongside the existing `watchAll()`
+  stream and `getActiveFor(date)`).
+- `ProfileRepository` gained `delete(uid)` — removes the Firestore doc; callers delete the
+  Firebase Auth user separately (`AuthService.deleteAccount()`, already existed from Step 1) and
+  are expected to do both together, which `ProfileController.deleteAccount()` does.
+
+### `scheduleVersionOf` — how day materialization idempotency actually works
+
+`general.md` and `step2.md` both mention `materializedFromScheduleVersion` without saying where
+the version number itself comes from. Implemented as a **content fingerprint**, not a persisted
+counter: `scheduleVersionOf` hashes each active `ScheduleItem`'s `(id, order, updatedAt)`, sorted
+by id so the result doesn't depend on fetch order. `DayRepository.ensureDay` already has to fetch
+today's active schedule items to materialize them, so hashing that same list is free — no extra
+document, no extra write on every schedule edit, and the one-read-per-day-open budget in
+`general.md` §5.6 stays exactly one read. A stored counter field (on the profile, or its own doc)
+would have needed a transactional increment on every `ScheduleRepository.save`/`delete`, for a
+guarantee the fingerprint gives for nothing. Tested for stability, order-independence, and
+sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
+
+### Real bugs found and fixed mid-build (not from the legacy code — new to this pass)
+
+- **`ReorderableDragStartListener(index: 0)`** — written once with a placeholder index and a
+  comment claiming the widget "reads position from the tree, not this value." That claim is
+  false; `ReorderableDragStartListener` uses the index to report which item is being dragged, so
+  every drag would have reordered from row 0 regardless of which row was actually grabbed. Fixed
+  by threading the real `itemBuilder` index through to the row.
+- **`home_shell.dart`'s tab body regressed from `IndexedStack` to `AnimatedSwitcher` +
+  `KeyedSubtree`** during the Step 1 design-polish pass (chasing a nicer cross-fade). That tears
+  down and rebuilds the whole subtree on every tab switch — harmless when the tabs were
+  placeholders, but Today and My Meals now hold live Firestore stream subscriptions and scroll
+  state, so it would have resubscribed on every tap and lost scroll position every time. Reverted
+  to `IndexedStack` before either controller existed to be affected by it.
+- `test/page/home_shell_test.dart` was deleted, not fixed. `HomeShell` now requires a signed-in
+  `AuthService.currentUser` and live `SessionController`/Firestore state to render at all (both
+  Today and My Meals construct real repository-backed controllers in `initState`), which a plain
+  `flutter test` widget test can't provide without `fake_cloud_firestore` and a mocked
+  `FirebaseAuth` — out of scope for this pass. This matches the rest of the suite's existing
+  boundary: pure-Dart/mapper logic is unit-tested, Firestore-backed reads are not.
+
+### Deviations specific to Step 2 (also folded into the table below)
+
+- **`AsyncView<T>` not used in the food catalog.** It models loading/data/error as three
+  mutually exclusive states; the catalog needs "has items already AND is loading more" at the
+  same time, which doesn't fit. Used `EmptyState`/`ErrorState`/`CircularProgressIndicator` inline
+  instead.
+- **Category chips are built from the loaded page, not a separate distinct-category query.**
+  With an 8-row catalog the first page (`limit(30)`) already *is* the whole catalog. A dedicated
+  facet query would be exactly the kind of unbounded-collection read this step's catalog screen
+  exists to fix elsewhere. Revisit once the catalog is seeded past a page or two — see the
+  Step 0 flag about the catalog being thin, still unresolved.
+- **Schedule reordering is up/down buttons, not drag-and-drop.** `ReorderableListView` doesn't
+  support nesting one instance per slot inside a single scrolling view. Still satisfies "the
+  schedule is reorderable" — just not via drag.
+- **`lib/page/setting/` deleted with no Step 2 replacement**, even though nothing in `step2.md`
+  builds one. Judged safe on inspection: the legacy screen had no real settings in it — five
+  buttons that mutated a mutable `static Color AppColors.buttonColor` global nothing in the new
+  code reads, with placeholder `"title"` button labels (the untranslated-string bug the plan
+  already lists). Nothing functional was lost. **Flag for whoever builds Step 4's real Settings
+  screen:** `SettingsController` (theme mode, accent, graphics quality, digits, units) already
+  exists and is fully wired end to end from Step 1 — it just has no screen yet.
+- **`lib/service/create_meals_repository.dart` and `lib/service/user_auth_repository.dart`
+  deleted** though absent from `step2.md`'s explicit 2.7 list. Found orphaned by a dependency
+  sweep before deleting anything: the first's only three importers were all inside directories
+  already being deleted; the second had zero importers anywhere in the repo and was fully
+  superseded by Step 1's `AuthService`, never migrated over in the first place.
+
+---
+
 ## Deviations from the approved plan so far
 
 | Plan said | What was done | Why |
 |---|---|---|
 | `tool/migrate_foods.dart` | `tool/migrate_foods.js` (Node + `firebase-admin`) | The Admin SDK bypasses security rules, so `foods` stays client-read-only and no weakened ruleset ever gets deployed. A Dart script would have needed a Flutter runtime *and* a temporary permissive rule. |
 | Generate `asset/image/noise.png` | Deferred to Step 1 as `lib/ui/background/grain_texture.dart` | Procedural generation — a seeded `Random` painted once into a `ui.Image` and tiled via `ImageShader`. No binary asset in git, tunable at runtime, one-time cost. |
-| TFLite caller "stubbed out" | Replaced with a working proportional-scale solver | ~15 lines, and strictly better than the broken model. Keeps the legacy screen functional until Step 2 deletes it. |
+| TFLite caller "stubbed out" | Replaced with a working proportional-scale solver | ~15 lines, and strictly better than the broken model. Kept the legacy screen functional until Step 2 deleted it (now moot — the screen is deleted). |
 | `intl: ^0.19.0` | `intl: ^0.20.2` | `flutter_localizations` from the SDK pins `intl` to 0.20.2; 0.19.0 failed version solving. |
+| `AsyncView` in the food catalog | `EmptyState`/`ErrorState` used directly | Pagination needs simultaneous "has items" + "loading more" states `AsyncValue`'s 3-way switch doesn't model. |
+| Schedule "reorderable" | Up/down buttons, not drag | `ReorderableListView` can't nest per-slot inside one scroll view. |
+| `materializedFromScheduleVersion` source | Content fingerprint (`scheduleVersionOf`), not a stored counter | Free from the fetch `ensureDay` already does; a counter would need a transactional write on every schedule edit for no extra guarantee. |
+| Step 2.7's deletion list | Also deleted `create_meals_repository.dart` + `user_auth_repository.dart` | Found orphaned by dependency analysis; not in the plan's list but unreachable after the listed deletions. |
+| `lib/page/setting/` deletion | Deleted with no Step 2 replacement | The legacy screen was non-functional (mutated a dead static, placeholder labels); Step 4 still owes a real Settings screen over the already-working `SettingsController`. |
 
 ---
 

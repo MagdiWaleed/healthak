@@ -8,6 +8,11 @@ class ScheduleRepository {
   ScheduleRepository({required this.uid, FirestoreRefs? refs})
       : _refs = refs ?? FirestoreRefs();
 
+  Future<List<ScheduleItem>> getAll() async {
+    final snapshot = await _refs.schedule(uid).orderBy('order').get();
+    return snapshot.docs.map((document) => document.data()).toList();
+  }
+
   Stream<List<ScheduleItem>> watchAll() => _refs
       .schedule(uid)
       .orderBy('order')
