@@ -215,6 +215,36 @@ nothing at this size and would cost a composite index. `nameNormalized` is gener
 shared `foldArabic`, which `normalizeFoodSearchToken` now also uses, so a hand-created component
 is findable by exactly the search that finds a migrated one; a test pins that.
 
+### Correcting a past day
+
+The read-only lock on past days left no way to *fix* a wrong record — which mattered immediately,
+because the `scheduleVersionOf` bug above had already wiped `eaten` on days the user had really
+eaten on, and those days were stuck reading 0 kcal with no recourse. Forgetting to tick something
+off before midnight is also just normal.
+
+Locked stays the default (the green glass, no checkbox — correcting history should be deliberate,
+not a mis-tap). A `تعديل` pill next to "استعراض يوم سابق" unlocks the day in view: rows revert to
+normal glass with live checkboxes and the pill becomes `تم`. `TodayController.editingPast` is
+per-selection and never persisted — `selectDate` clears it, so unlocking one day cannot leave
+others unlocked behind it.
+
+`canEditSelectedDay` (`isViewingToday || editingPast`) now gates `quickAddFood`,
+`addLibraryMeal`, and `logCustomEntry` as well as the row controls, so an unlocked day also
+accepts a meal that was missing from it — being able to untick but not add would be a strange
+half-correction. The FAB's refusal message now points at the pill rather than flatly saying today
+only.
+
+Two `Obx`-scope traps were hit and fixed while building this, both the same shape as the
+`_Greeting` one: a widget's `build` runs *outside* the closure of whichever `Obx` created it, so
+reading an `Rx` there registers no dependency. `readOnly` is therefore computed inside `TodayTab`'s
+`Obx` and passed into `_EntryTile` as a parameter, and `_EditDayToggle` carries its own `Obx` —
+without the latter the rows went editable while the button still read `تعديل`, because the pinned
+`SliverPersistentHeader`'s `shouldRebuild` compares the day and selected date but knows nothing
+about the unlock.
+
+Verified on the emulator end to end: day 28 read 0, unlocked, ticked, ring went to 152 with
+8/12/8 macros, `am force-stop`, relaunch — 152 still there, day green and locked again.
+
 Read this first, then `general.md`, then the `stepN.md` for whatever step is current.
 If you are a fresh agent picking this up: **everything you need is in this directory.** Do not
 re-derive the architecture — it is already decided and written down in `general.md`.

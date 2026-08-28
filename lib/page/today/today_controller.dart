@@ -66,6 +66,13 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
   void toggleEditingPast() => editingPast.value = !editingPast.value;
 
+  /// Whether the day currently in view accepts writes: today always, a past
+  /// day only while deliberately unlocked. Gates adding as well as ticking --
+  /// being able to untick a past day but not log a meal missing from it would
+  /// be a strange half-correction.
+  bool get canEditSelectedDay =>
+      _isToday(selectedDate.value) || editingPast.value;
+
   final selectedDate = DateTime.now().obs;
   final day = Rxn<DayLog>();
   final loading = true.obs;
@@ -299,7 +306,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   Future<void> quickAddFood(FoodItem food,
       {double grams = 100, MealSlot? slot}) async {
     final current = day.value;
-    if (current == null || !_isToday(selectedDate.value)) return;
+    if (current == null || !canEditSelectedDay) return;
     await _days.upsertEntry(
       current.dateKey,
       DayEntry(
@@ -332,7 +339,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     MealSlot? slot,
   }) async {
     final current = day.value;
-    if (current == null || !_isToday(selectedDate.value)) return;
+    if (current == null || !canEditSelectedDay) return;
     await _days.upsertEntry(
       current.dateKey,
       DayEntry(
@@ -360,7 +367,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     MealSlot? slot,
   }) async {
     final current = day.value;
-    if (current == null || !_isToday(selectedDate.value)) return;
+    if (current == null || !canEditSelectedDay) return;
     final flat = flattenMeal(meal, resolver);
     await _days.upsertEntry(
       current.dateKey,

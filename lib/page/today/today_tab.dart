@@ -167,7 +167,7 @@ class _TodayTabState extends State<TodayTab> {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         TextButton.icon(
-                          onPressed: controller.isViewingToday
+                          onPressed: controller.canEditSelectedDay
                               ? () => QuickAddSheet.show(context, controller)
                               : null,
                           icon: const Icon(Icons.add_circle_outline),
@@ -181,6 +181,13 @@ class _TodayTabState extends State<TodayTab> {
             ],
           );
         }
+
+        // Read here, inside the Obx closure, and passed down. `_EntryTile`'s
+        // own `build` runs outside this closure, so reading either value
+        // there would not register as a dependency and toggling the unlock
+        // would change nothing on screen.
+        final readOnly =
+            !controller.isViewingToday && !controller.editingPast.value;
 
         final sections = <Widget>[
           const SizedBox(key: ValueKey('spacer-header'), height: AppSpacing.lg),
@@ -198,7 +205,8 @@ class _TodayTabState extends State<TodayTab> {
               _EntryTile(
                   key: ValueKey('entry-${entry.entryId}'),
                   controller: controller,
-                  entry: entry),
+                  entry: entry,
+                  readOnly: readOnly),
               SizedBox(
                   key: ValueKey('spacer-entry-${entry.entryId}'),
                   height: AppSpacing.sm),
@@ -409,26 +417,88 @@ class _Greeting extends StatelessWidget {
               // explicit button; everywhere else this doubles as the quiet way
               // back so the user is never stuck relying on spotting today's
               // cell in the strip.
-              GestureDetector(
-                onTap: () => controller.selectDate(DateTime.now()),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'استعراض يوم سابق',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: AppPalette.emerald,
-                            decoration: TextDecoration.underline,
-                            decorationColor: AppPalette.emerald,
-                          ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () => controller.selectDate(DateTime.now()),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'استعراض يوم سابق',
+                          style:
+                              Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: AppPalette.emerald,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: AppPalette.emerald,
+                                  ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(Icons.today_rounded,
+                            size: 16, color: AppPalette.emerald),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.today_rounded,
-                        size: 16, color: AppPalette.emerald),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  // Correcting history has to be deliberate, so it is a
+                  // second, explicitly-labelled action rather than the rows
+                  // simply being live: the day stays locked and green until
+                  // this is pressed.
+                  _EditDayToggle(controller: controller),
+                ],
               ),
           ],
+        );
+      });
+}
+
+/// Unlocks the browsed day for correction, and says which state it is in.
+class _EditDayToggle extends StatelessWidget {
+  final TodayController controller;
+
+  const _EditDayToggle({required this.controller});
+
+  // Its own `Obx`. This sits inside the pinned `SliverPersistentHeader`,
+  // whose `shouldRebuild` compares the day and the selected date -- not the
+  // unlock -- so without this the rows would go editable while the button
+  // still read "تعديل".
+  @override
+  Widget build(BuildContext context) => Obx(() {
+        final editing = controller.editingPast.value;
+        return GestureDetector(
+          onTap: controller.toggleEditingPast,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: editing
+                  ? AppPalette.emerald.withValues(alpha: .22)
+                  : Colors.white.withValues(alpha: .07),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: editing
+                    ? AppPalette.emerald.withValues(alpha: .55)
+                    : Colors.white.withValues(alpha: .16),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(editing ? Icons.lock_open_rounded : Icons.edit_outlined,
+                    size: 13,
+                    color: editing ? AppPalette.emerald : AppPalette.muted),
+                const SizedBox(width: 4),
+                Text(
+                  editing ? 'تم' : 'تعديل',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: editing ? AppPalette.emerald : AppPalette.muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       });
 }
@@ -460,7 +530,9 @@ class _WeekStrip extends StatelessWidget {
         // Monday of the current week through Sunday. Browsing beyond this
         // range is what History (a full calendar) is for.
         final monday = now.subtract(Duration(days: now.weekday - 1));
-        final days = [for (var i = 0; i < 7; i++) monday.add(Duration(days: i))];
+        final days = [
+          for (var i = 0; i < 7; i++) monday.add(Duration(days: i))
+        ];
         final selected = controller.selectedDate.value;
         return ListView.separated(
           scrollDirection: Axis.horizontal,
@@ -522,14 +594,22 @@ class _EntryTile extends StatelessWidget {
   final TodayController controller;
   final DayEntry entry;
 
-  const _EntryTile({super.key, required this.controller, required this.entry});
+  /// A past day is a frozen historical record, so browsing one must not let
+  /// the swipe-delete, long-press editor, or eat toggle mutate it by
+  /// accident. Computed by the caller inside its `Obx` -- see the note there
+  /// -- and false again once that day is deliberately unlocked for
+  /// correction.
+  final bool readOnly;
+
+  const _EntryTile({
+    super.key,
+    required this.controller,
+    required this.entry,
+    required this.readOnly,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // A past day is a frozen historical record -- browsing it must never let
-    // the swipe-delete, long-press editor, or eat toggle mutate what was
-    // actually logged that day. Today is the only day anyone can act on.
-    final readOnly = !controller.isViewingToday;
     return Dismissible(
       key: ValueKey(entry.entryId),
       direction: readOnly ? DismissDirection.none : DismissDirection.endToStart,

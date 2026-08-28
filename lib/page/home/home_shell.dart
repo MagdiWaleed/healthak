@@ -26,9 +26,9 @@ void _onFabPressed(BuildContext context, int tabIndex) {
     case 0:
       final today = Get.find<TodayController>();
       today.ensureCurrentDay();
-      if (!today.isViewingToday) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('يمكنك الإضافة لليوم الحالي فقط')));
+      if (!today.canEditSelectedDay) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('اضغط "تعديل" أولاً لتصحيح يوم سابق')));
         return;
       }
       QuickAddSheet.show(context, today);
