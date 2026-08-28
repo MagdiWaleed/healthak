@@ -8,6 +8,7 @@ import '../../domain/day/day_log.dart';
 import '../../domain/food/food_item.dart';
 import '../../domain/meal/meal_definition.dart';
 import '../../domain/meal/meal_math.dart';
+import '../../domain/nutrition/energy.dart';
 import '../../domain/nutrition/macros.dart';
 import '../../service/session_controller.dart';
 
@@ -109,7 +110,22 @@ class TodayController extends GetxController {
   Future<void> deleteEntry(String entryId) async {
     final current = day.value;
     if (current == null) return;
-    await _days.removeEntry(current.dateKey, entryId);
+    // Optimistic, for the same reason as toggleEaten -- but here it's load
+    // bearing, not just responsive: the swipe-to-delete `Dismissible` plays
+    // its own removal animation and then expects the item gone from the very
+    // next build. Without removing it from `day.value` immediately, the
+    // Firestore round trip finishes a beat later; if *any* other change
+    // rebuilds the list in that window (an eat-toggle on another row, the
+    // stream ticking), the just-dismissed item's key reappears in the tree
+    // after `Dismissible` already reported it gone, which Flutter throws on:
+    // "A dismissed Dismissible widget is still part of the tree."
+    day.value = current.withoutEntry(entryId);
+    try {
+      await _days.removeEntry(current.dateKey, entryId);
+    } catch (e) {
+      day.value = current; // roll back on failure
+      error.value = e.toString();
+    }
   }
 
   /// Overwrites one entry's items -- the long-press gram editor's save path.
@@ -181,6 +197,28 @@ class TodayController extends GetxController {
 
   Macros get consumedMacros => day.value?.consumedTotals ?? Macros.zero;
   Macros get targetMacros => day.value?.targets.macros ?? Macros.zero;
+
+  /// Everything planned for the day, eaten or not -- what "أضف/احذف؟" against
+  /// the goal should actually be judged against, not just what's ticked off
+  /// so far. Feeds the calorie ring's faded preview band.
+  double get plannedKcal => day.value?.plannedKcal ?? 0;
+  Macros get plannedMacros => day.value?.plannedTotals ?? Macros.zero;
+
+  /// Basal metabolic rate, recomputed from the live profile rather than
+  /// cached -- so it reflects the current weight/height/age even before a
+  /// profile edit's new target has propagated to today's frozen `DayLog`.
+  double? get bmr {
+    final profile = _session.profile.value;
+    if (profile == null) return null;
+    return bmrMifflinStJeor(
+      weightKg: profile.weightKg,
+      heightCm: profile.heightCm,
+      ageYears: profile.ageAt(DateTime.now()),
+      sex: profile.sex,
+    );
+  }
+
+  double get targetKcal => day.value?.targets.kcal ?? 0;
 }
 
 extension _FirstOrNull<T> on Iterable<T> {

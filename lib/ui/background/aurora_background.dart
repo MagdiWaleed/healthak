@@ -8,9 +8,16 @@ import 'grain_texture.dart';
 /// One drifting light source in the aurora field.
 ///
 /// Each blob owns its own period. The periods are deliberately coprime-ish
-/// (19 / 23 / 29 / 31 seconds) so the composite pattern takes minutes to
-/// repeat -- a single shared controller made all four move in lockstep, which
-/// reads as a pulse rather than as drift.
+/// so the composite pattern takes minutes to repeat -- a single shared
+/// controller made all four move in lockstep, which reads as a pulse rather
+/// than as drift. Kept short enough (7-13s) that the drift is visible within
+/// the first few seconds of a freshly opened screen: a route pushed via
+/// `Get.to()` starts its own `AuroraBackground` from t=0, and at the
+/// originally-tuned 19-31s periods that first few seconds of a fresh instance
+/// showed essentially no motion -- correct code, imperceptible result, which
+/// read as "the background stopped moving" on every screen except the one
+/// tab (Today) the app happens to have been sitting on long enough to
+/// accumulate visible drift.
 class _BlobSpec {
   final Alignment anchor;
   final Color color;
@@ -46,7 +53,7 @@ const _blobs = <_BlobSpec>[
     ampX: 0.10,
     ampY: 0.07,
     phase: 0.0,
-    period: Duration(seconds: 19),
+    period: Duration(seconds: 7),
   ),
   _BlobSpec(
     anchor: Alignment(0.85, -0.55),
@@ -55,7 +62,7 @@ const _blobs = <_BlobSpec>[
     ampX: 0.09,
     ampY: 0.10,
     phase: 1.7,
-    period: Duration(seconds: 23),
+    period: Duration(seconds: 9),
   ),
   _BlobSpec(
     anchor: Alignment(-0.35, 0.55),
@@ -64,7 +71,7 @@ const _blobs = <_BlobSpec>[
     ampX: 0.12,
     ampY: 0.06,
     phase: 3.1,
-    period: Duration(seconds: 29),
+    period: Duration(seconds: 11),
   ),
   _BlobSpec(
     anchor: Alignment(0.80, 0.95),
@@ -73,7 +80,7 @@ const _blobs = <_BlobSpec>[
     ampX: 0.07,
     ampY: 0.09,
     phase: 4.4,
-    period: Duration(seconds: 31),
+    period: Duration(seconds: 13),
   ),
 ];
 

@@ -46,6 +46,13 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
   @override
   void initState() {
     super.initState();
+    // GetxController.onInit() is only invoked automatically by GetX's own DI
+    // (Get.put/lazyPut/a Binding). This controller is a plain, screen-scoped
+    // object instead, so nothing calls onInit() unless this does -- without
+    // it, `_load()` never runs: the screen spins forever regardless of
+    // whether this is a new or an existing meal, and the library never
+    // populates for "إضافة وجبة" either.
+    controller.onInit();
     _name = TextEditingController(text: controller.name.value)
       ..addListener(() => controller.setName(_name.text));
     // The name field only fills in once the meal finishes loading (editing an
@@ -162,7 +169,17 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
   @override
   Widget build(BuildContext context) => GlassScaffold(
         appBar: AppBar(
-          title: Obx(() => Text(controller.isNew ? 'وجبة جديدة' : controller.name.value)),
+          // `Obx` needs at least one `.obs` read inside its builder to know
+          // what to listen to. `controller.isNew` is a plain bool getter, not
+          // reactive -- a `isNew ? staticText : controller.name.value`
+          // ternary reads zero Rx values whenever isNew is true (i.e. on
+          // every new meal), which GetX flags as "improper use of Obx" and
+          // fails to render at all. Reading `name.value` unconditionally
+          // fixes both the crash and gives the title a placeholder that
+          // updates live as the user types.
+          title: Obx(() => Text(
+                controller.name.value.isEmpty ? 'وجبة جديدة' : controller.name.value,
+              )),
           actions: [
             Obx(() => controller.saving.value
                 ? const Padding(

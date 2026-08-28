@@ -6,6 +6,7 @@ import '../../domain/meal/meal_definition.dart';
 import '../../domain/schedule/schedule_item.dart';
 import '../../service/auth_service.dart';
 import '../../ui/components/empty_state.dart';
+import '../../ui/components/error_state.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
@@ -29,6 +30,19 @@ class MyMealsTab extends StatefulWidget {
 class _MyMealsTabState extends State<MyMealsTab> {
   late final MyMealsController controller =
       MyMealsController(uid: Get.find<AuthService>().currentUser!.uid);
+
+  @override
+  void initState() {
+    super.initState();
+    // GetxController.onInit() is normally invoked by GetX's own DI machinery
+    // (Get.put/lazyPut/a Binding) when the instance is registered. This
+    // controller is deliberately a plain, screen-scoped object instead --
+    // nothing outside this tab needs to Get.find it -- so nothing calls
+    // onInit() unless this does. Without this line the library/schedule
+    // streams are never subscribed to at all: not slow, not erroring, just
+    // never started, and both tabs spin forever with zero signal why.
+    controller.onInit();
+  }
 
   @override
   void dispose() {
@@ -75,6 +89,10 @@ class _LibraryView extends StatelessWidget {
   Widget build(BuildContext context) => Obx(() {
         if (controller.libraryLoading.value) {
           return const Center(child: CircularProgressIndicator());
+        }
+        final libraryError = controller.libraryError.value;
+        if (libraryError != null) {
+          return ErrorState(message: libraryError, onRetry: controller.retryLibrary);
         }
         final meals = controller.library;
         if (meals.isEmpty) {
@@ -191,6 +209,10 @@ class _ScheduleView extends StatelessWidget {
   Widget build(BuildContext context) => Obx(() {
         if (controller.scheduleLoading.value) {
           return const Center(child: CircularProgressIndicator());
+        }
+        final scheduleError = controller.scheduleError.value;
+        if (scheduleError != null) {
+          return ErrorState(message: scheduleError, onRetry: controller.retrySchedule);
         }
         final slots = MealSlot.values
             .where((slot) => controller.forSlot(slot).isNotEmpty)

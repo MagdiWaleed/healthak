@@ -37,6 +37,8 @@ class MyMealsController extends GetxController {
   final schedule = <ScheduleItem>[].obs;
   final libraryLoading = true.obs;
   final scheduleLoading = true.obs;
+  final libraryError = RxnString();
+  final scheduleError = RxnString();
 
   StreamSubscription<List<MealDefinition>>? _librarySub;
   StreamSubscription<List<ScheduleItem>>? _scheduleSub;
@@ -44,15 +46,51 @@ class MyMealsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _librarySub = _meals.watchAll().listen((value) {
-      library.value = value;
-      libraryLoading.value = false;
-    });
-    _scheduleSub = _schedule.watchAll().listen((value) {
-      schedule.value = value;
-      scheduleLoading.value = false;
-    });
+    _watchLibrary();
+    _watchSchedule();
   }
+
+  // Without an onError handler, any hiccup on the stream -- a transient
+  // permission error, an index still building, anything -- silently drops
+  // the subscription and leaves `libraryLoading`/`scheduleLoading` stuck
+  // `true` forever: the tab spins with no way out and no signal of what
+  // went wrong. Same failure mode `today_tab.dart` had for a browsed day
+  // with no data; here it is a real error rather than a valid empty state,
+  // so it needs to surface, not just stop spinning.
+  void _watchLibrary() {
+    libraryLoading.value = true;
+    libraryError.value = null;
+    _librarySub?.cancel();
+    _librarySub = _meals.watchAll().listen(
+      (value) {
+        library.value = value;
+        libraryLoading.value = false;
+      },
+      onError: (Object error) {
+        libraryError.value = error.toString();
+        libraryLoading.value = false;
+      },
+    );
+  }
+
+  void _watchSchedule() {
+    scheduleLoading.value = true;
+    scheduleError.value = null;
+    _scheduleSub?.cancel();
+    _scheduleSub = _schedule.watchAll().listen(
+      (value) {
+        schedule.value = value;
+        scheduleLoading.value = false;
+      },
+      onError: (Object error) {
+        scheduleError.value = error.toString();
+        scheduleLoading.value = false;
+      },
+    );
+  }
+
+  void retryLibrary() => _watchLibrary();
+  void retrySchedule() => _watchSchedule();
 
   @override
   void onClose() {
@@ -66,7 +104,24 @@ class MyMealsController extends GetxController {
       (schedule.where((item) => item.slot == slot).toList()
         ..sort((a, b) => a.order.compareTo(b.order)));
 
-  Future<void> deleteMeal(String id) => _meals.delete(id);
+  /// Optimistic, same reasoning as `TodayController.deleteEntry`: the
+  /// library's swipe-to-delete `Dismissible` plays its own removal animation
+  /// and expects the item gone from the very next build. Waiting on the
+  /// Firestore round trip and only removing it once `watchAll()` ticks leaves
+  /// a window where the item can still be in `library` on a rebuild that
+  /// happens after `Dismissible` already reported itself dismissed --
+  /// Flutter throws "A dismissed Dismissible widget is still part of the
+  /// tree" for exactly that. Rolled back on failure, then the stream's own
+  /// next tick reconciles either way.
+  Future<void> deleteMeal(String id) async {
+    final previous = library;
+    library.value = previous.where((m) => m.id != id).toList();
+    try {
+      await _meals.delete(id);
+    } catch (_) {
+      library.value = previous; // roll back; the row reappears
+    }
+  }
 
   Future<void> toggleActive(ScheduleItem item) =>
       _schedule.save(item.copyWith(active: !item.active));

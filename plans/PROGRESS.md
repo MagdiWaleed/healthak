@@ -37,16 +37,255 @@ route is gone with them.
 `flutter test` → **96 passed**, 0 failed. `flutter build apk --debug` → succeeds.
 
 **Do this next, in order:**
-1. Manually walk the 9-step "Reviewable at the end" loop in `step2.md` on a device or
-   `emulator-5554` — nobody has tapped through this yet, only verified it compiles and the domain
-   math is unit-tested.
-2. Real-device DevTools raster p95 — the one gate still open from **Step 1**, never done. Do this
-   before or alongside the Step 2 walk-through; it needs the same device session.
+1. Continue the manual walk of the 9-step "Reviewable at the end" loop in `step2.md` on a device
+   or emulator. A first pass (Today only) found and fixed two real bugs -- see below. My Meals,
+   the meal editor, and history/profile have not been tapped through yet.
+2. Real-device DevTools raster p95 — the one gate still open from **Step 1**, never done.
 3. `git add -A && git commit` — nothing from this session is committed yet. Review the diff first;
    it is a large one (new `lib/page/{foods,meal_editor,my_meals,today,history,profile}/`, `lib/ui/`
    rewrites, and the entire legacy deletion in one pass, per Step 2's own risk #4).
 4. Then start Step 3 (marketplace) — see `step3.md`. It depends on `MealDefinition` and `DayLog`
    being final, which they now are.
+
+### Manual walk-through, attempt 1 — two real bugs found and fixed, one environment blocker
+
+Installed the debug APK on `emulator-5554` and drove it via `adb shell input tap` +
+`adb exec-out screencap`, screenshotting after each action (no Appium/integration-test harness in
+this repo). Today tab only; the rest of the loop is not yet covered.
+
+**Bug: browsing to a day with no logged data spun forever.** `TodayTab`'s build had exactly three
+branches -- loading, error, and "has a `DayLog`" -- and no branch for the fourth real state:
+loading finished, no error, and `day == null` because a past day genuinely has no Firestore
+document (only `ensureDay`, called for *today* only, ever creates one; browsing history must never
+invent one — see `general.md` §5.6). That state fell through to the loading branch's own
+`CircularProgressIndicator`, which then never left the screen. Reproduced by tapping a past date
+in the week strip. Fixed in `lib/page/today/today_tab.dart`: that state now renders a dedicated
+"لا يوجد سجل لهذا اليوم" empty view instead of a spinner with no exit.
+
+**Bug: the empty-day CTA button rendered underneath the FAB.** `ListView` top-aligns short
+content; the FAB is docked at a fixed position near the bottom of the *viewport* regardless of
+content length. On a day with zero entries, the accumulated height of greeting + week strip + ring
++ empty state happened to land almost exactly at the FAB's height on this device's screen size, so
+**"إضافة الآن" rendered directly behind the "+" button** — reachable in theory, effectively
+untappable in practice. Confirmed visually (screenshot showed the button's Arabic text truncated
+behind the FAB circle), not something `flutter analyze`/widget tests would have caught, since
+nothing errors — it's a pure visual collision. Fixed by moving the empty-day branch out of the
+scrolling list into a `CustomScrollView` + `SliverFillRemaining(hasScrollBody: false)`, which
+centers short content in the *true* remaining viewport instead of top-aligning it against a
+fixed-position FAB. Verified fixed by screenshot after rebuilding and reinstalling — a clear gap
+now separates "إضافة الآن" from the FAB.
+
+### Manual walk-through, attempt 2 — the serious one: 4 controllers' onInit() never ran
+
+The user reported مكتبتي/جدولي (My Meals' two tabs) never loaded -- stuck spinners. First fix
+attempt added `onError` handling to `MyMealsController`'s two stream listeners (good defensive
+coding regardless, kept), but that wasn't the actual cause: the streams weren't erroring, they
+were never being *subscribed to at all*.
+
+**Root cause:** `GetxController.onInit()` is only invoked automatically by GetX's own DI
+machinery -- `Get.put`, `Get.lazyPut`, or a `Bindings` class. Four controllers across Step 2 are
+constructed as plain objects instead (`late final XController controller = XController(...)`, no
+`Get.put`), because nothing outside their own screen needs to `Get.find` them. Nobody ever called
+`onInit()` on them, so nothing inside `onInit()` ever ran:
+
+| Controller | What `onInit()` does | What broke without it |
+|---|---|---|
+| `MyMealsController` | Subscribes to the library and schedule streams | Both My Meals tabs spun forever |
+| `MealEditorController` | Calls `_load()` -- fetches the library, populates `_otherMeals` | **The meal editor was completely unusable, for a new meal or an existing one** -- permanent spinner, the single most important screen in the app |
+| `HistoryController` | Fetches the current month's range | History never loaded |
+| `ProfileController` | Populates the form fields from the current profile | Height/weight/birth year/sex/activity/goal all sat blank instead of showing the real profile |
+
+`TodayController` was the one exception and the reason Today alone worked in attempt 1: it's
+`Get.put`-registered (so `HomeShell`'s FAB can `Get.find` it), which calls `onInit()` as a
+side effect of registration. That was incidental, not a deliberate safeguard -- nothing about the
+pattern flagged the other four as different in kind.
+
+**Fix:** each of the four screens now calls `controller.onInit()` explicitly in `initState()`,
+with a comment explaining why (so the next screen written this way doesn't repeat it). Considered
+switching them to `Get.put`/`Get.delete` instead, matching `TodayController`; kept them as plain
+objects because none of the other three need cross-widget lookup, and `Get.put` would mean
+remembering a matching `Get.delete` in every `dispose()` (already true for `TodayController` and
+easy to get wrong) for no benefit here.
+
+Verified by temporarily defaulting `HomeController.tabIndex` to `1` (`emulator-5554`'s taskbar
+made the nav bar and FAB untappable -- see below -- so this was the fastest way to actually reach
+My Meals), rebuilding, and screenshotting both tabs: both now render their real empty state
+("لا توجد وجبات بعد" / "لا يوجد جدول بعد") instead of an infinite spinner. Reverted the diagnostic
+default before finishing.
+
+**Meal editor independently verified on-device** in the follow-up session below (opened for a new
+meal, loaded, added a real component). **Profile still not separately screenshotted** -- same
+root cause, same fix, but worth a dedicated check before this ships.
+
+### Manual walk-through, attempt 3 — two more real bugs in the meal editor
+
+The user opened a new meal directly and hit two errors: a red, textless AppBar title, and a
+Firestore error opening "إضافة مكوّن".
+
+**Bug: `Obx` with no unconditional Rx read.** The AppBar title was
+`Obx(() => Text(controller.isNew ? 'وجبة جديدة' : controller.name.value))`. `isNew` is a plain
+bool getter, not reactive -- for a brand-new meal (`isNew == true`, the common case, arguably the
+first thing every user of this screen ever sees) the ternary short-circuits and the builder never
+reads a single `.obs` value. GetX's `Obx` requires at least one reactive read to know what to
+subscribe to; without one it fails to render the child at all, which is what painted as a solid,
+textless red block with no logcat exception (GetX's own failure path here doesn't go through
+`FlutterError.onError` the way a normal build exception would, which is what made this one
+slower to pin down than the other two). Audited every other `Obx` in the new code afterward
+(23 call sites) for the same shape — one other risk pattern searched for specifically. None found;
+this was the only instance. Fixed by reading `controller.name.value` unconditionally and deriving
+the placeholder from emptiness instead of from `isNew`, which is also strictly better UX: the
+title now updates live as the user types instead of staying static.
+
+*(The right-pointing arrow visible in the same screenshot was not a bug -- it's Flutter's
+automatic back button, correctly mirrored for RTL. Worth writing down since it looked exactly
+like a defect at first glance.)*
+
+**Bug: `[cloud_firestore/failed-precondition] The query requires an index.`** on opening
+"إضافة مكوّن" (`FoodPickerSheet` → `FoodRepository.list()`). With no search text and no category
+selected -- the very first thing anyone sees, since nothing is typed or picked yet -- the query is
+`where('active', ==, true).orderBy('name')`. Firestore requires a composite index for any
+equality-filter-plus-orderBy-on-a-different-field combination; `firestore.indexes.json` had the
+`{active, category, name}` and `{active, searchTokens, name}` composites for the *filtered* cases
+but never the plain `{active, name}` base case. Added it, deployed via
+`npx firebase-tools deploy --only firestore:indexes` (already authenticated against
+`diet-app-a908a` on this machine), confirmed live in the Firebase console. A fresh composite index
+build is not instant even for an 8-document collection -- for this project's *first ever*
+composite index it took roughly 8 minutes end to end (deploy → "currently building" →
+usable), not the minute or two a warm project usually sees. Budget for that on a similarly cold
+project.
+
+**Both confirmed fixed on-device, end to end:** reopened the meal editor, the AppBar showed
+"وجبة جديدة" correctly (no red block), opened "إضافة مكوّن", the catalog loaded, tapped a food
+(حمص), it was added at 100g with live totals updating to 177 kcal / 5g protein / 20g carbs / 9g
+fat -- the full row rendered correctly (stepper, lock toggle, overflow menu, drag handle).
+
+### Manual walk-through, attempt 4 — food category data, and a snackbar red herring
+
+**Real bug, in migrated data, not in this step's code:** the category filter chips on
+"اختر مكوّناً" read "protein" / "protien" / "carp" instead of Arabic. `migrate_foods.js` carried
+`foods.category` over from legacy `single_male.category` verbatim, and the legacy data used
+English macro-type tags with the exact typos `CLAUDE.md` already documents for other fields
+(`carp` for `carbs`, plus a `protien` misspelling `CLAUDE.md` hadn't caught). Wrote
+`tool/normalize_food_categories.js` -- dry-run by default, `--commit` to write, same `.env`
+credential loading as `migrate_foods.js` -- mapping the known raw values to `بروتين`/`كارب`/`دهون`
+and leaving anything unrecognized untouched rather than guessing. Ran it: all 8 catalog rows
+matched a known value, 0 left unrecognized. Committed. Re-running dry afterward confirms
+idempotency (0 to update). Kept the script in `tool/` alongside `migrate_foods.js` as a record,
+matching that file's precedent.
+
+**Not a bug -- the same environment quirk, a second symptom of it:** after adding a component,
+the confirmation `SnackBar` (with its "تراجع" undo action) stayed on screen well past its default
+4-second duration -- confirmed stuck for 23+ seconds in one observation. The `_snack()` call
+site is unremarkable: a single `ScaffoldMessenger.of(context).showSnackBar` per user action, no
+custom duration, never called from `build()`. Given the desktop-taskbar blocker documented below
+was independently confirmed to be intercepting input in this same session, the more likely
+explanation is that Android's own focus handling around the taskbar pauses Flutter's `Ticker`s
+when it engages -- which stalls the SnackBar's built-in dismiss *animation*, not just touch
+delivery, since both ride the same paused ticker. Asked the user directly whether they were
+testing on this same `emulator-5554`; confirmed yes. Recorded as an open item to re-check on a
+real device or a standard (non-desktop-mode) AVD rather than treated as fixed or as a confirmed
+app bug either way.
+
+### Manual walk-through, attempt 5 — a real Dismissible crash, a feature request, and the aurora finding upgraded from theory to evidence
+
+**Real bug: "A dismissed Dismissible widget is still part of the tree."** Reported as "error while
+animating" on both mark-complete and swipe-to-delete on Today. `TodayController.deleteEntry` and
+`MyMealsController.deleteMeal` both awaited their Firestore write with no local update first, so
+the list only lost the item once the stream ticked -- a beat after `Dismissible.onDismissed` had
+already played its own removal animation and reported itself gone. If anything else rebuilt the
+list in that window (an eat-toggle on another row shares the same `Obx`; a stream tick), the
+just-dismissed item's key reappeared in the tree after `Dismissible` had already dismissed it,
+which is the exact scenario that error is thrown for. Fixed by making both deletes optimistic --
+same pattern `TodayController.toggleEaten` already used, with the same rollback-on-failure. This
+closes the gap between the widget's own animation completing and the data catching up.
+
+**Feature: a ghost "planned" band on the calorie ring + BMR/target display.** User asked to see,
+at a glance, whether today's *planned* meals (scheduled and logged, whether ticked off yet or
+not) will reach the day's target -- not just what's already been eaten. `DayLog.plannedTotals`
+already existed from Step 1/2 (everything planned, eaten or not) alongside `consumedTotals`
+(eaten only); nothing new needed at the domain layer. Added optional `plannedKcal`/`plannedMacros`
+to `CalorieRing` -- a faded, neutral (not the vivid sweep-gradient) band on the main ring *and*
+each macro sub-ring, running from wherever the solid "eaten" arc ends out to wherever the full
+plan would land. Solid = eaten, faded = already planned but not yet ticked off. Added a
+`_TargetSummary` card (BMR, recomputed live from the current profile rather than cached, and
+today's target kcal) and a small floating legend (`_RingLegend`, `Positioned(top:, right:)`
+deliberately -- see its own comment on why that's not the RTL-flip trap it would be for inline
+content) over the ring's top-right corner naming what each ring color means.
+
+**The aurora/animation report escalated from "elsewhere" to "everywhere but splash."** The user's
+own further testing narrowed it to: motion only during the splash/loading screen, nowhere else --
+including Today, which they'd earlier said *did* move. That's the one moment before this AVD's
+desktop-taskbar has had a chance to steal focus, which lines up exactly with the zero-pixel-diff
+result recorded in attempt 3 (identical code path, identical widget, no motion detected over a
+4-second/1539-point sample). Between that measurement and this new data point, treating this as an
+environment defect in this specific AVD rather than continuing to guess at code fixes is now the
+better-supported call. The one code change made (blob periods 19-31s → 7-13s) is kept regardless
+-- faster ambient motion is a real improvement once focus is clean -- but is not claimed as a fix
+for the reported freeze. **Whoever picks this up:** verify on a real device or a standard
+(non-desktop-mode) AVD before spending more time on it here.
+
+### Manual walk-through, attempt 6 — the actual root cause of the Dismissible crash, plus a stranded-on-a-past-day gap
+
+Attempt 5's optimistic-delete fix was necessary but not sufficient -- the user reported the same
+"error while animating" on Today persisting after it shipped, on both add and remove. The real
+mechanism: `ListView.builder`'s `itemBuilder` reuses each `Element` purely by its *position* in
+the list across rebuilds, unless given `findChildIndexCallback`. Today's `sections` list flattens
+the header, every slot's label, every entry, and a spacer after each into one array with no keys
+anywhere above the individual `Dismissible`s three layers down. Removing (or, via the shared
+`Obx`, even just toggling a *different* row) shifts every later item's index by one -- without a
+key lookup, Flutter can rebuild a `Dismissible` at a stale slot with a *different* entry's data
+mid-animation, which is exactly what throws "A dismissed Dismissible widget is still part of the
+tree." Fixed by giving every item in `sections` (and `header`, shared with the empty-day branch)
+an explicit stable key -- role-based for the fixed pieces (`'greeting'`, `'ring'`, ...),
+`entry.entryId`-based for anything that can move -- and adding `findChildIndexCallback` to the
+`ListView.builder` so it looks items up by that key instead of by position. Required adding
+`super.key` to four previously key-less private widgets (`_Greeting`, `_WeekStrip`,
+`_TargetSummary`, `_EntryTile`) to even have something to pass.
+
+**Not yet independently re-verified on-device** -- the user's own live session made force-stopping
+the app to test this build unsafe to do from here this round; installed without relaunching so it
+lands the next time the app is naturally restarted.
+
+**Gap found and fixed along the way:** browsing to a past day with no record (the empty state from
+attempt 3's spinner fix) had no way back to today at all -- no week strip in that branch, no
+button, nothing short of killing and relaunching the app. Reproduced firsthand while chasing the
+Dismissible bug. Added an "العودة لليوم" button to that branch, shown whenever
+`!controller.isViewingToday`.
+
+### Both confirmed fixed -- and why they looked unfixed for three rounds
+
+The user kept reporting the Dismissible crash and the frozen aurora as still present after each
+of the two prior fixes. Root cause of the *confusion*, not of either bug: the user runs the app
+through an IDE debug session (F5/"continue" in their message is exactly that), and every
+`adb install -r` in this session installed a new APK without ever restarting that debug process.
+Android does not hot-swap a running Dart VM's compiled code on `pm install -r` -- the process has
+to actually restart to load it. The same stale, pre-fix build was being retested every single
+time. Once the user genuinely restarted the debug session: **the Dismissible error is gone, and
+the aurora is visibly moving on every screen.**
+
+This also retroactively settles attempt 5's aurora finding, which should be treated as
+**superseded, not just unconfirmed**: the "zero pixel movement even on Today" measurement and the
+desktop-taskbar/`TickerMode` theory built on it were measuring this same stale build, not the
+sped-up one. The real fix was exactly what it looked like at the time -- periods that were too
+slow (19-31s) to read as motion within a short glance, shortened to 7-13s -- and the environment
+theory, while a reasonable inference from the evidence available in the moment, was a red herring
+caused by the testing method, not a property of the AVD. Worth remembering for next time: **before
+trusting a "still broken" report against a fix in this repo, confirm the actual running process
+restarted, not just that a new APK was installed** -- `adb shell pidof com.example.diet_app2`
+before and after is the check, and if the pid didn't change, nothing was actually retested.
+
+### Blocker, not a bug: this AVD runs in desktop/taskbar mode. `dumpsys window` showed a
+`Taskbar` window and a `DisplayBackGestureHandler` sitting in front of the app, both occupying a
+band across the bottom third of the screen -- the same band the bottom nav bar and FAB live in.
+Taps there never reached the app (confirmed via `dumpsys window`/`dumpsys input` showing the app
+correctly focused, and via taps *above* that band -- the week strip -- working immediately and
+consistently). This blocked automated tapping of the bottom nav bar, the FAB's quick-add menu, and
+therefore My Meals / meal editor / history / profile from this pass. **Not an app defect** — a
+form-factor property of this specific AVD image. Whoever continues the walk-through should either
+use a standard phone-profile AVD (no taskbar) or a real device, or disable desktop windowing on
+this AVD if the emulator config exposes that toggle.
+
+---
 
 Do **not** re-derive the architecture. It is decided and written down in `general.md`.
 

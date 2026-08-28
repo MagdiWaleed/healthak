@@ -27,6 +27,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late final ProfileController controller = ProfileController();
 
   @override
+  void initState() {
+    super.initState();
+    // See the identical note in my_meals_tab.dart / meal_editor_screen.dart:
+    // this controller is plain-constructed, not Get.put, so GetX never calls
+    // onInit() on its own. Without this, the form fields never fill in from
+    // the current profile -- they'd just sit blank.
+    controller.onInit();
+  }
+
+  @override
   void dispose() {
     controller.onClose();
     super.dispose();

@@ -27,6 +27,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
       HistoryController(uid: Get.find<AuthService>().currentUser!.uid);
 
   @override
+  void initState() {
+    super.initState();
+    // See the identical note in my_meals_tab.dart / meal_editor_screen.dart:
+    // this controller is plain-constructed, not Get.put, so GetX never calls
+    // onInit() on its own. Without this, the month never loads.
+    controller.onInit();
+  }
+
+  @override
   void dispose() {
     controller.onClose();
     super.dispose();
