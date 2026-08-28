@@ -1,0 +1,92 @@
+import 'package:flutter/material.dart';
+
+/// Fades, lifts and settles a list row into place, offset by its position.
+///
+/// One controller drives all three transforms. The previous version nested
+/// three implicit `AnimatedX` widgets, which meant three controllers per row --
+/// twenty-four for a list of eight.
+class StaggeredEntry extends StatefulWidget {
+  final int index;
+  final Widget child;
+
+  /// Rows past this index skip the delay and animate immediately, so a long
+  /// list does not take seconds to finish arriving.
+  final int maxStaggered;
+
+  final Duration step;
+  final Duration duration;
+
+  /// Pass `false` once a list has finished its first load.
+  ///
+  /// `ListView.builder` recycles elements, so a row scrolled off and back on
+  /// runs `initState` again and replays its entry. Gating on a first-load flag
+  /// is what stops rows re-animating under the user's thumb.
+  final bool enabled;
+
+  const StaggeredEntry({
+    required this.index,
+    required this.child,
+    super.key,
+    this.maxStaggered = 8,
+    this.step = const Duration(milliseconds: 45),
+    this.duration = const Duration(milliseconds: 420),
+    this.enabled = true,
+  });
+
+  @override
+  State<StaggeredEntry> createState() => _StaggeredEntryState();
+}
+
+class _StaggeredEntryState extends State<StaggeredEntry>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: widget.duration,
+    // Starting completed means a disabled entry costs nothing and renders in
+    // its final state on the very first frame.
+    value: widget.enabled ? 0 : 1,
+  );
+
+  late final Animation<double> _eased = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  late final Animation<Offset> _offset = _eased.drive(
+    Tween(begin: const Offset(0, .10), end: Offset.zero),
+  );
+
+  late final Animation<double> _scale = _eased.drive(
+    Tween(begin: .97, end: 1.0),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.enabled) return;
+
+    final slot = widget.index.clamp(0, widget.maxStaggered - 1);
+    if (slot == 0) {
+      _controller.forward();
+      return;
+    }
+    Future<void>.delayed(widget.step * slot, () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+        opacity: _eased,
+        child: SlideTransition(
+          position: _offset,
+          child: ScaleTransition(scale: _scale, child: widget.child),
+        ),
+      );
+}

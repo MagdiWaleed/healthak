@@ -3,7 +3,7 @@
 **Goal:** get the project configuration correct before any feature work. No visible change to
 the running app.
 
-**Status:** code complete. Two items blocked on user credentials — see `PROGRESS.md`.
+**Status:** COMPLETE. Verified 2026-08-28.
 
 **Depends on:** nothing. This is the entry point.
 **Blocks:** everything.
@@ -94,8 +94,9 @@ and `asset/image/neom-yg6v0KoiIcU-unsplash.jpg` are therefore not bundled at all
 - [x] Create `firebase.json` pointing at the rules and indexes files
 - [x] Create `firestore.rules` — full content in `general.md` §7
 - [x] Create `firestore.indexes.json` — index list in `general.md` §7
-- [ ] Deploy: `firebase deploy --only firestore:rules,firestore:indexes`
-      *(requires the Firebase CLI and login — flag to the user if not installed)*
+- [x] Deployed by the user via `npx firebase-tools`. Verified live: an unauthenticated
+      REST read of `appConfig` returns **200** (the ruleset makes it public) while `foods`
+      returns **403** — which is only true of the new ruleset.
 
 **Note:** the rules deliberately allow any signed-in user to increment `marketMeals.copyCount`
 by exactly 1 and change nothing else. This is what avoids needing Cloud Functions, and therefore
@@ -194,8 +195,9 @@ linter:
 
 - [x] `flutter build apk --debug` succeeds
 - [x] App launches on `emulator-5554` and behaves as before (`FirebaseInitProvider: FirebaseApp initialization successful`, no crash)
-- [ ] `foods` collection verified in the Firebase console with correct macro keys
-- [ ] Rules deployed; a signed-out read of `foods` is rejected
+- [x] `foods` verified: **8 docs**, keys `per100:{protein,carbs,fat}`, `kcalPer100`,
+      `searchTokens`, `active`, server timestamps. `single_male` intact at 8 docs.
+- [x] Rules deployed; a signed-out read of `foods` is rejected (HTTP 403)
 - [x] `plans/analyze-baseline.txt` written — 584 issues: **0 errors**, 66 warnings, 518 info, all in legacy files
 
 ## Risks

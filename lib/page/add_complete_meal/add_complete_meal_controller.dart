@@ -34,10 +34,10 @@ class AddCompleteMealController extends GetxController {
     Get.find<MyMalesCurrentDietController>().calculat();
   }
 
-  void updateMealName() {
+  Future<void> updateMealName() async {
     String helper = "";
 
-    Get.defaultDialog(
+    await Get.defaultDialog(
         title: "اسم الوجبة",
         titleStyle: TextStyle(fontSize: 15, fontFamily: "Cairo"),
         content: Container(

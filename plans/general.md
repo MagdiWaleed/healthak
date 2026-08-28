@@ -15,10 +15,11 @@ is blocked on user credentials, and what to do next.
 | `PROGRESS.md` | **Handoff — where work stopped, what's next** | living |
 | `general.md` | Architecture, decisions, schema, design system | — |
 | `step0.md` | Housekeeping: pubspec, fonts, rules, lints, data migration | code done; deploy + migration blocked on credentials |
-| `step1.md` | Foundation: domain, data, design system, auth, shell | **next** |
+| `step1.md` | Foundation: domain, data, design system, auth, shell | code complete; real-device raster gate pending |
 | `step2.md` | Daily tracking + meal composition | not started |
 | `step3.md` | Marketplace | not started |
 | `step4.md` | Polish: motion, settings, RTL sweep, performance, a11y | not started |
+| `sideplan1_guest_mode.md` | Read-only first-launch guest preview | initial preview complete |
 | `step5.md` | AI assistant — **TBD, not yet specified** | blocked on spec |
 
 ---

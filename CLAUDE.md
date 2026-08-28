@@ -1,173 +1,198 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working in this repository.
+Guidance for any coding agent working in this repository.
+
+> ## READ THIS FIRST
+>
+> **This repo is mid-rewrite.** A full overhaul is underway and the plan is committed:
+>
+> 1. **`plans/PROGRESS.md`** — where work stopped, what is done, what to do next. **Start here.**
+> 2. **`plans/general.md`** — architecture, domain model, Firestore schema, design system.
+> 3. **`plans/stepN.md`** — the phase you are working on.
+>
+> The architecture is **already decided**. Do not re-derive it, and do not redesign the data
+> model. If something in the plan looks wrong, say so — do not silently deviate.
+>
+> Two codebases currently coexist in `lib/`. See "The two codebases" below before editing
+> anything.
 
 ## What this is
 
-`diet_app2` (repo name `healthak`) — a Flutter diet/nutrition tracker with an
-Arabic (RTL) UI. The user enters their body stats and goal, browses a shared
-catalog of food components and meals stored in Firestore, assembles a daily
-diet, and ticks items off as they eat them. A bundled TFLite model solves
-component weights so a 3-component meal lands on a calorie target.
+`diet_app2` (repo name `healthak`) — a Flutter calorie tracker with an Arabic (RTL) UI.
 
-Locale is hard-coded to `ar` in `lib/main.dart`. All user-facing strings are
-Arabic literals written inline in the widgets — there is no localization file.
-New UI strings follow the same pattern.
+**Target:** the user enters body stats and a goal, browses a shared catalog of food components,
+composes meals (including nesting a meal inside another meal as a component), schedules them as
+permanent or adds them one-shot to a single day, ticks items off as they eat, and publishes
+meals to a marketplace others can copy and re-weight.
+
+Locale is `ar`. All user-facing strings are Arabic. New strings go in `lib/l10n/app_strings.dart`
+(from Step 1 onward); legacy screens still have them inline.
 
 ## Commands
 
 ```bash
 flutter pub get
-flutter run                       # attached device/emulator
-flutter build apk --debug
 flutter analyze
+flutter test                      # 82 domain/data/widget/service tests
+flutter build apk --debug
+flutter run -d emulator-5554
 ```
 
-There are no tests in the repo. `test/` does not exist; don't claim test
-coverage that isn't there.
+`adb` is not on PATH: `~/AppData/Local/Android/sdk/platform-tools/adb.exe`
 
-## Naming: "male" means "meal"
+Tooling scripts (Node, not part of the Flutter build):
 
-The codebase consistently misspells *meal* as *male*. This is not a domain
-concept — there is nothing gendered here. It shows up in class names, file
-names, Firestore collection names, and SharedPreferences keys:
+```bash
+node tool/migrate_foods.js        # dry run
+node tool/migrate_foods.js --commit
+npx firebase-tools deploy --only firestore:rules,firestore:indexes
+```
 
-- `SingleMaleModel` — a single food **component** (chicken, rice, oil)
-- `CompleteMaleModel` — a **meal** built from several components
-- `single_male` — Firestore collection of components
-- `myDietMales`, `MalesRepository`, `my_males_current_diet/`
+## The two codebases
 
-Keep the existing spelling when touching existing identifiers or Firestore
-keys — renaming breaks stored JSON and live documents. Do not propagate it into
-genuinely new, self-contained code.
+`lib/` currently holds **new code** and **legacy code** side by side. They do not share types.
 
-Other recurring misspellings that are load-bearing (persisted or in Firestore):
-`carps` (carbs), `protien`/`protein` used inconsistently, `compeletMeals`.
+### New — build here
 
-## Architecture
-
-### State management: GetX, per-page controller
-
-Every page is `lib/page/<name>/<name>_screen.dart` plus
-`<name>_controller.dart`. Screens are usually `StatelessWidget` wrapping a
-`GetBuilder<XController>` and calling `controller.update()` to repaint.
-Controllers extend `GetxController`; repositories *also* extend `GetxController`
-purely so they can be pulled in with `Get.put(...)`.
-
-Navigation is `Get.to` / `Get.off` / `Get.offAll` with widget instances, not
-named routes.
-
-### Global mutable state: `lib/appData.dart`
-
-`appData` is a class of static fields — the current `UserModel`, the bottom-nav
-page index, and the main-screen GIF URL. It is the de-facto app singleton;
-controllers read and write it directly via `appData.getUserModel()` /
-`appData.setUserModel(m)`. `UserModel` is mutable, so `getUserModel()` returns a
-live reference — mutating it mutates the global.
-
-### Two independent persistence layers
-
-**SharedPreferences is the source of truth for the signed-in user.**
-
-| Key | Contents |
+| Path | State |
 |---|---|
-| `user` | JSON of `UserModel` (`UserModel.ConvertToJson`) |
-| `myDiet` | `List<String>`, each a JSON `CompleteMaleModel` |
+| `lib/domain/**` | **Done.** Pure Dart, zero Flutter imports, 72 domain tests green |
+| `lib/data/**` | **Done for Step 1.** Typed refs, mappers, and repositories |
+| `lib/service/**` | **Done for Step 1.** Auth, prefs, session, settings, performance probe |
+| `lib/ui/**` | **Done for Step 1.** Theme, bounded glass, aurora, motion, components |
+| `lib/app/**` | **Done for Step 1.** Named routes and feature bindings |
+| `test/**` | **82 passing tests.** Domain, mapper, auth mapping, guest, and glass coverage |
 
-`lib/service/user_service.dart` owns all `myDiet` reads/writes.
-`LoadingController` (`lib/page/loading/loading_controller.dart`) is the boot
-gate: if `user` exists it rebuilds `UserModel` and goes to `MainScreen`,
-otherwise it goes to `SignInScreen`.
+**`lib/domain/` must never import `package:flutter`.** That is what keeps it unit-testable and
+reusable by anything else later. If you need a `Color` or a `DateFormat` there, the logic belongs
+in a layer above.
 
-**Firestore holds shared, read-mostly catalog data** (`lib/service/*_repository.dart`):
+### Legacy — do not invest in
 
-| Collection | Model | Used by |
-|---|---|---|
-| `single_male` | `SingleMaleModel` | `MalesRepository` |
-| `complete_meals` | `CreateMealsModel` | `CreateMealsRepository` |
-| `data` (doc with `id == "mainScreenGif"`) | `Gif` | `MainRepository` |
-| `<n>_component_stat` | `Statistics` | `StatisticsRepository` (collection name is built from component count) |
+Everything else under `lib/page/`, `lib/model/`, `lib/widget/`, `lib/theme/`, `lib/appData.dart`,
+`lib/service/*_repository.dart`, `lib/service/user_service.dart`.
 
-### Auth is decoupled from the app's own user
+These are **scheduled for deletion in Step 2**. Do not refactor them, do not fix their lints, do
+not migrate them to the new types. Keep them compiling so the app still runs, nothing more.
 
-This is the biggest thing to understand before touching sign-in.
+`plans/analyze-baseline.txt` lists every warning in them — that is the deletion checklist, not a
+to-do list.
 
-`lib/service/user_auth_repository.dart` wraps Firebase Auth (email/password
-only). But the sign-up flow in `lib/page/sign_in/sign_in_controller.dart`
-builds a `UserModel` and writes it to SharedPreferences **without requiring a
-Firebase session** — `createNewUserRepository()` exists but is not wired into
-the main "save" path (`onCreateAccountSave`), and the commented-out call is
-still in `sign_in_screen.dart`. `UserModel.id` is literally the string
-`"new account"` for locally-created users, and `UserModel.password` is stored in
-plaintext in SharedPreferences.
+## Naming
 
-Consequence: `CreateMealsRepository.getMyMeals()` filters on
-`appData.getUserModel().id`, which is `"new account"` for anyone who signed up
-locally. Firestore ownership and local identity are not actually linked yet.
+The legacy code misspells *meal* as *male* — `SingleMaleModel`, `CompleteMaleModel`,
+`myDietMales`, `MalesRepository`. There is nothing gendered here; it is a typo that spread.
 
-There is no Google / social sign-in. It was added and then removed on request,
-so `google_sign_in` is not a dependency — don't reintroduce it without asking.
+**New code uses correct English.** The mapping is in `plans/general.md` §3:
 
-## Nutrition math
+| Legacy | New |
+|---|---|
+| `SingleMaleModel` | `FoodItem` (catalog) + `FoodEntry` (a portion) |
+| `CompleteMaleModel` | `MealDefinition` |
+| `CreateMealsModel` | `MarketMeal` |
+| `carps` / `carp` | `carbs` |
+| `calories` | `kcal` |
+| `weight` (of a portion) | `grams` |
 
-`SingleMaleModel` stores macros **per 100 g**. `getProtein()`, `getCarps()`,
-`getFats()` scale by `weight / 100`; `getCalories()` is `4/4/9`. Changing
-`weight` re-derives everything, so `CompleteMaleModel.setNewWeight` recomputes
-its totals from scratch rather than patching them.
+Never propagate `male` into new code. Never rename it inside legacy code either — those files are
+being deleted, so a rename is wasted work that risks breaking a screen still in use.
 
-`UserModel.calculateCalories()` sets `caloriesNeeds = dailyActive` directly and
-`caloriesGoal = caloriesNeeds ± 500` (bulk/cut). Note the mismatch: the sign-up
-UI tells the user `dailyActive` is an activity **factor** between 1.2 and 1.9,
-but the model treats it as an absolute calorie count. Pre-existing; don't
-"fix" it silently, as stored `user` JSON depends on the current meaning.
+**One macro vocabulary everywhere:** `protein`, `carbs`, `fat`, `kcal`, `grams`. The legacy code
+had three mutually incompatible key sets for the same data, which is how values drifted between
+layers.
 
-## TFLite auto-calculation
+## Architecture (new code)
 
-`lib/logic/auto_calculate.dart` loads
-`asset/model/converted_model (1).tflite` (note: `asset/`, singular, and the
-space and parentheses in the filename are real and referenced in
-`pubspec.yaml`).
+Full detail in `plans/general.md`. The load-bearing decisions:
 
-`weight_for__3Component` only handles exactly **3** components. It sorts meals
-by name, flattens `[protein, carbs, fat] × 3 + targetCalories` into a 13-feature
-vector, generates permutations via `swap_indexes`, runs a `[6,3]` output tensor,
-and picks the row whose total calories is closest to the goal.
+- **`Macros` is a value type; `kcal` is always derived**, never stored as truth. Denormalized
+  totals exist only so Firestore can sort on them, and are commented as such.
+- **`MealEntry` is a Dart 3 `sealed` class** — `FoodEntry` or `MealRefEntry`. Switches over it
+  are exhaustive, so adding a third kind later is a compile error at every call site rather than
+  a silent fallthrough.
+- **Nesting is guarded three ways:** a precomputed `descendantMealIds` closure (O(1) check on
+  add), `kMaxNestDepth = 3` / `kMaxLeafCount = 60`, and a runtime `visited` set that throws
+  `MealCycleException` instead of blowing the stack.
+- **Day logs are flat and frozen at insert time.** No references at all. Editing a recipe today
+  must not rewrite what was eaten last Tuesday, the eat-toggle hot path must not recurse, and a
+  day must cost one Firestore read. `groupLabel` preserves the *visual* nesting.
+- **Eaten state resets daily by construction** — a new day is a new document, so `eaten` is false
+  with no reset code to get wrong. (The legacy app persisted eaten flags forever.)
+- **Marketplace is copy-on-add, never a live reference.**
+- **Entries are addressed by `localId` (a uuid), never by list index.** The legacy code used
+  position as identity, so a reorder silently repointed every edit.
 
-## Android build
+### State (from Step 1 on)
 
-The toolchain was upgraded to work with Flutter 3.41 / Dart 3.11. Do not
-downgrade these — the Flutter Gradle plugin itself fails to compile below them
-(`Unresolved reference: filePermissions` needs Gradle 8.3+).
+GetX with `Rx` + `Obx` and named routes + `Binding` classes. The legacy code has zero `.obs` and
+zero `Obx` — it is all `GetBuilder` + manual `update()`, with several screens constructing the
+same controller twice and calling `FutureBuilder(future: controller.getData())` inside `build`.
+Do not copy those patterns.
 
-- Gradle wrapper **8.12**
-- Android Gradle Plugin **8.7.3**
-- Kotlin **2.1.0**
-- Java / `jvmTarget` **17**
+## Firestore
+
+New collections: `foods`, `users/{uid}` (+ `/meals`, `/schedule`, `/days`, `/bodyWeights`),
+`marketMeals` (+ `/likes`), `appConfig`.
+
+Legacy and unreferenced: `single_male`, `complete_meals`, `data`, `*_component_stat`. Left in
+place as a rollback. Do not read or write them.
+
+`firestore.rules` is deployed and live. Note the deliberate rule letting any signed-in user
+increment `marketMeals.copyCount` by **exactly 1** and change nothing else — that is what avoids
+needing Cloud Functions, and therefore a paid Blaze plan. Do not widen it.
+
+Every collection is accessed through `withConverter<T>` in `lib/data/firestore_refs.dart`.
+
+## Secrets
+
+- `.env` is gitignored and holds **paths only**, never a credential.
+- The Firebase service account key lives **outside the repo**, at `Documents/GitHub/`.
+- `.gitignore` also blocks `node_modules/`, `*serviceAccount*.json`, `*-firebase-adminsdk-*.json`.
+- Never commit a key, and never move one into the repo.
+
+## Android build — do not downgrade
+
+The toolchain was upgraded to work with Flutter 3.41 / Dart 3.11. Below these versions the
+Flutter Gradle plugin itself fails to compile (`Unresolved reference: filePermissions` needs
+Gradle 8.3+).
+
+- Gradle wrapper **8.12**, AGP **8.7.3**, Kotlin **2.1.0**, Java / `jvmTarget` **17**
 - `minSdk` 26, multidex enabled
-- `com.google.gms.google-services` **4.4.2** applied in `android/app/build.gradle`
+- `com.google.gms.google-services` **4.4.2** in `android/app/build.gradle`
 
-Firebase initializes twice over: natively from
-`android/app/google-services.json` and from Dart via
-`DefaultFirebaseOptions.currentPlatform` in `lib/firebase_options.dart`. Both
-must stay in sync (project `diet-app-a908a`, package `com.example.diet_app2`).
+Firebase initializes twice over: natively from `android/app/google-services.json` and from Dart
+via `DefaultFirebaseOptions.currentPlatform`. Both must stay in sync (project `diet-app-a908a`,
+package `com.example.diet_app2`).
 
-The google-services plugin is what makes native Firebase init succeed. Without
-it the app logs `Default FirebaseApp failed to initialize because no default
-options were found` and only the Dart-side init works.
+The google-services plugin is what makes native init succeed. Without it the app logs
+`Default FirebaseApp failed to initialize because no default options were found` and only the
+Dart-side init works.
 
-## Conventions and known rough edges
+**`google_sign_in` was added and then removed at the user's explicit request. Do not reintroduce
+it without asking.**
 
-- Shared widgets live in `lib/widget/` and are prefixed `Custom*`
-  (`CustomText`, `CustomTextField`, `CustomBackground`, ...). `CustomText`
-  defaults to white, size 14, font family `Cairo`.
-- Colors come from `lib/theme/app_colors.dart` (`AppColors.buttonColor`,
-  `.loading`, `.doneColor`). Don't hard-code colors in new widgets.
-- The project still uses `MaterialStatePropertyAll` everywhere. It is
-  deprecated in favour of `WidgetStatePropertyAll`, but is used consistently —
-  match the surrounding file rather than mixing both.
-- `flutter analyze` is noisy with pre-existing deprecation and `prefer_const`
-  warnings. Judge new code by whether it *adds* problems, not by a clean run.
-- `print()` is used for logging throughout; there is no logging framework.
-- There are two unrelated `sign_in_controller.dart` files:
-  `lib/page/sign_in/` (the real one) and
+## Gotchas that will bite you
+
+- **RTL.** `flutter_localizations` is now a dependency. Once the delegates are added in Step 1,
+  `Directionality` flips app-wide and every legacy screen — all hand-tuned for LTR — will mirror
+  and break. That is why `LegacyLtrShim` must land in the *same* commit as the delegates.
+  `Positioned(left:/right:)` does **not** flip; only `PositionedDirectional` does.
+- **Glass performance.** At most **2** simultaneous `BackdropFilter`s, and **zero inside any
+  scrolling viewport** — list cards use `GlassCard`, which is deliberately filter-free. A
+  debug-only instance counter asserts on violation; do not remove it.
+- **`lib/appData.dart` cannot be deleted until Step 2.** Legacy screens still read it.
+- Flutter's directory-asset syntax is **non-recursive**. A bare `- asset/` entry matches zero
+  files when `asset/` contains only subdirectories.
+- `flutter analyze` is noisy with legacy warnings. Judge new code by whether it *adds* problems.
+  New code under `lib/domain`, `lib/data`, `lib/ui`, `lib/app` must be clean.
+- There are two unrelated `sign_in_controller.dart` files: `lib/page/sign_in/` (the real one) and
   `lib/page/my_informations/sing_in_details/` (note "sing"). Check the path.
+- `print()` is used throughout the legacy code. New code should not add more.
+
+## Working style
+
+- Update `plans/PROGRESS.md` as you go. It is the handoff between agents and sessions, and a
+  stale one is worse than none.
+- Record any deviation from the approved plan in the "Deviations" table there, with the reason.
+- Features the user has mentioned but not specified get a stub file listing the open questions —
+  see `plans/step5.md` (the AI assistant). Do not write code for an unspecified feature.

@@ -305,8 +305,8 @@ class MainBody extends StatelessWidget {
                         ),
                         Container(
                           height: 250,
-                          child: Image.network(
-                            appData.getMainGif(),
+                          child: Image.asset(
+                            'asset/image/main_screen_image.jpg',
                             fit: BoxFit.cover,
                           ),
                         ),

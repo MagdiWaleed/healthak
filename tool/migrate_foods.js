@@ -12,21 +12,75 @@
  *   node tool/migrate_foods.js --commit   # actually writes
  *
  * Needs a service account key. Firebase console -> Project settings ->
- * Service accounts -> Generate new private key. Save it OUTSIDE the repo and
- * point GOOGLE_APPLICATION_CREDENTIALS at it:
+ * Service accounts -> Generate new private key. Save it OUTSIDE the repo, then
+ * point .env at it (see .env.example):
  *
- *   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/serviceAccountKey.json
+ *   GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\serviceAccountKey.json
+ *   FIREBASE_PROJECT_ID=diet-app-a908a
+ *
+ * This script reads .env itself, so nothing has to be exported by hand.
  *
  * The Admin SDK bypasses security rules, which is why this can write to
  * `foods` even though the deployed rules make it read-only to clients.
  */
 
+const fs = require('fs');
+const path = require('path');
 const admin = require('firebase-admin');
 
 const COMMIT = process.argv.includes('--commit');
 const BATCH_SIZE = 400; // Firestore's hard limit is 500
 
-admin.initializeApp({ projectId: 'diet-app-a908a' });
+/**
+ * Minimal .env loader. Avoids a dotenv dependency for what is one file of
+ * KEY=VALUE lines. Existing environment variables win, so an explicit export
+ * can still override .env.
+ */
+function loadDotEnv() {
+  const file = path.join(__dirname, '..', '.env');
+  if (!fs.existsSync(file)) return;
+
+  const text = fs.readFileSync(file, 'utf8');
+
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    const eq = line.indexOf('=');
+    if (eq === -1) continue;
+
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+
+    // Strip matching surrounding quotes, if any.
+    const q = value[0];
+    if (value.length > 1 && q === value[value.length - 1] && (q === '"' || q === "'")) {
+      value = value.slice(1, -1);
+    }
+
+    if (!(key in process.env)) process.env[key] = value;
+  }
+}
+
+loadDotEnv();
+
+const KEY_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'diet-app-a908a';
+
+if (!KEY_PATH) {
+  console.error('GOOGLE_APPLICATION_CREDENTIALS is not set. Copy .env.example to .env.');
+  process.exit(1);
+}
+if (!fs.existsSync(KEY_PATH)) {
+  console.error(`Service account key not found at:
+  ${KEY_PATH}`);
+  process.exit(1);
+}
+
+admin.initializeApp({
+  credential: admin.credential.cert(require(KEY_PATH)),
+  projectId: PROJECT_ID,
+});
 const db = admin.firestore();
 
 /**

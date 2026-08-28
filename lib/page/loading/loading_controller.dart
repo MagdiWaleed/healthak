@@ -4,8 +4,7 @@ import 'package:diet_app2/appData.dart';
 import 'package:diet_app2/model/complete_male_model.dart';
 import 'package:diet_app2/model/user_model.dart';
 import 'package:diet_app2/page/main_screen/main_screen.dart';
-import 'package:diet_app2/page/sign_in/sign_in_screen.dart';
-import 'package:diet_app2/service/main_repository.dart';
+import 'package:diet_app2/page/guest/guest_preview_screen.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -37,17 +36,9 @@ class LoadingController extends GetxController {
           age: double.parse(user["age"]),
           myDietMales: myDiet);
       appData.setUserModel(me);
-      final data = Get.put(MainRepository());
-      final gif = await data.getMainScreenGif();
-      String link = gif.link;
-      appData.setMainGif(link);
       Get.off(MainScreen(me: me));
     } else {
-      final data = Get.put(MainRepository());
-      final gif = await data.getMainScreenGif();
-      String link = gif.link;
-      appData.setMainGif(link);
-      Get.off(SignInScreen());
+      Get.off(const GuestPreviewScreen());
     }
     super.onInit();
   }

@@ -41,3 +41,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Secrets and local tooling
+.env
+.env.local
+node_modules/
+# Defensive: never commit a Firebase service account key
+*serviceAccount*.json
+*-firebase-adminsdk-*.json

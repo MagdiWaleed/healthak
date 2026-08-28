@@ -1,0 +1,13 @@
+{
+  "name": "healthak-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One-off maintenance scripts for the healthak Flutter app. Not part of the app build.",
+  "scripts": {
+    "migrate:foods": "node tool/migrate_foods.js",
+    "migrate:foods:commit": "node tool/migrate_foods.js --commit"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:diet_app2/appData.dart';
 import 'package:diet_app2/model/complete_male_model.dart';
 import 'package:diet_app2/model/user_model.dart';
@@ -14,9 +16,9 @@ import 'package:get/get.dart';
 import 'package:loading_indicator/loading_indicator.dart';
 
 class AddCompleteMealScreen extends StatelessWidget {
-  final TextEditingController  _textEditingController = TextEditingController();
+  final TextEditingController _textEditingController = TextEditingController();
 
-   AddCompleteMealScreen({super.key});
+  AddCompleteMealScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +44,13 @@ class AddCompleteMealScreen extends StatelessWidget {
               SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 15),
-                child: CustomTextField(title: "حد معين من الكالوريز؟", controller: _textEditingController,textInputType: TextInputType.number,),
-              )
-              ,Padding(
+                child: CustomTextField(
+                  title: "حد معين من الكالوريز؟",
+                  controller: _textEditingController,
+                  textInputType: TextInputType.number,
+                ),
+              ),
+              Padding(
                 padding: const EdgeInsets.all(15.0),
                 child: GetBuilder<AddCompleteMealController>(
                     init: AddCompleteMealController(),
@@ -52,7 +58,8 @@ class AddCompleteMealScreen extends StatelessWidget {
                       return FutureBuilder(
                         future: controller.getData(),
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.done) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.done) {
                             if (snapshot.hasData) {
                               List<SingleMaleModel> data =
                                   snapshot.data as List<SingleMaleModel>;
@@ -72,11 +79,14 @@ class AddCompleteMealScreen extends StatelessWidget {
                                                 },
                                                 onLongPress: () {
                                                   Get.to(SingleMaleScreen(
-                                                      singleMaleModel: data[i]));
+                                                      singleMaleModel:
+                                                          data[i]));
                                                 },
                                                 child: CustomMealCard(
                                                   name: data[i].name,
-                                                  calories: data[i].getCalories().toPrecision(2),
+                                                  calories: data[i]
+                                                      .getCalories()
+                                                      .toPrecision(2),
                                                 ),
                                               ),
                                               controller.myComponentIds
@@ -95,7 +105,8 @@ class AddCompleteMealScreen extends StatelessWidget {
                                                           color: Colors.white,
                                                           size: 40,
                                                         ),
-                                                        decoration: BoxDecoration(
+                                                        decoration:
+                                                            BoxDecoration(
                                                           color: AppColors
                                                               .buttonColor
                                                               .withOpacity(0.5),
@@ -145,19 +156,19 @@ class AddCompleteMealScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
+        onPressed: () async {
           final controller = Get.find<AddCompleteMealController>();
           CompleteMaleModel completmale = CompleteMaleModel(
               components: controller.myMeals,
               id: "fadsfasd",
               name: "وجبة",
               isEaten: false);
-              completmale.setCustomCalories(_textEditingController.text);
+          completmale.setCustomCalories(_textEditingController.text);
 
           appData.getUserModel().myDietMales.add(completmale);
           controller.saveToSharedPrefrences(completmale);
-          Get.off(MyMalesCurrentDietScreen());
-          controller.updateMealName();
+          await controller.updateMealName();
+          unawaited(Get.off(() => MyMalesCurrentDietScreen()));
           print(completmale.custom_calories);
         },
         label: CustomText(title: "دن"),
