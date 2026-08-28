@@ -1,0 +1,82 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // ---------------------------------------------------------------
+    // Everything under a user document belongs to that user, full stop.
+    // Covers /meals, /schedule, /days, /bodyWeights.
+    // ---------------------------------------------------------------
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+
+      match /{document=**} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Public food catalog. Read-only to clients; seeded out of band.
+    // ---------------------------------------------------------------
+    match /foods/{foodId} {
+      allow read:  if signedIn();
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // Marketplace.
+    // ---------------------------------------------------------------
+    match /marketMeals/{mealId} {
+
+      allow read: if signedIn() && resource.data.status == 'published';
+
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 60
+        && request.resource.data.status == 'published'
+        && request.resource.data.copyCount == 0
+        && request.resource.data.likeCount == 0;
+
+      // The author may edit their own meal, but may never reassign ownership.
+      allow update, delete: if signedIn()
+        && resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorUid == resource.data.authorUid;
+
+      // Any signed-in user may bump copyCount by exactly one and change nothing
+      // else. This is what lets the client maintain the counter directly, so no
+      // Cloud Function -- and therefore no Blaze plan -- is required.
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['copyCount'])
+        && request.resource.data.copyCount == resource.data.copyCount + 1;
+
+      // One document per like, so the counter never contends.
+      match /likes/{likeUid} {
+        allow read:  if signedIn();
+        allow write: if signedIn() && request.auth.uid == likeUid;
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Remote app config. Readable before sign-in so the splash can use it.
+    // ---------------------------------------------------------------
+    match /appConfig/{docId} {
+      allow read:  if true;
+      allow write: if false;
+    }
+
+    // Legacy collections from before the rewrite: single_male, complete_meals,
+    // data, *_component_stat. Nothing reads them any more, so nothing may.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,5 +1,4 @@
 import 'package:diet_app2/appData.dart';
-import 'package:diet_app2/logic/auto_calculate.dart';
 import 'package:diet_app2/model/complete_male_model.dart';
 import 'package:diet_app2/model/statistics.dart';
 import 'package:diet_app2/model/user_model.dart';
@@ -84,17 +83,22 @@ class CompleteMaleController extends GetxController {
     }
   }
 
-  void autoChangeWeight() async{
-    List<SingleMaleModel> meals = [];
-    for (int i = 0; i < components.length; i++) {
-      meals.add(components[i]);
+  // Interim proportional-scale solver. Replaces the TFLite model, which was hardcoded
+  // to exactly 3 components and had several index bugs. The real solver with per-entry
+  // locks lands in step 2; this keeps the legacy screen working until then.
+  void autoChangeWeight() {
+    final target = double.tryParse(caloriesController.text);
+    if (target == null || target <= 0 || components.isEmpty) return;
+
+    double current = 0;
+    for (final c in components) {
+      current += c.getCalories();
     }
-    AutoCalculate calculator = AutoCalculate(meals: meals);
-    final weight =await calculator.weight_for__3Component(double.parse(caloriesController.text));
-    // calculator.weight_for__3Component();
-    for (int i = 0; i < components.length; i++) {
-      components[i].weight = weight[i];
-      print(components[i].name);
+    if (current <= 0) return;
+
+    final factor = target / current;
+    for (final c in components) {
+      c.setWeight((c.weight * factor / 5).round() * 5.0);
     }
 
     calculatDetails();

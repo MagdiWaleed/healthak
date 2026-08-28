@@ -30,29 +30,37 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Firebase
   firebase_core: ^2.25.4
-  firebase_auth: ^4.17.4 
-
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.2
-  faker: ^2.1.0
-  get:
-  expandable: ^5.0.1
-  shared_preferences: ^2.2.2
-  quickalert: ^1.0.2
-  build_runner: ^2.4.8
-  build_web_compilers: ^4.0.9
+  firebase_auth: ^4.17.4
   cloud_firestore:
+
+  # State management and routing
+  get:
+
+  # Storage
+  shared_preferences: ^2.2.2
+
+  # Utilities
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  collection: ^1.18.0
+  cupertino_icons: ^1.0.2
+
+  # Legacy screens only. Removed in step 2 when those screens are deleted.
+  faker: ^2.1.0
+  expandable: ^5.0.1
+  quickalert: ^1.0.2
   loading_indicator: ^3.1.1
-  tflite_flutter: 
-  
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  build_runner: ^2.4.8
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -72,12 +80,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
+  # Directory entries are non-recursive, so this must name asset/image/ directly.
+  # A bare `- asset/` entry matches nothing, because asset/ holds only subdirectories.
   assets:
-    - asset/
-    - asset/image/javier-santos-guzman-9MR78HGoflw-unsplash.jpg
-    - asset/model/converted_model (1).tflite
-  #   - images/a_dot_ham.jpeg
+    - asset/image/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
@@ -93,9 +99,22 @@ flutter:
   fonts:
     - family: Cairo
       fonts:
+        - asset: asset/font/Cairo-ExtraLight.ttf
+          weight: 200
+        - asset: asset/font/Cairo-Light.ttf
+          weight: 300
         - asset: asset/font/Cairo-Regular.ttf
+          weight: 400
+        - asset: asset/font/Cairo-Medium.ttf
+          weight: 500
+        - asset: asset/font/Cairo-SemiBold.ttf
+          weight: 600
         - asset: asset/font/Cairo-Bold.ttf
           weight: 700
+        - asset: asset/font/Cairo-ExtraBold.ttf
+          weight: 800
+        - asset: asset/font/Cairo-Black.ttf
+          weight: 900
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages

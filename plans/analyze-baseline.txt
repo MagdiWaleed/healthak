@@ -1,0 +1,588 @@
+Analyzing healthak...                                           
+
+   info - The file name 'appData.dart' isn't a lower_case_with_underscores identifier - lib\appData.dart:1:1 - file_names
+warning - Unused import: 'package:diet_app2/model/complete_male_model.dart' - lib\appData.dart:1:8 - unused_import
+warning - Unused import: 'package:diet_app2/page/single_male_screen/single_male_model.dart' - lib\appData.dart:3:8 - unused_import
+   info - The type name 'appData' isn't an UpperCamelCase identifier - lib\appData.dart:5:7 - camel_case_types
+   info - The method 'setUserModel' should have a return type but doesn't - lib\appData.dart:25:10 - always_declare_return_types
+warning - Unused import: 'package:shared_preferences/shared_preferences.dart' - lib\main.dart:6:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:24:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\main.dart:25:23 - prefer_const_constructors
+   info - The variable name 'custom_calories' isn't a lowerCamelCase identifier - lib\model\complete_male_model.dart:7:10 - non_constant_identifier_names
+   info - Don't invoke 'print' in production code - lib\model\complete_male_model.dart:57:5 - avoid_print
+   info - Statements in an if should be enclosed in a block - lib\model\complete_male_model.dart:81:5 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\model\complete_male_model.dart:82:10 - curly_braces_in_flow_control_structures
+   info - The variable name 'ConvertToJson' isn't a lowerCamelCase identifier - lib\model\user_model.dart:43:10 - non_constant_identifier_names
+warning - Unused import: 'package:cloud_firestore/cloud_firestore.dart' - lib\page\add_complete_meal\add_complete_meal_controller.dart:1:8 - unused_import
+warning - Unused import: 'package:diet_app2/page/current_diet/current_diet_controller.dart' - lib\page\add_complete_meal\add_complete_meal_controller.dart:4:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_controller.dart:42:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_controller.dart:50:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_controller.dart:52:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_controller.dart:64:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_controller.dart:74:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_controller.dart:76:19 - prefer_const_constructors
+   info - Don't invoke 'print' in production code - lib\page\add_complete_meal\add_complete_meal_controller.dart:107:7 - avoid_print
+warning - Unused import: 'package:diet_app2/model/user_model.dart' - lib\page\add_complete_meal\add_complete_meal_screen.dart:3:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_screen.dart:26:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_screen.dart:27:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_screen.dart:28:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_screen.dart:29:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_screen.dart:42:15 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\add_complete_meal\add_complete_meal_screen.dart:93:57 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_screen.dart:93:64 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\add_complete_meal\add_complete_meal_screen.dart:101:64 - deprecated_member_use
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\add_complete_meal\add_complete_meal_screen.dart:127:38 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\page\add_complete_meal\add_complete_meal_screen.dart:159:19 - prefer_const_constructors
+   info - Don't invoke 'print' in production code - lib\page\add_complete_meal\add_complete_meal_screen.dart:161:11 - avoid_print
+warning - Unused import: 'package:diet_app2/page/current_diet/current_diet_model.dart' - lib\page\current_diet\current_diet_controller.dart:3:8 - unused_import
+warning - Unused import: 'package:diet_app2/theme/app_colors.dart' - lib\page\current_diet\current_diet_controller.dart:5:8 - unused_import
+warning - Unused import: 'package:diet_app2/widget/custom_text.dart' - lib\page\current_diet\current_diet_controller.dart:6:8 - unused_import
+warning - Unused import: 'package:flutter/material.dart' - lib\page\current_diet\current_diet_controller.dart:8:8 - unused_import
+   info - Statements in an if should be enclosed in a block - lib\page\current_diet\current_diet_controller.dart:48:7 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\page\current_diet\current_diet_controller.dart:49:9 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\page\current_diet\current_diet_controller.dart:53:9 - curly_braces_in_flow_control_structures
+   info - The variable name 'TheWholeMaleFinished' isn't a lowerCamelCase identifier - lib\page\current_diet\current_diet_controller.dart:81:8 - non_constant_identifier_names
+   info - Statements in an if should be enclosed in a block - lib\page\current_diet\current_diet_controller.dart:89:7 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\page\current_diet\current_diet_controller.dart:91:7 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\page\current_diet\current_diet_controller.dart:164:57 - curly_braces_in_flow_control_structures
+warning - Unused import: 'package:diet_app2/model/complete_male_model.dart' - lib\page\current_diet\current_diet_screen.dart:2:8 - unused_import
+warning - Unused import: 'package:diet_app2/model/user_model.dart' - lib\page\current_diet\current_diet_screen.dart:3:8 - unused_import
+warning - Unused import: 'package:diet_app2/page/current_diet/current_diet_model.dart' - lib\page\current_diet\current_diet_screen.dart:5:8 - unused_import
+warning - Unused import: 'package:diet_app2/service/user_service.dart' - lib\page\current_diet\current_diet_screen.dart:6:8 - unused_import
+warning - Unused import: 'package:diet_app2/widget/custom_background.dart' - lib\page\current_diet\current_diet_screen.dart:8:8 - unused_import
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\page\current_diet\current_diet_screen.dart:15:3 - prefer_const_constructors_in_immutables
+   info - The local variable '_controller' starts with an underscore - lib\page\current_diet\current_diet_screen.dart:24:21 - no_leading_underscores_for_local_identifiers
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:33:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:42:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:45:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:45:61 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:74:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:89:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:94:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:103:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:108:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:125:35 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\current_diet\current_diet_screen.dart:145:50 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\current_diet\current_diet_screen.dart:147:50 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:152:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:174:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:196:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:199:45 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:205:49 - prefer_const_constructors
+   info - Unnecessary instance of 'Container' - lib\page\current_diet\current_diet_screen.dart:212:53 - avoid_unnecessary_containers
+   info - Unnecessary instance of 'Container' - lib\page\current_diet\current_diet_screen.dart:217:53 - avoid_unnecessary_containers
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:241:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:244:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:248:49 - prefer_const_constructors
+   info - Unnecessary instance of 'Container' - lib\page\current_diet\current_diet_screen.dart:255:53 - avoid_unnecessary_containers
+   info - Unnecessary instance of 'Container' - lib\page\current_diet\current_diet_screen.dart:259:53 - avoid_unnecessary_containers
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:283:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:286:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:290:49 - prefer_const_constructors
+   info - Unnecessary instance of 'Container' - lib\page\current_diet\current_diet_screen.dart:297:53 - avoid_unnecessary_containers
+   info - Unnecessary instance of 'Container' - lib\page\current_diet\current_diet_screen.dart:302:53 - avoid_unnecessary_containers
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:326:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:329:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:333:49 - prefer_const_constructors
+   info - Unnecessary instance of 'Container' - lib\page\current_diet\current_diet_screen.dart:340:53 - avoid_unnecessary_containers
+   info - Unnecessary instance of 'Container' - lib\page\current_diet\current_diet_screen.dart:344:53 - avoid_unnecessary_containers
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:368:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:371:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:375:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:384:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:386:46 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:388:41 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\current_diet\current_diet_screen.dart:391:46 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:427:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:429:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:430:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:454:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:484:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:486:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:487:32 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\current_diet\current_diet_screen.dart:490:54 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:517:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\current_diet\current_diet_screen.dart:547:21 - prefer_const_constructors
+   info - The import of 'package:flutter/rendering.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\page\diet_details\diet_details_screen.dart:7:8 - unnecessary_import
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:19:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:31:42 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:34:51 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:35:53 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:36:54 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:56:45 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:65:43 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:67:41 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:70:100 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:74:41 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:77:102 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:80:44 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:83:100 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:86:43 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:91:116 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:96:45 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:103:43 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\diet_details\diet_details_screen.dart:104:43 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:109:45 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:114:45 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:118:41 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\diet_details\diet_details_screen.dart:142:49 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:152:117 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:157:45 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:164:43 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:166:45 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:170:41 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:178:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\diet_details\diet_details_screen.dart:188:8 - prefer_const_constructors
+warning - Unused import: 'package:cloud_firestore/cloud_firestore.dart' - lib\page\diet_details\diet_detials_controller.dart:1:8 - unused_import
+warning - Unused import: 'package:diet_app2/page/my_informations/my_males_current_diet/my_males_current_diet_controller.dart' - lib\page\diet_details\diet_detials_controller.dart:4:8 - unused_import
+   info - The variable name 'compoenent_names' isn't a lowerCamelCase identifier - lib\page\diet_details\diet_detials_controller.dart:14:13 - non_constant_identifier_names
+   info - The variable name 'component_weights' isn't a lowerCamelCase identifier - lib\page\diet_details\diet_detials_controller.dart:15:14 - non_constant_identifier_names
+   info - The variable name 'component_details' isn't a lowerCamelCase identifier - lib\page\diet_details\diet_detials_controller.dart:16:20 - non_constant_identifier_names
+   info - Statements in a for should be enclosed in a block - lib\page\diet_details\diet_detials_controller.dart:21:9 - curly_braces_in_flow_control_structures
+warning - The value of the local variable 'price' isn't used - lib\page\diet_details\diet_detials_controller.dart:45:18 - unused_local_variable
+   info - The file name 'loading_Screen.dart' isn't a lower_case_with_underscores identifier - lib\page\loading\loading_Screen.dart:1:1 - file_names
+warning - Unused import: 'package:diet_app2/service/males_repository.dart' - lib\page\loading\loading_Screen.dart:2:8 - unused_import
+warning - Unused import: 'package:diet_app2/service/user_service.dart' - lib\page\loading\loading_Screen.dart:3:8 - unused_import
+warning - Unused import: 'package:diet_app2/widget/custom_background.dart' - lib\page\loading\loading_Screen.dart:5:8 - unused_import
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\page\loading\loading_Screen.dart:11:3 - prefer_const_constructors_in_immutables
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\loading\loading_Screen.dart:24:26 - sized_box_for_whitespace
+   info - The variable name 'SP' isn't a lowerCamelCase identifier - lib\page\loading\loading_controller.dart:16:11 - non_constant_identifier_names
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\loading\loading_controller.dart:44:11 - unawaited_futures
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\loading\loading_controller.dart:50:11 - unawaited_futures
+warning - Unused import: 'package:diet_app2/widget/custom_meal_card.dart' - lib\page\main_screen\main_screen.dart:13:8 - unused_import
+warning - Unused import: 'package:diet_app2/widget/custom_multi_choose.dart' - lib\page\main_screen\main_screen.dart:14:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\page\main_screen\main_screen.dart:35:7 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\main_screen\main_screen.dart:36:7 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\main_screen\main_screen.dart:59:32 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\main_screen\main_screen.dart:73:45 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\main_screen\main_screen.dart:115:30 - prefer_const_constructors
+   info - Unnecessary empty statement - lib\page\main_screen\main_screen.dart:117:17 - empty_statements
+   info - Don't invoke 'print' in production code - lib\page\main_screen\main_screen.dart:136:7 - avoid_print
+   info - The local variable '_controller' starts with an underscore - lib\page\main_screen\main_screen.dart:150:19 - no_leading_underscores_for_local_identifiers
+   info - Use 'const' with the constructor to improve performance - lib\page\main_screen\main_screen.dart:167:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\main_screen\main_screen.dart:185:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\main_screen\main_screen.dart:202:27 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\main_screen\main_screen.dart:206:31 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\page\main_screen\main_screen.dart:244:13 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\main_screen\main_screen.dart:295:34 - sized_box_for_whitespace
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\main_screen\main_screen.dart:306:25 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\page\main_screen\main_screen.dart:319:13 - prefer_const_constructors
+warning - Unused import: 'package:diet_app2/appData.dart' - lib\page\my_informations\create_meals\create_meals_controller.dart:1:8 - unused_import
+warning - Unused import: 'package:diet_app2/model/complete_male_model.dart' - lib\page\my_informations\create_meals\create_meals_model.dart:4:8 - unused_import
+warning - Unused import: 'package:faker/faker.dart' - lib\page\my_informations\create_meals\create_meals_screen.dart:8:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\my_informations\create_meals\create_meals_screen.dart:25:48 - deprecated_member_use
+   info - The local variable '_controller' starts with an underscore - lib\page\my_informations\create_meals\create_meals_screen.dart:32:21 - no_leading_underscores_for_local_identifiers
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_meals_screen.dart:49:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_meals_screen.dart:70:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_meals_screen.dart:87:29 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\my_informations\create_meals\create_meals_screen.dart:91:33 - sized_box_for_whitespace
+warning - Unused import: 'package:diet_app2/appData.dart' - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_controller.dart:1:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_controller.dart:32:7 - avoid_print
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: AddComponentScreen.comingFromCompleteMealScreen - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_screen.dart:11:7 - must_be_immutable
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_screen.dart:21:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_screen.dart:22:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_screen.dart:23:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_screen.dart:24:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_screen.dart:36:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_screen.dart:37:13 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\my_informations\create_meals\create_single_meal_details\add_component\add_component_screen.dart:89:36 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_controller.dart:38:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_controller.dart:46:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_controller.dart:48:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_controller.dart:70:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_controller.dart:72:19 - prefer_const_constructors
+warning - The value of the local variable 'ddd' isn't used - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_controller.dart:133:22 - unused_local_variable
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: CreateSingleMealDetailsScreen.createMealsModel - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:11:7 - must_be_immutable
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:23:48 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:36:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:40:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:48:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:49:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:73:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:76:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:83:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:108:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:110:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:111:50 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:112:46 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:125:32 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:133:29 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:133:36 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:139:50 - deprecated_member_use
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:141:40 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:159:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:162:33 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\create_meals\create_single_meal_details\create_single_meal_details_screen.dart:169:33 - prefer_const_constructors
+warning - Unused import: 'dart:convert' - lib\page\my_informations\my_criteria\my_criteria_controller.dart:1:8 - unused_import
+warning - Unused import: 'package:diet_app2/model/user_model.dart' - lib\page\my_informations\my_criteria\my_criteria_controller.dart:4:8 - unused_import
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\my_criteria\my_criteria_controller.dart:50:10 - unawaited_futures
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\my_criteria\my_criteria_controller.dart:52:18 - unawaited_futures
+   info - Don't use 'BuildContext's across async gaps - lib\page\my_informations\my_criteria\my_criteria_controller.dart:53:9 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\page\my_informations\my_criteria\my_criteria_controller.dart:69:7 - avoid_print
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\my_criteria\my_criteria_controller.dart:70:18 - unawaited_futures
+warning - Unused import: 'package:diet_app2/model/user_model.dart' - lib\page\my_informations\my_criteria\my_criteria_screen.dart:2:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:20:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:21:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:22:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:23:26 - prefer_const_constructors
+   info - The local variable '_controller' starts with an underscore - lib\page\my_informations\my_criteria\my_criteria_screen.dart:33:19 - no_leading_underscores_for_local_identifiers
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:39:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:49:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:59:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:69:23 - prefer_const_constructors
+   info - The local variable '_c' starts with an underscore - lib\page\my_informations\my_criteria\my_criteria_screen.dart:82:33 - no_leading_underscores_for_local_identifiers
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\page\my_informations\my_criteria\my_criteria_screen.dart:91:35 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\page\my_informations\my_criteria\my_criteria_screen.dart:92:35 - deprecated_member_use
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\page\my_informations\my_criteria\my_criteria_screen.dart:104:35 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\page\my_informations\my_criteria\my_criteria_screen.dart:105:35 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:114:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:120:30 - prefer_const_constructors
+   info - The local variable '_controller' starts with an underscore - lib\page\my_informations\my_criteria\my_criteria_screen.dart:146:19 - no_leading_underscores_for_local_identifiers
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\my_criteria\my_criteria_screen.dart:157:23 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_criteria\my_criteria_screen.dart:160:29 - deprecated_member_use
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\my_criteria\my_criteria_screen.dart:169:23 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_criteria\my_criteria_screen.dart:172:29 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_criteria\my_criteria_screen.dart:178:15 - prefer_const_constructors
+warning - Unused import: 'dart:convert' - lib\page\my_informations\my_informations_controller.dart:1:8 - unused_import
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\my_informations_controller.dart:10:8 - unawaited_futures
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\my_informations_controller.dart:11:9 - unawaited_futures
+warning - Unused import: 'package:diet_app2/model/user_model.dart' - lib\page\my_informations\my_informations_screen.dart:2:8 - unused_import
+warning - Unused import: 'package:diet_app2/page/main_screen/main_screen.dart' - lib\page\my_informations\my_informations_screen.dart:3:8 - unused_import
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\page\my_informations\my_informations_screen.dart:17:3 - prefer_const_constructors_in_immutables
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\my_informations\my_informations_screen.dart:28:48 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:36:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:42:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:43:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:55:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:61:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:65:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:68:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:72:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:74:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:78:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:80:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:84:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:86:13 - prefer_const_constructors
+   info - The local variable '_controller' starts with an underscore - lib\page\my_informations\my_informations_screen.dart:89:27 - no_leading_underscores_for_local_identifiers
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: _CustomElvatedButton.isdeleteButton - lib\page\my_informations\my_informations_screen.dart:105:7 - must_be_immutable
+warning - A value for optional parameter 'key' isn't ever given - lib\page\my_informations\my_informations_screen.dart:107:11 - unused_element_parameter
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:119:16 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\my_informations_screen.dart:122:9 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_informations_screen.dart:124:30 - deprecated_member_use
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_informations_screen.dart:129:20 - deprecated_member_use
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_informations_screen.dart:131:22 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:131:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_informations_screen.dart:131:47 - prefer_const_constructors
+warning - Unused import: 'package:diet_app2/page/current_diet/current_diet_controller.dart' - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:5:8 - unused_import
+warning - Unused import: 'package:diet_app2/page/my_informations/my_males_current_diet/complete_male/complete_male_screen.dart' - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:6:8 - unused_import
+   info - Statements in a for should be enclosed in a block - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:32:7 - curly_braces_in_flow_control_structures
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:112:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:120:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:122:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:144:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:146:19 - prefer_const_constructors
+   info - The variable name 'meal_calories' isn't a lowerCamelCase identifier - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:172:12 - non_constant_identifier_names
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:182:16 - unawaited_futures
+   info - Don't invoke 'print' in production code - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:210:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_controller.dart:215:4 - avoid_print
+warning - Unused import: 'package:diet_app2/model/complete_male_model.dart' - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:1:8 - unused_import
+warning - Unused import: 'package:diet_app2/model/user_model.dart' - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:2:8 - unused_import
+warning - Unused import: 'package:diet_app2/service/males_repository.dart' - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:6:8 - unused_import
+warning - Unused import: 'package:diet_app2/service/user_service.dart' - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:7:8 - unused_import
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:16:4 - prefer_const_constructors_in_immutables
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:23:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:24:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:25:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:26:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:41:19 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:46:34 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:58:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:63:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:70:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:80:34 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:83:29 - sized_box_for_whitespace
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:91:40 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:93:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:136:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:138:37 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:164:41 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:186:42 - sized_box_for_whitespace
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:190:42 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:200:38 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:202:47 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:203:48 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:204:44 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:216:30 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:226:27 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:226:34 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:232:48 - deprecated_member_use
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:234:38 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:242:30 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:250:27 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:251:40 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:256:48 - deprecated_member_use
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:259:38 - deprecated_member_use
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:263:35 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:263:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:263:60 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:268:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:279:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:280:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:287:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\complete_male\complete_male_screen.dart:308:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_controller.dart:36:19 - prefer_const_constructors
+   info - Don't invoke 'print' in production code - lib\page\my_informations\my_males_current_diet\my_males_current_diet_controller.dart:41:5 - avoid_print
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_controller.dart:43:19 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:22:48 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:38:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:50:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:53:49 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:54:51 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:55:52 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:62:21 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:78:29 - sized_box_for_whitespace
+   info - The local variable '_userservice' starts with an underscore - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:87:41 - no_leading_underscores_for_local_identifiers
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:127:43 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:131:54 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:144:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:145:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:169:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:199:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:201:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:202:32 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:205:54 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:232:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\my_males_current_diet\my_males_current_diet_screen.dart:262:21 - prefer_const_constructors
+warning - Unused import: 'dart:convert' - lib\page\my_informations\sing_in_details\sign_in_controller.dart:1:8 - unused_import
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\sing_in_details\sign_in_controller.dart:45:10 - unawaited_futures
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\sing_in_details\sign_in_controller.dart:48:18 - unawaited_futures
+   info - Don't use 'BuildContext's across async gaps - lib\page\my_informations\sing_in_details\sign_in_controller.dart:49:9 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\page\my_informations\sing_in_details\sign_in_controller.dart:66:7 - avoid_print
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\my_informations\sing_in_details\sign_in_controller.dart:67:18 - unawaited_futures
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:10:3 - prefer_const_constructors_in_immutables
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:17:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:18:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:19:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:20:26 - prefer_const_constructors
+   info - The local variable '_controller' starts with an underscore - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:32:23 - no_leading_underscores_for_local_identifiers
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:35:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:40:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:45:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:51:19 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:59:27 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:61:46 - deprecated_member_use
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:71:27 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:74:33 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\my_informations\sing_in_details\sign_in_details_screen.dart:80:19 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\setting\setting_screen.dart:22:48 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:29:11 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\setting\setting_screen.dart:35:13 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:36:20 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\setting\setting_screen.dart:37:34 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:37:34 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\setting\setting_screen.dart:44:13 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:45:20 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\setting\setting_screen.dart:46:34 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:46:34 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\setting\setting_screen.dart:53:13 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:54:20 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\setting\setting_screen.dart:55:34 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:55:34 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\setting\setting_screen.dart:62:13 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:63:20 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\setting\setting_screen.dart:64:34 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:64:34 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\setting\setting_screen.dart:71:13 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:72:20 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\setting\setting_screen.dart:73:34 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:73:34 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\setting\setting_screen.dart:80:13 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:81:20 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\setting\setting_screen.dart:82:34 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\setting\setting_screen.dart:82:34 - prefer_const_constructors
+warning - Unused import: 'dart:convert' - lib\page\sign_in\sign_in_controller.dart:1:8 - unused_import
+warning - Unused import: 'package:firebase_auth/firebase_auth.dart' - lib\page\sign_in\sign_in_controller.dart:9:8 - unused_import
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\sign_in\sign_in_controller.dart:45:10 - unawaited_futures
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\sign_in\sign_in_controller.dart:47:11 - unawaited_futures
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\sign_in\sign_in_controller.dart:48:18 - unawaited_futures
+   info - Don't use 'BuildContext's across async gaps - lib\page\sign_in\sign_in_controller.dart:49:9 - use_build_context_synchronously
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\page\sign_in\sign_in_controller.dart:65:18 - unawaited_futures
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_controller.dart:86:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_controller.dart:92:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_controller.dart:98:19 - prefer_const_constructors
+warning - The value of the local variable 'user' isn't used - lib\page\sign_in\sign_in_controller.dart:105:13 - unused_local_variable
+   info - Don't invoke 'print' in production code - lib\page\sign_in\sign_in_controller.dart:108:7 - avoid_print
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:16:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:17:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:18:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:19:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:33:26 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:38:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:43:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:49:23 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\sign_in\sign_in_screen.dart:54:25 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:59:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:61:23 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\sign_in\sign_in_screen.dart:69:31 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\sign_in\sign_in_screen.dart:72:37 - deprecated_member_use
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\sign_in\sign_in_screen.dart:79:31 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\sign_in\sign_in_screen.dart:81:50 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:88:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:94:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:99:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:104:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:110:25 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\sign_in\sign_in_screen.dart:115:27 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:120:34 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:122:25 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\sign_in\sign_in_screen.dart:130:33 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\sign_in\sign_in_screen.dart:132:52 - deprecated_member_use
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\sign_in\sign_in_screen.dart:142:33 - sort_child_properties_last
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:143:40 - prefer_const_constructors
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\sign_in\sign_in_screen.dart:145:39 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:145:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:151:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:158:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:168:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:178:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:188:29 - prefer_const_constructors
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\page\sign_in\sign_in_screen.dart:206:35 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\page\sign_in\sign_in_screen.dart:207:35 - deprecated_member_use
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\page\sign_in\sign_in_screen.dart:219:35 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\page\sign_in\sign_in_screen.dart:220:35 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:236:25 - prefer_const_constructors
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\sign_in\sign_in_screen.dart:244:33 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\sign_in\sign_in_screen.dart:246:52 - deprecated_member_use
+   info - The 'child' argument should be last in widget constructor invocations - lib\page\sign_in\sign_in_screen.dart:257:33 - sort_child_properties_last
+   info - 'MaterialStatePropertyAll' is deprecated and shouldn't be used. Use WidgetStatePropertyAll instead. Moved to the Widgets layer to make code available outside of Material. This feature was deprecated after v3.19.0-0.3.pre - lib\page\sign_in\sign_in_screen.dart:259:52 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\sign_in\sign_in_screen.dart:266:25 - prefer_const_constructors
+   info - The variable name 'Vit' isn't a lowerCamelCase identifier - lib\page\single_male_screen\single_male_controller.dart:9:21 - non_constant_identifier_names
+   info - The variable name 'Vitamins' isn't a lowerCamelCase identifier - lib\page\single_male_screen\single_male_model.dart:14:21 - non_constant_identifier_names
+   info - The variable name 'Fiber_M' isn't a lowerCamelCase identifier - lib\page\single_male_screen\single_male_model.dart:14:31 - non_constant_identifier_names
+   info - The variable name 'Vitamins' isn't a lowerCamelCase identifier - lib\page\single_male_screen\single_male_model.dart:29:10 - non_constant_identifier_names
+   info - The variable name 'Fiber_M' isn't a lowerCamelCase identifier - lib\page\single_male_screen\single_male_model.dart:30:10 - non_constant_identifier_names
+warning - Unused import: 'package:diet_app2/widget/custom_background.dart' - lib\page\single_male_screen\single_male_screen.dart:4:8 - unused_import
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\page\single_male_screen\single_male_screen.dart:11:3 - prefer_const_constructors_in_immutables
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\page\single_male_screen\single_male_screen.dart:29:11 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:41:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:52:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:62:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:68:36 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:81:37 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:91:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:93:35 - prefer_const_constructors
+   info - Statements in an if should be enclosed in a block - lib\page\single_male_screen\single_male_screen.dart:101:33 - curly_braces_in_flow_control_structures
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:107:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:109:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:119:31 - prefer_const_constructors
+   info - Unnecessary instance of 'Container' - lib\page\single_male_screen\single_male_screen.dart:125:35 - avoid_unnecessary_containers
+   info - Unnecessary instance of 'Container' - lib\page\single_male_screen\single_male_screen.dart:128:35 - avoid_unnecessary_containers
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:134:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:140:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:143:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:147:31 - prefer_const_constructors
+   info - Unnecessary instance of 'Container' - lib\page\single_male_screen\single_male_screen.dart:153:35 - avoid_unnecessary_containers
+   info - Unnecessary instance of 'Container' - lib\page\single_male_screen\single_male_screen.dart:156:35 - avoid_unnecessary_containers
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:162:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:168:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:171:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:175:31 - prefer_const_constructors
+   info - Unnecessary instance of 'Container' - lib\page\single_male_screen\single_male_screen.dart:181:35 - avoid_unnecessary_containers
+   info - Unnecessary instance of 'Container' - lib\page\single_male_screen\single_male_screen.dart:185:35 - avoid_unnecessary_containers
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:190:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:196:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:199:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:203:31 - prefer_const_constructors
+   info - Unnecessary instance of 'Container' - lib\page\single_male_screen\single_male_screen.dart:209:35 - avoid_unnecessary_containers
+   info - Unnecessary instance of 'Container' - lib\page\single_male_screen\single_male_screen.dart:212:35 - avoid_unnecessary_containers
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:217:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:223:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:226:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:230:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:237:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:242:30 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:257:19 - prefer_const_constructors
+   info - Use 'isEmpty' instead of 'length' to test whether the collection is empty - lib\page\single_male_screen\single_male_screen.dart:263:32 - prefer_is_empty
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:269:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:286:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:304:19 - prefer_const_constructors
+   info - Constructors in '@immutable' classes should be declared as 'const' - lib\page\single_male_screen\single_male_screen.dart:318:3 - prefer_const_constructors_in_immutables
+warning - A value for optional parameter 'key' isn't ever given - lib\page\single_male_screen\single_male_screen.dart:319:11 - unused_element_parameter
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:329:16 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\page\single_male_screen\single_male_screen.dart:330:59 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:333:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:341:11 - prefer_const_constructors
+   info - Use interpolation to compose strings and values - lib\page\single_male_screen\single_male_screen.dart:342:29 - prefer_interpolation_to_compose_strings
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:343:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:345:11 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\page\single_male_screen\single_male_screen.dart:351:11 - prefer_const_constructors
+warning - Unused import: 'dart:convert' - lib\service\create_meals_repository.dart:2:8 - unused_import
+warning - Unused import: 'package:firebase_auth/firebase_auth.dart' - lib\service\create_meals_repository.dart:7:8 - unused_import
+warning - Unused import: 'package:diet_app2/model/complete_male_model.dart' - lib\service\create_meals_repository.dart:10:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\service\create_meals_repository.dart:35:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\service\create_meals_repository.dart:37:7 - avoid_print
+   info - The method 'addMealData' should have a return type but doesn't - lib\service\statistics_repository.dart:6:10 - always_declare_return_types
+   info - The variable name 'statistics_data' isn't a lowerCamelCase identifier - lib\service\statistics_repository.dart:6:33 - non_constant_identifier_names
+   info - The variable name 'collection_name' isn't a lowerCamelCase identifier - lib\service\statistics_repository.dart:8:11 - non_constant_identifier_names
+   info - Use interpolation to compose strings and values - lib\service\statistics_repository.dart:8:29 - prefer_interpolation_to_compose_strings
+   info - The private field _auth could be 'final' - lib\service\user_auth_repository.dart:5:16 - prefer_final_fields
+warning - Unused import: 'dart:convert' - lib\service\user_service.dart:1:8 - unused_import
+warning - Unused import: 'package:diet_app2/model/user_model.dart' - lib\service\user_service.dart:4:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\service\user_service.dart:20:7 - avoid_print
+   info - The method 'addCompeletMealToDiet' should have a return type but doesn't - lib\service\user_service.dart:25:3 - always_declare_return_types
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\service\user_service.dart:32:10 - unawaited_futures
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\service\user_service.dart:42:10 - unawaited_futures
+   info - The method 'updateCompeletMealToDiet' should have a return type but doesn't - lib\service\user_service.dart:46:3 - always_declare_return_types
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\service\user_service.dart:53:10 - unawaited_futures
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\service\user_service.dart:63:10 - unawaited_futures
+   info - The method 'updateAllCompleteMeals' should have a return type but doesn't - lib\service\user_service.dart:67:3 - always_declare_return_types
+   info - The method 'deleteCompeletMealToDiet' should have a return type but doesn't - lib\service\user_service.dart:75:3 - always_declare_return_types
+   info - Missing an 'await' for the 'Future' computed by this expression - lib\service\user_service.dart:88:10 - unawaited_futures
+   info - Use 'const' with the constructor to improve performance - lib\theme\app_colors.dart:6:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_background.dart:19:23 - prefer_const_constructors
+warning - Unused import: 'package:diet_app2/page/my_informations/create_meals/create_meals_model.dart' - lib\widget\custom_complete_meal_card.dart:1:8 - unused_import
+warning - Unused import: 'package:faker/faker.dart' - lib\widget\custom_complete_meal_card.dart:4:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_complete_meal_card.dart:27:15 - prefer_const_constructors
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\widget\custom_complete_meal_card.dart:30:11 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_complete_meal_card.dart:43:22 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widget\custom_complete_meal_card.dart:45:41 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_complete_meal_card.dart:57:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_complete_meal_card.dart:69:17 - prefer_const_constructors
+warning - Unused import: 'package:diet_app2/page/single_male_screen/single_male_model.dart' - lib\widget\custom_meal_card.dart:1:8 - unused_import
+warning - Unused import: 'package:diet_app2/page/single_male_screen/single_male_screen.dart' - lib\widget\custom_meal_card.dart:2:8 - unused_import
+warning - Unused import: 'package:faker/faker.dart' - lib\widget\custom_meal_card.dart:6:8 - unused_import
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: CustomMealCard.isFavorite - lib\widget\custom_meal_card.dart:10:7 - must_be_immutable
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:28:22 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widget\custom_meal_card.dart:30:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widget\custom_meal_card.dart:46:45 - deprecated_member_use
+   info - Use a 'SizedBox' to add whitespace to a layout - lib\widget\custom_meal_card.dart:50:21 - sized_box_for_whitespace
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:54:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:61:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:80:21 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:84:21 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widget\custom_meal_card.dart:95:48 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:96:37 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:97:39 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:98:40 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:100:26 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\widget\custom_meal_card.dart:101:31 - prefer_const_literals_to_create_immutables
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:102:23 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:103:32 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_meal_card.dart:113:11 - prefer_const_constructors
+warning - Unused import: 'package:diet_app2/theme/app_colors.dart' - lib\widget\custom_multi_choose.dart:1:8 - unused_import
+warning - Unused import: 'package:get/get.dart' - lib\widget\custom_multi_choose.dart:4:8 - unused_import
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: CustomMultiChoose.title, CustomMultiChoose.textColor, CustomMultiChoose.backgroundColor, CustomMultiChoose.isSelected - lib\widget\custom_multi_choose.dart:6:7 - must_be_immutable
+   info - Constructors for public widgets should have a named 'key' parameter - lib\widget\custom_multi_choose.dart:7:3 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_multi_choose.dart:15:16 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widget\custom_multi_choose.dart:22:41 - deprecated_member_use
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: CustomText.color, CustomText.size, CustomText.fw - lib\widget\custom_text.dart:3:7 - must_be_immutable
+   info - Constructors for public widgets should have a named 'key' parameter - lib\widget\custom_text.dart:4:3 - use_key_in_widget_constructors
+warning - This class (or a class that this class inherits from) is marked as '@immutable', but one or more of its instance fields aren't final: CustomTextField.ispassword, CustomTextField.textInputType - lib\widget\custom_text_field.dart:5:7 - must_be_immutable
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_text_field.dart:28:16 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_text_field.dart:38:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_text_field.dart:42:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_text_field.dart:46:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_text_field.dart:51:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widget\custom_text_field.dart:53:15 - prefer_const_constructors
+
+584 issues found. (ran in 36.8s)
