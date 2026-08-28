@@ -9,6 +9,7 @@ import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_panel.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/motion/pressable.dart';
+import '../../ui/motion/navigation.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../meal_editor/meal_editor_screen.dart';
@@ -24,6 +25,7 @@ void _onFabPressed(BuildContext context, int tabIndex) {
   switch (tabIndex) {
     case 0:
       final today = Get.find<TodayController>();
+      today.ensureCurrentDay();
       if (!today.isViewingToday) {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('يمكنك الإضافة لليوم الحالي فقط')));
@@ -31,7 +33,7 @@ void _onFabPressed(BuildContext context, int tabIndex) {
       }
       QuickAddSheet.show(context, today);
     case 1:
-      Get.to(() => const MealEditorScreen());
+      pushHealthak(() => const MealEditorScreen());
     default:
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text(AppStrings.comingNext)));

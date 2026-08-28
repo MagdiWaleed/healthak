@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 
@@ -21,7 +22,7 @@ import '../../ui/theme/mood_palette.dart';
 /// Materialization only ever runs for the real current date -- see
 /// [selectDate]. Browsing to any other day just reads whatever document
 /// exists there; nothing is ever invented for a day that hasn't been opened.
-class TodayController extends GetxController {
+class TodayController extends GetxController with WidgetsBindingObserver {
   final String uid;
   final DayRepository _days;
   final SessionController _session;
@@ -41,6 +42,30 @@ class TodayController extends GetxController {
   /// day, is selected).
   bool get isViewingToday => _isToday(selectedDate.value);
 
+  /// The real current date, as a **reactive** value rather than a bare
+  /// `DateTime.now()` read at build time.
+  ///
+  /// This is load-bearing. The week strip decides which cells are tappable by
+  /// comparing each date against "today"; when that comparison called
+  /// `DateTime.now()` inline during `build`, a process that stayed alive
+  /// across midnight kept whatever verdict it had reached before the
+  /// rollover -- so the new day stayed greyed out as "tomorrow" and could
+  /// never be selected, and the greeting kept naming the old day. Publishing
+  /// the date instead means every dependent rebuilds the moment it rolls.
+  final today = _dateOnly(DateTime.now()).obs;
+
+  /// Unlocks a past day for correction.
+  ///
+  /// A past day is read-only by default so history is not edited by accident,
+  /// but it must still be *possible* to fix -- forgetting to tick something
+  /// off before midnight is normal, and a record that cannot be corrected is
+  /// just a wrong record. Deliberately per-selection state, not persisted:
+  /// [selectDate] clears it, so unlocking one day never leaves every other day
+  /// unlocked behind it.
+  final editingPast = false.obs;
+
+  void toggleEditingPast() => editingPast.value = !editingPast.value;
+
   final selectedDate = DateTime.now().obs;
   final day = Rxn<DayLog>();
   final loading = true.obs;
@@ -58,27 +83,87 @@ class TodayController extends GetxController {
   StreamSubscription<DayLog?>? _watchSub;
   int _selectionEpoch = 0;
 
-  bool _isToday(DateTime date) {
-    final now = DateTime.now();
-    return date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
-  }
+  /// True whenever the current selection is "today", not some other day the
+  /// user browsed to. Used to tell a genuine day rollover (fix it silently)
+  /// apart from the user having deliberately navigated away (leave them
+  /// where they are).
+  bool _followingToday = true;
+
+  Timer? _rolloverTimer;
+
+  static DateTime _dateOnly(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
+
+  bool _isToday(DateTime date) => _dateOnly(date) == today.value;
 
   @override
   void onInit() {
     super.onInit();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleRollover();
     selectDate(DateTime.now());
   }
 
   @override
   void onClose() {
+    _rolloverTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _watchSub?.cancel();
     super.onClose();
   }
 
+  /// Wakes exactly once at the next local midnight to republish [today].
+  ///
+  /// A repeating one-minute poll would do the same job while costing a wakeup
+  /// every minute the app is open; a single timer to the boundary costs one.
+  /// Rescheduled after each fire, and re-armed on resume, since a timer does
+  /// not run while the process is frozen in the background.
+  void _scheduleRollover() {
+    _rolloverTimer?.cancel();
+    final now = DateTime.now();
+    final nextMidnight = _dateOnly(now).add(const Duration(days: 1));
+    _rolloverTimer = Timer(nextMidnight.difference(now), () {
+      _refreshToday();
+      _scheduleRollover();
+    });
+  }
+
+  /// Republishes [today] if the wall clock has moved to another date, and
+  /// pulls the view along with it when the user was following today.
+  void _refreshToday() {
+    final current = _dateOnly(DateTime.now());
+    if (current != today.value) today.value = current;
+    ensureCurrentDay();
+  }
+
+  /// A session left open (foregrounded or merely backgrounded) through
+  /// midnight leaves [selectedDate] pinned to the day it was opened on --
+  /// the ring, the entry list, and the FAB's "today only" guard all quietly
+  /// go stale together, with the FAB refusing to add anything and no visible
+  /// explanation why. Reselecting picks the real day back up. Only fires
+  /// while the user was following today in the first place, so browsing
+  /// history is never yanked out from under them.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    // A backgrounded process does not run timers, so the rollover timer may
+    // have been swallowed entirely while the app was away. Recompute rather
+    // than trust it, and re-arm it for the next boundary.
+    _refreshToday();
+    _scheduleRollover();
+  }
+
+  void ensureCurrentDay() {
+    if (_followingToday && !_isToday(selectedDate.value)) {
+      unawaited(selectDate(DateTime.now()));
+    }
+  }
+
   Future<void> selectDate(DateTime date) async {
     final epoch = ++_selectionEpoch;
+    _followingToday = _isToday(date);
+    // Leaving a day re-locks it; an unlock is only ever for the day in view.
+    editingPast.value = false;
     selectedDate.value = date;
     // Do not leave a previous day's content visible while the new local
     // Firestore snapshot is arriving.
@@ -229,6 +314,39 @@ class TodayController extends GetxController {
             name: food.name,
             per100: food.per100,
             grams: grams,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A one-off item with no catalog food behind it at all -- the user types
+  /// the macros directly ("sushi with kabsa, random stuff, here's roughly
+  /// what was in it"). Never writes to `foods` or any meal document; it
+  /// exists only inside this day's frozen record, same as [quickAddFood].
+  /// [macros] is treated as the whole logged amount (stored as `per100` at
+  /// `grams: 100`), so there is nothing else for the user to weigh.
+  Future<void> logCustomEntry({
+    required String name,
+    required Macros macros,
+    MealSlot? slot,
+  }) async {
+    final current = day.value;
+    if (current == null || !_isToday(selectedDate.value)) return;
+    await _days.upsertEntry(
+      current.dateKey,
+      DayEntry(
+        entryId: _uuid.v4(),
+        origin: DayEntryOrigin.quickAdd,
+        name: name,
+        slot: slot ?? _inferSlot(),
+        order: current.entries.length,
+        items: [
+          FrozenItem(
+            foodId: 'manual:${_uuid.v4()}',
+            name: name,
+            per100: macros,
+            grams: 100,
           ),
         ],
       ),

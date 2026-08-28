@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../domain/food/food_item.dart';
 import '../../ui/glass/glass_scaffold.dart';
+import '../../ui/motion/navigation.dart';
 import 'food_catalog_body.dart';
 import 'food_catalog_controller.dart';
 import 'food_detail_screen.dart';
@@ -25,5 +26,5 @@ class FoodCatalogScreen extends GetView<FoodCatalogController> {
       );
 
   void _openDetail(BuildContext context, FoodItem food) =>
-      Get.to(() => FoodDetailScreen(food: food));
+      pushHealthak(() => FoodDetailScreen(food: food));
 }

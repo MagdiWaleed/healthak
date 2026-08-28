@@ -115,6 +115,32 @@ class CalorieRing extends StatelessWidget {
                             text.labelSmall?.copyWith(color: AppPalette.muted),
                       ),
                     ],
+                    // The macro rings around the arc carry no numbers of their
+                    // own -- only the legend says which color is which. Below
+                    // a collapse threshold that roughly matches where the
+                    // header fades its other detail (`detailOpacity` in
+                    // `_TodayRingHeaderDelegate`), there isn't room for a
+                    // third line without crowding the kcal figure, so this
+                    // only shows on the big ring.
+                    if (size > 145) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _MacroStat(
+                              color: AppPalette.emerald,
+                              grams: consumedMacros.protein),
+                          const SizedBox(width: 8),
+                          _MacroStat(
+                              color: AppPalette.amber,
+                              grams: consumedMacros.carbs),
+                          const SizedBox(width: 8),
+                          _MacroStat(
+                              color: AppPalette.violet,
+                              grams: consumedMacros.fat),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -124,6 +150,37 @@ class CalorieRing extends StatelessWidget {
       },
     );
   }
+}
+
+/// One consumed-macro figure inside the ring: a dot in that macro's ring
+/// color, then the grams actually eaten today -- the "finished" number the
+/// arcs themselves don't spell out.
+class _MacroStat extends StatelessWidget {
+  final Color color;
+  final double grams;
+
+  const _MacroStat({required this.color, required this.grams});
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            '${grams.round()}غ',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppPalette.muted,
+              fontFeatures: AppTypography.tabular,
+            ),
+          ),
+        ],
+      );
 }
 
 /// Kept beside the widget rather than in `AppStrings` because both labels are

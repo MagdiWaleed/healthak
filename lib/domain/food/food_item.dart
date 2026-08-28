@@ -50,6 +50,24 @@ class FoodItem {
     this.active = true,
   });
 
+  /// Rebinds the identity, for when Firestore assigns the id on write.
+  /// Separate from [copyWith] because [id] is the equality key -- changing it
+  /// makes a *different* food, and that should read as deliberate at the call
+  /// site rather than hide among optional named arguments.
+  FoodItem withId(String newId) => FoodItem(
+        id: newId,
+        name: name,
+        nameNormalized: nameNormalized,
+        category: category,
+        per100: per100,
+        kcalPer100: kcalPer100,
+        micros: micros,
+        imageUrl: imageUrl,
+        pricePer100: pricePer100,
+        note: note,
+        active: active,
+      );
+
   /// Macros for an actual portion.
   Macros macrosForGrams(double grams) => per100.forGrams(grams);
 

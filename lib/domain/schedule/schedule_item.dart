@@ -98,10 +98,35 @@ class ScheduleItem {
 /// `updatedAt` is included so editing an item in place -- same id, same slot,
 /// same order, different snapshot -- still produces a new version. `id` and
 /// `order` alone would miss that.
+///
+/// **This must be computed by hand, not with `Object.hash`/`Object.hashAll`.**
+/// Those are explicitly documented as unstable between runs of a program --
+/// Dart randomizes `String.hashCode` per isolate -- so the value they produced
+/// for an unchanged schedule differed on every launch. The stored version then
+/// failed to match, `ensureDay` re-materialized the day, and every scheduled
+/// entry was rebuilt with `eaten: false`: ticking a meal off and restarting
+/// silently lost it. A written-out digest is stable across runs, devices, and
+/// Dart versions, which is the only reason a value like this can be persisted
+/// at all.
 int scheduleVersionOf(List<ScheduleItem> items) {
   final sorted = [...items]..sort((a, b) => a.id.compareTo(b.id));
-  return Object.hashAll([
-    for (final item in sorted)
-      Object.hash(item.id, item.order, item.updatedAt.millisecondsSinceEpoch),
-  ]);
+  final canonical = sorted
+      .map((item) =>
+          '${item.id}|${item.order}|${item.updatedAt.millisecondsSinceEpoch}')
+      .join(';');
+  return _stableHash(canonical);
+}
+
+/// djb2, masked to 32 bits after every step.
+///
+/// Collision resistance is irrelevant here -- this only has to change when the
+/// schedule changes -- but determinism is not, hence rolling it by hand. The
+/// masking also keeps every intermediate below 2^53 so the value is identical
+/// on the JS number representation as on a native 64-bit int.
+int _stableHash(String input) {
+  var hash = 5381;
+  for (final unit in input.codeUnits) {
+    hash = ((hash << 5) + hash + unit) & 0xFFFFFFFF;
+  }
+  return hash;
 }

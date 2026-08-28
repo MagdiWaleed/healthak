@@ -11,17 +11,21 @@ import '../theme/glass_tokens.dart';
 /// changes material between locales.
 abstract final class GlassDecoration {
   /// Body tint. Brighter at the top so the surface has a vertical gradient
-  /// even before the specular lands on it.
+  /// even before the specular lands on it. [color] defaults to white -- the
+  /// neutral glass every surface uses -- but a status-carrying surface (the
+  /// read-only "can't modify this" treatment on a past day's entries, say)
+  /// can tint the same gradient instead of reaching for a flat fill.
   static LinearGradient body({
     double top = .16,
     double bottom = .055,
+    Color color = Colors.white,
   }) =>
       LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Colors.white.withValues(alpha: top),
-          Colors.white.withValues(alpha: bottom),
+          color.withValues(alpha: top),
+          color.withValues(alpha: bottom),
         ],
       );
 

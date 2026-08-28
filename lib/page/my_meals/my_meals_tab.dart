@@ -8,6 +8,7 @@ import '../../service/auth_service.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/glass/glass_card.dart';
+import '../../ui/motion/navigation.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
@@ -51,7 +52,7 @@ class _MyMealsTabState extends State<MyMealsTab> {
   }
 
   Future<void> _openEditor([String? mealId]) async {
-    await Get.to(() => MealEditorScreen(mealId: mealId));
+    await pushHealthak(() => MealEditorScreen(mealId: mealId));
   }
 
   @override
@@ -92,7 +93,8 @@ class _LibraryView extends StatelessWidget {
         }
         final libraryError = controller.libraryError.value;
         if (libraryError != null) {
-          return ErrorState(message: libraryError, onRetry: controller.retryLibrary);
+          return ErrorState(
+              message: libraryError, onRetry: controller.retryLibrary);
         }
         final meals = controller.library;
         if (meals.isEmpty) {
@@ -106,7 +108,8 @@ class _LibraryView extends StatelessWidget {
                   message: 'أنشئ أول وجبة من المكوّنات المتاحة',
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                TextButton(onPressed: () => onOpen(), child: const Text('وجبة جديدة')),
+                TextButton(
+                    onPressed: () => onOpen(), child: const Text('وجبة جديدة')),
               ],
             ),
           );
@@ -131,7 +134,8 @@ class _LibraryView extends StatelessWidget {
                     color: AppPalette.danger.withValues(alpha: .25),
                     borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   ),
-                  child: const Icon(Icons.delete_outline, color: AppPalette.danger),
+                  child: const Icon(Icons.delete_outline,
+                      color: AppPalette.danger),
                 ),
                 confirmDismiss: (_) => showDialog<bool>(
                   context: context,
@@ -212,7 +216,8 @@ class _ScheduleView extends StatelessWidget {
         }
         final scheduleError = controller.scheduleError.value;
         if (scheduleError != null) {
-          return ErrorState(message: scheduleError, onRetry: controller.retrySchedule);
+          return ErrorState(
+              message: scheduleError, onRetry: controller.retrySchedule);
         }
         final slots = MealSlot.values
             .where((slot) => controller.forSlot(slot).isNotEmpty)
@@ -230,7 +235,8 @@ class _ScheduleView extends StatelessWidget {
           children: [
             for (final slot in slots) ...[
               Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xs, top: AppSpacing.sm),
+                padding: const EdgeInsets.only(
+                    bottom: AppSpacing.xs, top: AppSpacing.sm),
                 child: Text(slot.labelAr,
                     style: Theme.of(context)
                         .textTheme
@@ -309,7 +315,8 @@ class _ScheduleCard extends StatelessWidget {
                     final ok = await controller.quickAddToday(item);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(ok ? 'أُضيفت لليوم' : 'تعذرت الإضافة')));
+                          content:
+                              Text(ok ? 'أُضيفت لليوم' : 'تعذرت الإضافة')));
                     }
                   },
                   icon: const Icon(Icons.today_outlined, size: 16),
@@ -332,7 +339,8 @@ class _DayDot extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _DayDot({required this.label, required this.selected, required this.onTap});
+  const _DayDot(
+      {required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(

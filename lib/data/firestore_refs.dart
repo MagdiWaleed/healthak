@@ -31,6 +31,26 @@ class FirestoreRefs {
             toFirestore: FoodMapper.toFirestore,
           );
 
+  /// The user's own components, kept separate from the shared [foods] catalog.
+  ///
+  /// `foods` is deliberately read-only to clients (`allow write: if false` in
+  /// `firestore.rules`) -- it is a shared, public catalog seeded out of band,
+  /// and letting any signed-in client write into it would make one user's typo
+  /// everybody's data. A component the user creates for themselves therefore
+  /// lives under their own document, where the existing
+  /// `users/{uid}/{document=**}` rule already grants them full access and
+  /// nobody else any. Same [FoodItem] shape and same mapper, so everything
+  /// downstream -- the picker, the meal editor, the solver -- treats the two
+  /// identically.
+  CollectionReference<FoodItem> userFoods(String uid) => _firestore
+      .collection('users')
+      .doc(uid)
+      .collection('foods')
+      .withConverter<FoodItem>(
+        fromFirestore: FoodMapper.fromFirestore,
+        toFirestore: FoodMapper.toFirestore,
+      );
+
   CollectionReference<UserProfile> get profiles =>
       _firestore.collection('users').withConverter<UserProfile>(
             fromFirestore: ProfileMapper.fromFirestore,

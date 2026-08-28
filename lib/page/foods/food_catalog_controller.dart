@@ -14,10 +14,21 @@ import '../../domain/food/food_item.dart';
 class FoodCatalogController extends GetxController {
   final FoodRepository _repository;
 
-  FoodCatalogController({FoodRepository? repository})
-      : _repository = repository ?? FoodRepository();
+  FoodCatalogController({FoodRepository? repository, String? uid})
+      : _repository = repository ?? FoodRepository(uid: uid);
 
   final items = <FoodItem>[].obs;
+
+  /// The user's own components, loaded whole on every reset.
+  ///
+  /// Held separately from [items] so they can be re-filtered locally on each
+  /// query without another read, and so [isPersonal] can answer which rows
+  /// the user is allowed to delete.
+  final _personal = <FoodItem>[].obs;
+
+  bool get canCreate => _repository.uid != null;
+
+  bool isPersonal(FoodItem food) => _personal.any((f) => f.id == food.id);
 
   /// True only for the very first page of a given filter. Distinguished from
   /// [loadingMore] so the list doesn't flash back to a full-screen spinner
@@ -79,6 +90,42 @@ class FoodCatalogController extends GetxController {
     await _load(reset: false);
   }
 
+  /// Creates a personal component and shows it immediately.
+  ///
+  /// The new row is inserted locally rather than triggering a full reload, so
+  /// the user sees what they just typed at the top of the list without the
+  /// catalog flashing through a spinner.
+  Future<FoodItem> create(FoodItem draft) async {
+    final saved = await _repository.createPersonal(draft);
+    _personal.insert(0, saved);
+    if (_matchesFilters(saved)) items.insert(0, saved);
+    return saved;
+  }
+
+  Future<void> deletePersonal(FoodItem food) async {
+    await _repository.deletePersonal(food.id);
+    _personal.removeWhere((f) => f.id == food.id);
+    items.removeWhere((f) => f.id == food.id);
+  }
+
+  /// Applies the active search/category filter to a personal component.
+  ///
+  /// The shared catalog does this server-side via `searchTokens`, which a
+  /// personal component has no equivalent of; a `contains` over the folded
+  /// name is both cheaper and more forgiving at this collection size.
+  bool _matchesFilters(FoodItem food) {
+    final category = selectedCategory.value;
+    if (category != null &&
+        category.isNotEmpty &&
+        food.category != category) {
+      return false;
+    }
+    final token = normalizeFoodSearchToken(searchText.value);
+    if (token == null) return true;
+    return food.nameNormalized.contains(token) ||
+        foldArabic(food.name).contains(token);
+  }
+
   Future<void> _load({required bool reset}) async {
     if (reset) {
       _cursor = null;
@@ -87,6 +134,10 @@ class FoodCatalogController extends GetxController {
       error.value = null;
     }
     try {
+      // Personal components are refetched only on a reset -- they are not
+      // paginated, so re-reading them per page would be pure waste.
+      if (reset) _personal.value = await _repository.listPersonal();
+
       final page = await _repository.list(
         category: selectedCategory.value,
         searchToken: searchText.value,
@@ -94,7 +145,18 @@ class FoodCatalogController extends GetxController {
       );
       _cursor = page.nextCursor;
       hasMore.value = page.hasMore;
-      items.value = reset ? page.items : [...items, ...page.items];
+
+      if (reset) {
+        // The user's own components lead: they are the few rows they had to
+        // type by hand, so burying them under a 30-row shared page would
+        // defeat the point of having created them.
+        items.value = [
+          ..._personal.where(_matchesFilters),
+          ...page.items,
+        ];
+      } else {
+        items.value = [...items, ...page.items];
+      }
     } catch (e) {
       error.value = e.toString();
     } finally {

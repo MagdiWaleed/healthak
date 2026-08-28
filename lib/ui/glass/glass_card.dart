@@ -24,6 +24,11 @@ class GlassCard extends StatelessWidget {
   /// Lifts the tint and edge. Use for the one card that should draw the eye.
   final bool highlighted;
 
+  /// Colors the body gradient instead of the neutral white every other
+  /// surface uses -- a status tint (locked/read-only, say) rather than an
+  /// elevation change.
+  final Color? tint;
+
   const GlassCard({
     required this.child,
     super.key,
@@ -34,6 +39,7 @@ class GlassCard extends StatelessWidget {
         const BorderRadius.all(Radius.circular(AppSpacing.radiusMd)),
     this.highlighted = false,
     this.elevation = GlassElevation.card,
+    this.tint,
   });
 
   @override
@@ -45,6 +51,7 @@ class GlassCard extends StatelessWidget {
         gradient: GlassDecoration.body(
           top: GlassTokens.topTint(effectiveElevation),
           bottom: GlassTokens.bottomTint(effectiveElevation),
+          color: tint ?? Colors.white,
         ),
         boxShadow: GlassDecoration.shadowsFor(effectiveElevation),
       ),

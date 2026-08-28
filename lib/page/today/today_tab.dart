@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -68,7 +69,7 @@ class _TodayTabState extends State<TodayTab> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _Greeting(date: controller.selectedDate.value),
+                _Greeting(controller: controller),
                 const SizedBox(height: AppSpacing.lg),
                 const EmptyState(
                   icon: Icons.event_busy_outlined,
@@ -94,9 +95,7 @@ class _TodayTabState extends State<TodayTab> {
         // Every item below carries an explicit, content-stable key -- see
         // the comment on `findChildIndexCallback` further down for why.
         final header = <Widget>[
-          _Greeting(
-              key: const ValueKey('greeting'),
-              date: controller.selectedDate.value),
+          _Greeting(key: const ValueKey('greeting'), controller: controller),
           const SizedBox(
               key: ValueKey('spacer-greeting'), height: AppSpacing.md),
           _WeekStrip(key: const ValueKey('weekstrip'), controller: controller),
@@ -184,7 +183,6 @@ class _TodayTabState extends State<TodayTab> {
         }
 
         final sections = <Widget>[
-          ...header,
           const SizedBox(key: ValueKey('spacer-header'), height: AppSpacing.lg),
           for (final slot in day.activeSlots) ...[
             Padding(
@@ -211,7 +209,7 @@ class _TodayTabState extends State<TodayTab> {
           ],
         ];
 
-        // `ListView.builder` otherwise reuses each Element purely by its
+        // `SliverList` otherwise reuses each Element purely by its
         // *position* in the list across rebuilds. Entries, slot headers, and
         // spacers are all flattened into this one list, so removing or
         // toggling one entry shifts every later item's index -- without a
@@ -227,49 +225,212 @@ class _TodayTabState extends State<TodayTab> {
             if (sections[i].key != null) sections[i].key!: i,
         };
 
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(22, 66, 22, 130),
-          itemCount: sections.length,
-          findChildIndexCallback: (key) => keyToIndex[key],
-          itemBuilder: (context, i) => StaggeredEntry(
-            key: sections[i].key,
-            index: i,
-            maxStaggered: 8,
-            child: sections[i],
-          ),
+        return CustomScrollView(
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _TodayRingHeaderDelegate(
+                day: day,
+                controller: controller,
+                ringAccent: ringAccent,
+                goalTrigger: controller.goalCelebration.value,
+                rippleTrigger: controller.eatPulse.value,
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(22, 0, 22, 130),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => StaggeredEntry(
+                    key: sections[i].key,
+                    index: i,
+                    maxStaggered: 8,
+                    child: sections[i],
+                  ),
+                  childCount: sections.length,
+                  findChildIndexCallback: (key) => keyToIndex[key],
+                ),
+              ),
+            ),
+          ],
         );
       });
 }
 
-class _Greeting extends StatelessWidget {
-  final DateTime date;
-  const _Greeting({super.key, required this.date});
+/// The caloric headline is deliberately a pinned sliver rather than a widget
+/// listening to scroll pixels. The render pipeline supplies [shrinkOffset],
+/// keeping the big-to-compact transition cheap and leaving zero per-frame
+/// controller work in TodayController.
+class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final DayLog day;
+  final TodayController controller;
+  final Color ringAccent;
+  final int goalTrigger;
+  final int rippleTrigger;
 
-  bool get _isToday {
-    final now = DateTime.now();
-    return date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
+  _TodayRingHeaderDelegate({
+    required this.day,
+    required this.controller,
+    required this.ringAccent,
+    required this.goalTrigger,
+    required this.rippleTrigger,
+  });
+
+  @override
+  double get minExtent => 108;
+
+  @override
+  double get maxExtent => 520;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+    final ringSize = lerpDouble(200, 96, t)!;
+    final detailOpacity = (1 - (t / .55)).clamp(0.0, 1.0);
+    final ringTop = lerpDouble(178, 6, t)!;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppPalette.ink.withValues(alpha: .90),
+            AppPalette.ink.withValues(alpha: .74),
+            AppPalette.ink.withValues(alpha: 0),
+          ],
+          stops: const [0, .70, 1],
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          PositionedDirectional(
+            start: 22,
+            top: 14,
+            child: Opacity(
+              opacity: detailOpacity,
+              child: _Greeting(controller: controller),
+            ),
+          ),
+          Positioned(
+            top: 100,
+            left: 22,
+            right: 22,
+            child: Opacity(
+              opacity: detailOpacity,
+              child: _WeekStrip(controller: controller),
+            ),
+          ),
+          Positioned(
+            top: ringTop,
+            child: GoalCelebration(
+              trigger: goalTrigger,
+              child: CalorieRing(
+                consumed: day.consumedKcal,
+                target: day.targets.kcal,
+                size: ringSize,
+                consumedMacros: day.consumedTotals,
+                targetMacros: day.targets.macros,
+                plannedKcal: day.plannedKcal,
+                plannedMacros: day.plannedTotals,
+                ringAccent: ringAccent,
+                rippleTrigger: rippleTrigger,
+                animateFromZero: false,
+              ),
+            ),
+          ),
+          Positioned(
+            top: 178,
+            right: 8,
+            child: Opacity(
+              opacity: detailOpacity,
+              child: const _RingLegend(),
+            ),
+          ),
+          Positioned(
+            left: 22,
+            right: 22,
+            bottom: 16,
+            child: Opacity(
+              opacity: detailOpacity,
+              child: _TargetSummary(controller: controller),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  String get _greeting {
-    if (!_isToday) return _weekdayFullNames[date.weekday - 1];
+  @override
+  bool shouldRebuild(covariant _TodayRingHeaderDelegate oldDelegate) =>
+      oldDelegate.day != day ||
+      oldDelegate.ringAccent != ringAccent ||
+      oldDelegate.goalTrigger != goalTrigger ||
+      oldDelegate.rippleTrigger != rippleTrigger ||
+      oldDelegate.controller.selectedDate.value !=
+          controller.selectedDate.value;
+}
+
+class _Greeting extends StatelessWidget {
+  final TodayController controller;
+  const _Greeting({super.key, required this.controller});
+
+  String _greeting(DateTime date, bool isToday) {
+    if (!isToday) return _weekdayFullNames[date.weekday - 1];
     final hour = DateTime.now().hour;
     return hour < 18 ? 'صباح الخير' : 'مساء الخير';
   }
 
+  // Its own `Obx`, deliberately. This widget's `build` runs outside the
+  // closure of whichever `Obx` created it, so reading `selectedDate`/`today`
+  // here would not register as a dependency of that one -- the greeting would
+  // simply stop tracking the date it names.
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(_greeting, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 4),
-          Text(
-            _isToday ? 'خطتك الغذائية واضحة أمامك' : 'استعراض يوم سابق',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-        ],
-      );
+  Widget build(BuildContext context) => Obx(() {
+        final date = controller.selectedDate.value;
+        final isToday = controller.isViewingToday;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_greeting(date, isToday),
+                style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: 4),
+            if (isToday)
+              Text('خطتك الغذائية واضحة أمامك',
+                  style: Theme.of(context).textTheme.bodyLarge)
+            else
+              // The only "browsing history" state that has no week strip on
+              // screen at all is the empty-day branch, which carries its own
+              // explicit button; everywhere else this doubles as the quiet way
+              // back so the user is never stuck relying on spotting today's
+              // cell in the strip.
+              GestureDetector(
+                onTap: () => controller.selectDate(DateTime.now()),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'استعراض يوم سابق',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: AppPalette.emerald,
+                            decoration: TextDecoration.underline,
+                            decorationColor: AppPalette.emerald,
+                          ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.today_rounded,
+                        size: 16, color: AppPalette.emerald),
+                  ],
+                ),
+              ),
+          ],
+        );
+      });
 }
 
 const _weekdayFullNames = [
@@ -288,15 +449,18 @@ class _WeekStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    // Monday of the current week through Sunday. Browsing beyond this range
-    // is what History (a full calendar) is for.
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final days = [for (var i = 0; i < 7; i++) monday.add(Duration(days: i))];
-
     return SizedBox(
       height: 64,
       child: Obx(() {
+        // Read from the controller's published date, never `DateTime.now()`.
+        // Computed inline here, this whole strip froze at whatever day the
+        // last rebuild happened on: after midnight the new day kept failing
+        // the `isFuture` test and stayed permanently untappable.
+        final now = controller.today.value;
+        // Monday of the current week through Sunday. Browsing beyond this
+        // range is what History (a full calendar) is for.
+        final monday = now.subtract(Duration(days: now.weekday - 1));
+        final days = [for (var i = 0; i < 7; i++) monday.add(Duration(days: i))];
         final selected = controller.selectedDate.value;
         return ListView.separated(
           scrollDirection: Axis.horizontal,
@@ -361,57 +525,72 @@ class _EntryTile extends StatelessWidget {
   const _EntryTile({super.key, required this.controller, required this.entry});
 
   @override
-  Widget build(BuildContext context) => Dismissible(
-        key: ValueKey(entry.entryId),
-        direction: DismissDirection.endToStart,
-        background: Container(
-          alignment: AlignmentDirectional.centerEnd,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          decoration: BoxDecoration(
-            color: AppPalette.danger.withValues(alpha: .25),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-          ),
-          child: const Icon(Icons.delete_outline, color: AppPalette.danger),
+  Widget build(BuildContext context) {
+    // A past day is a frozen historical record -- browsing it must never let
+    // the swipe-delete, long-press editor, or eat toggle mutate what was
+    // actually logged that day. Today is the only day anyone can act on.
+    final readOnly = !controller.isViewingToday;
+    return Dismissible(
+      key: ValueKey(entry.entryId),
+      direction: readOnly ? DismissDirection.none : DismissDirection.endToStart,
+      background: Container(
+        alignment: AlignmentDirectional.centerEnd,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        decoration: BoxDecoration(
+          color: AppPalette.danger.withValues(alpha: .25),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         ),
-        onDismissed: (_) => controller.deleteEntry(entry.entryId),
-        child: GestureDetector(
-          onLongPress: () {
-            unawaited(HapticPhrase.play(AppHaptics.lift));
-            EditEntrySheet.show(
-              context,
-              entry: entry,
-              onSave: (items) =>
-                  controller.updateEntryItems(entry.entryId, items),
-            );
-          },
-          child: GlassCard(
-            child: Row(
-              children: [
+        child: const Icon(Icons.delete_outline, color: AppPalette.danger),
+      ),
+      onDismissed: (_) => controller.deleteEntry(entry.entryId),
+      child: GestureDetector(
+        onLongPress: readOnly
+            ? null
+            : () {
+                unawaited(HapticPhrase.play(AppHaptics.lift));
+                EditEntrySheet.show(
+                  context,
+                  entry: entry,
+                  onSave: (items) =>
+                      controller.updateEntryItems(entry.entryId, items),
+                );
+              },
+        child: GlassCard(
+          // The read-only treatment: a green-tinted glass body instead of a
+          // checkbox that looks tappable but isn't -- the surface itself
+          // says "locked", nothing pretending to be a control.
+          tint: readOnly ? AppPalette.emerald : null,
+          highlighted: readOnly,
+          child: Row(
+            children: [
+              if (!readOnly) ...[
                 EatCheck(
                   eaten: entry.eaten,
                   onToggle: () => controller.toggleEaten(entry.entryId),
                 ),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity: entry.eaten ? .5 : 1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _StrikeText(text: entry.name, struck: entry.eaten),
-                        const SizedBox(height: 2),
-                        Text('${entry.kcal.round()} سعرة',
-                            style: Theme.of(context).textTheme.bodyMedium),
-                      ],
-                    ),
+              ],
+              Expanded(
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: entry.eaten ? .5 : 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _StrikeText(text: entry.name, struck: entry.eaten),
+                      const SizedBox(height: 2),
+                      Text('${entry.kcal.round()} سعرة',
+                          style: Theme.of(context).textTheme.bodyMedium),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 /// A strike-through that animates in rather than snapping, so ticking an

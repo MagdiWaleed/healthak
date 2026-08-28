@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -7,6 +9,7 @@ import '../../service/auth_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/gram_stepper.dart';
 import '../../ui/components/scale_stepper.dart';
+import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/motion/pressable.dart';
@@ -114,8 +117,7 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('تحديث الجدول أيضاً؟'),
-            content: Text(
-                'هذه الوجبة مضافة لجدولك في ${linked.length} موضع. '
+            content: Text('هذه الوجبة مضافة لجدولك في ${linked.length} موضع. '
                 'هل تريد تحديثها لتطابق التعديلات الجديدة؟'),
             actions: [
               TextButton(
@@ -146,7 +148,9 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
     }
     final ok = await controller.addToToday();
     if (!mounted) return;
-    _snack(ok ? 'أُضيفت الوجبة لليوم' : (controller.error.value ?? 'تعذرت الإضافة'));
+    _snack(ok
+        ? 'أُضيفت الوجبة لليوم'
+        : (controller.error.value ?? 'تعذرت الإضافة'));
     if (ok) Get.back();
   }
 
@@ -162,7 +166,9 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
       daysOfWeek: picked.daysOfWeek,
     );
     if (!mounted) return;
-    _snack(ok ? 'أُضيفت الوجبة لجدولك' : (controller.error.value ?? 'تعذرت الإضافة'));
+    _snack(ok
+        ? 'أُضيفت الوجبة لجدولك'
+        : (controller.error.value ?? 'تعذرت الإضافة'));
     if (ok) Get.back();
   }
 
@@ -178,7 +184,9 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
           // fixes both the crash and gives the title a placeholder that
           // updates live as the user types.
           title: Obx(() => Text(
-                controller.name.value.isEmpty ? 'وجبة جديدة' : controller.name.value,
+                controller.name.value.isEmpty
+                    ? 'وجبة جديدة'
+                    : controller.name.value,
               )),
           actions: [
             Obx(() => controller.saving.value
@@ -281,11 +289,14 @@ class _TotalsHeader extends StatelessWidget {
                 child: Text('سعرة', style: TextStyle(color: AppPalette.muted)),
               ),
               const Spacer(),
-              _MacroPill(label: 'ب', value: totals.protein, color: AppPalette.emerald),
+              _MacroPill(
+                  label: 'ب', value: totals.protein, color: AppPalette.emerald),
               const SizedBox(width: 8),
-              _MacroPill(label: 'ك', value: totals.carbs, color: AppPalette.amber),
+              _MacroPill(
+                  label: 'ك', value: totals.carbs, color: AppPalette.amber),
               const SizedBox(width: 8),
-              _MacroPill(label: 'د', value: totals.fat, color: AppPalette.violet),
+              _MacroPill(
+                  label: 'د', value: totals.fat, color: AppPalette.violet),
             ],
           ),
         ),
@@ -299,7 +310,8 @@ class _MacroPill extends StatelessWidget {
   final double value;
   final Color color;
 
-  const _MacroPill({required this.label, required this.value, required this.color});
+  const _MacroPill(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -334,7 +346,8 @@ class _EmptyEditor extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.add_circle_outline, size: 48, color: AppPalette.muted),
+            const Icon(Icons.add_circle_outline,
+                size: 48, color: AppPalette.muted),
             const SizedBox(height: AppSpacing.sm),
             const Text('ابدأ بإضافة مكوّن'),
             const SizedBox(height: AppSpacing.sm),
@@ -357,7 +370,30 @@ class _EntryList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
           itemCount: entries.length,
+          onReorderStart: (_) => unawaited(HapticPhrase.play(AppHaptics.lift)),
+          onReorderEnd: (_) => unawaited(HapticPhrase.play(AppHaptics.land)),
           onReorder: controller.reorder,
+          proxyDecorator: (child, _, animation) => AnimatedBuilder(
+            animation: animation,
+            child: child,
+            builder: (_, proxy) => Transform.scale(
+              scale: 1 + animation.value * .02,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppPalette.emerald
+                          .withValues(alpha: .16 * animation.value),
+                      blurRadius: 22 * animation.value,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: proxy,
+              ),
+            ),
+          ),
           itemBuilder: (context, index) {
             final entry = entries[index];
             return StaggeredEntry(
@@ -460,11 +496,13 @@ class _EntryRow extends StatelessWidget {
                 ),
             },
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, color: AppPalette.muted),
+              icon:
+                  const Icon(Icons.more_vert_rounded, color: AppPalette.muted),
               onSelected: (action) => _onMenu(context, action),
               itemBuilder: (context) => [
                 if (isRef)
-                  const PopupMenuItem(value: 'ungroup', child: Text('فك التجميع')),
+                  const PopupMenuItem(
+                      value: 'ungroup', child: Text('فك التجميع')),
                 const PopupMenuItem(value: 'delete', child: Text('حذف')),
               ],
             ),
@@ -602,7 +640,9 @@ class _ChipButton extends StatelessWidget {
               children: [
                 Icon(icon, size: 18, color: AppPalette.text),
                 const SizedBox(height: 2),
-                Text(label, style: const TextStyle(fontSize: 11, color: AppPalette.text)),
+                Text(label,
+                    style:
+                        const TextStyle(fontSize: 11, color: AppPalette.text)),
               ],
             ),
           ),

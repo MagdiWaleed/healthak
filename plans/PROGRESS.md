@@ -46,9 +46,174 @@ emulator with Firestore DNS unavailable: the meal remained ticked and the calori
 staggered entries resolve their start edge in RTL and add the planned subtle rotation, steppers use
 the shared direction-aware `TickerNumber`, and pull-to-refresh uses the emerald ring language.
 The existing splash already materializes the logo/ring; onboarding now shows the first-filling arc
-across its authentication/profile stages. The Today collapsing sliver header, full route/sheet
-vocabulary, and a real-device RTL/reduced-motion walk remain to be completed before this phase can
-be called done.
+across its authentication/profile stages. Today now uses a pinned `SliverPersistentHeader` that
+shrinks the ring from 200px to 96px without a scroll listener or per-frame controller work; the
+meal editor's drag proxy lifts with an L3-style emerald bloom and has central lift/land haptics.
+The populated Today top state was visually checked on the emulator; a long-list collapse walk,
+and a reusable `pushHealthak` helper now routes imperative Food Detail and Meal Editor pushes
+through the same `HealthakTransition` used by named pages.
+
+**Full sheet vocabulary is now done.** Every `showModalBottomSheet` call site rendered its own
+chrome by hand -- `food_picker_sheet.dart` used `GlassSurface` (a real `BackdropFilter`, spending
+one of the app's two-blur budget the moment it opened over a screen that had already spent both),
+the rest used a raw `DecoratedBox(color: AppPalette.surface.withValues(alpha:.97))` with no
+Living Glass motion or haptic integration at all. Added `lib/ui/glass/glass_sheet.dart`: the one
+`GlassSheet` widget every sheet now goes through -- deliberately flat (`GlassElevation.hero`,
+never a blur, for the budget reason above), `SpecularBorder` edge, drag handle, optional title
+row, an `expand: bool` that switches between a list-filling sheet (`Expanded`) and a
+content-sized one (`mainAxisSize: min`), and a `GlassSheet.show<T>()` static that opens through
+`showModalBottomSheet` and fires `HapticPhrase.play(AppHaptics.lift)` on open. Migrated all seven
+call sites: `food_picker_sheet.dart`, `meal_editor/meal_picker_sheet.dart`,
+`meal_editor/balance_sheet.dart`, `meal_editor/schedule_sheet.dart`, `today/edit_entry_sheet.dart`,
+and `today/quick_add_sheet.dart`'s two sheets (`_QuickAddMenu`, `_LibraryMealSheet`). Each kept its
+own keyboard-avoidance (`media.viewInsets.bottom`) and bottom-safe-area padding inside its
+`child`, since those are per-sheet concerns `GlassSheet` doesn't own. `flutter analyze`: no
+issues. `flutter test`: all 98 tests pass. A real-device RTL/reduced-motion walk remains before
+this phase can be called done.
+
+**Bug fix -- Today's add button silently dead after a day rollover:** `TodayController.selectedDate`
+was `DateTime.now().obs`, evaluated once at controller construction and never revisited.
+`isViewingToday` itself re-reads `DateTime.now()` on every call, so once real midnight passed
+while the controller stayed alive (a debug session left running, or any phone that never left the
+Today tab overnight), it correctly started reporting `false` -- but nothing ever moved
+`selectedDate` forward, so the FAB and the empty-day "إضافة الآن" button both silently refused to
+add (My Meals was unaffected: its add button has no date dependency at all). Fixed by having
+`TodayController` mix in `WidgetsBindingObserver` and re-`selectDate(DateTime.now())` whenever the
+app resumes from background, but only while the user was following today (never yanks someone
+back from a day they browsed to on purpose); a companion `ensureCurrentDay()` also runs on every
+FAB tap so a rollover that happens while the app stays foregrounded self-heals immediately rather
+than waiting for a resume event.
+
+**Feature -- manual one-off entry ("أضف عنصراً يدوياً"):** a fourth Quick Add option next to
+library meal / quick food / new meal. `lib/page/today/manual_entry_sheet.dart`: a name field plus
+protein/carbs/fat fields (kcal is a live read-only Atwater-derived preview, never entered directly
+-- kept consistent with "kcal is always derived" elsewhere in the app). Submits through
+`TodayController.logCustomEntry()`, which builds a `FrozenItem` with a synthetic `manual:<uuid>`
+id straight into today's `DayLog` (`DayEntryOrigin.quickAdd`) -- no `FoodItem` is created, no
+`foods` write happens, nothing is publishable. This is the explicit design point: log "sushi with
+kabsa, whatever, here's roughly what was in it" for today only, without it becoming a reusable or
+marketplace-visible component.
+
+**Bug fix -- no way back to today once browsing a populated past day, and past days were
+editable:** the only "العودة لليوم" affordance lived in the *empty*-day branch (no document at
+all for that date); a past day that had a real, populated `DayLog` relied entirely on the user
+noticing today's cell in the week strip, with no explicit control. Fixed at the source: `_Greeting`
+(shared by all three Today branches -- empty, materialized-but-empty, and populated) now renders
+its subtitle as a tappable "استعراض يوم سابق" chip that calls `selectDate(DateTime.now())`
+whenever the viewed day isn't today, so every branch gets the same way back, not just the one that
+already had it. Separately, a browsed-to past day's entries were fully interactive -- swipe to
+delete, long-press to edit grams, tap to toggle eaten -- despite the day being a frozen historical
+record by design. `_EntryTile` now checks `controller.isViewingToday`: past days disable the
+`Dismissible`, drop the long-press handler, and swap the live `EatCheck` toggle for a plain static
+check icon, matching the read-only rendering History's own day-detail sheet already used. Today
+remains the only day anyone can act on.
+
+**Polish -- the read-only indicator on past-day entries:** the check-circle/circle-outline icon
+that replaced `EatCheck` on a read-only row still read as a checkbox, implying it was tappable
+when it wasn't. Replaced it with a colored-glass treatment instead: `GlassDecoration.body()` and
+`GlassCard` both gained an optional `color`/`tint` parameter (defaults to the existing white glass
+everywhere else), and a read-only `_EntryTile` now passes `tint: AppPalette.emerald,
+highlighted: true` -- a green-tinted, hero-elevation glass card (picking up the elevation's
+built-in emerald shadow bloom too) with no leading icon at all. Eaten/not-eaten still reads
+through the existing strike-through + opacity on the name, same as before.
+
+**Investigated -- week-strip cell briefly refusing to return to today:** reported as "go from
+Saturday to Friday, then can't tap back to Saturday." The strip's `isFuture` guard
+(`date.isAfter(today)`) is correct as written -- today itself is never future, only the days after
+it are. The device clock was checked directly (`adb shell date` -> `Sat Aug 29 00:15:42`) and this
+session's own real-world midnight had passed only ~15 minutes before the report, so the almost
+certain explanation is that Saturday was still genuinely tomorrow (rightly disabled) in the moments
+just before rollover, not a logic bug. No code change made for this specifically; the
+`_Greeting`-based "استعراض يوم سابق" tap-to-return chip added earlier this phase is an
+independent backup path that does not depend on the week strip at all if it recurs.
+
+**Feature -- consumed macro grams inside the ring:** the three thin macro rings around the main
+arc had color but no numbers -- `_RingLegend` said which color was which macro, but not how much
+of it had actually been eaten. `CalorieRing` now prints a third line under the kcal figure /
+remaining label: a colored dot matching each macro ring plus its consumed grams (protein, carbs,
+fat, same emerald/amber/violet mapping as everywhere else). Gated to `size > 145` so it only
+appears on the big ring -- past that point it would land in the same crowded range where
+`_TodayRingHeaderDelegate` already fades its other detail text out while the header collapses.
+
+**Feature -- a ring in History's day-detail sheet:** the calendar's day-detail popup only ever
+showed text totals and the entry list, no ring. Added a `CalorieRing` at the top, fed directly
+from that day's frozen `DayLog` (`consumedKcal`/`targets.kcal`/`consumedTotals`/`targets.macros`)
+-- the same numbers that day's Today screen showed while it was still today, not a live
+recomputation of anything. No planned band here: History is a record of what was actually eaten,
+not a projection. While in the file, migrated `_DayDetailSheet`'s chrome off the last remaining
+raw `DecoratedBox` sheet onto `GlassSheet`, the one spot the earlier sheet-vocabulary pass missed.
+
+### Data-loss bug — ticking a meal off did not survive a restart
+
+Two compounding defects, both in the materialization path. Verified fixed on the emulator by
+ticking a meal, `am force-stop`, relaunch: the tick and the 152-kcal ring both survived.
+
+1. **`scheduleVersionOf` used `Object.hashAll`.** Dart explicitly documents `Object.hash`/
+   `hashAll` as *not stable between runs of a program* — `String.hashCode` is randomized per
+   isolate — so an unchanged schedule produced a different "version" on every launch. Replaced
+   with a hand-rolled djb2 digest over a canonical `id|order|updatedAt` string, masked to 32 bits
+   each step so the value is identical on a native int and on the JS number representation. This
+   is the only reason a value like this can be persisted at all. `schedule_version_test.dart` now
+   pins the digest against a literal — the pre-existing "is stable across re-fetching identical
+   content" test could never have caught this, because within a single run even a randomized hash
+   looks stable.
+2. **`ensureDay` compared that fingerprint with `>=`.** A fingerprint has no ordering, so the
+   comparison was meaningless in both directions: roughly half the time a stale stored value
+   compared greater and materialization was wrongly skipped, the other half an unchanged schedule
+   compared lower and the day was needlessly rebuilt — and rebuilding regenerates every
+   `scheduled` entry from its schedule item with `eaten: false` and a fresh uuid. Now `==`.
+
+Also hardened the rebuild itself, which was one-shot-away from the same bug for a legitimate
+reason: `_fromSchedule` now takes the previous entry (matched on `scheduleItemId`) and carries its
+`eaten`, `eatenAt`, and `entryId` across. Editing the schedule mid-day no longer un-ticks what has
+already been eaten, and reusing the entryId keeps list keys, an in-flight eat toggle, and any
+`Dismissible` pointing at the same row. This does not weaken the daily reset: a new day has no
+document, so there is nothing to carry over and every entry still starts false.
+
+### Bug — the week strip froze at whatever day it last rebuilt on
+
+`_WeekStrip` computed `DateTime.now()` inline in `build`, and `_Greeting` had its own private
+`_isToday`. A process alive across midnight never re-ran them, so the new day kept failing the
+`isFuture` test and stayed permanently greyed out and untappable — the reported "I can't navigate
+to the current day", with the strip visibly disabling today's own cell.
+
+`TodayController` now publishes `today` as an `Rx<DateTime>`, updated by a single `Timer` armed
+for the next local midnight (one wakeup, not a poll), re-armed and recomputed on resume since a
+frozen background process runs no timers. `_isToday`, the strip, and the greeting all read it, so
+the rollover reaches every dependent at once. `_Greeting` got its own `Obx` in the process: its
+`build` runs outside the closure of whichever `Obx` created it, so reading an `Rx` there was never
+registering as a dependency.
+
+### Regression — `GlassSheet` was ~90% transparent
+
+The sheet-vocabulary migration replaced each sheet's
+`DecoratedBox(color: AppPalette.surface.withValues(alpha: .97))` with only `GlassDecoration.body`,
+a white gradient over *nothing*. Correct for a card floating on the aurora, wrong for a modal:
+form labels and text fields competed with whatever list was scrolled behind them. `GlassSheet` now
+paints an opaque `surface` base *under* the glass tint rather than instead of it. Still no
+`BackdropFilter` — a fill, not a blur, so the two-blur budget is untouched.
+
+### Feature — creating your own component
+
+New `+` beside the search field on the components screen (and in the picker sheet), opening
+`ComponentEditorSheet`: name, optional category chip, and protein/carbs/fat per 100g, with kcal
+shown live and never entered — derived through the same Atwater factors as everything else, so a
+component cannot claim an energy value its own macros contradict.
+
+**These do not go in the shared `foods` collection.** `firestore.rules` has `allow write: if false`
+there, deliberately: it is a public catalog seeded out of band, and letting any signed-in client
+write to it would make one user's typo everybody's data. Personal components live at
+`users/{uid}/foods`, where the existing `users/{uid}/{document=**}` rule already grants the owner
+full access and nobody else any — **no rules change was needed or made.** Same `FoodItem` shape and
+same mapper, so the picker, meal editor, and solver treat them identically.
+
+`FoodCatalogController` loads them whole on each reset (a hand-typed collection is inherently
+small) and merges the ones matching the active filter ahead of the shared page; they carry a
+`خاص بك` badge and are the only rows that can be deleted (long-press, with a confirm). The
+`listPersonal` read is deliberately unfiltered and unordered — filtering server-side would buy
+nothing at this size and would cost a composite index. `nameNormalized` is generated with the new
+shared `foldArabic`, which `normalizeFoodSearchToken` now also uses, so a hand-created component
+is findable by exactly the search that finds a migrated one; a test pins that.
 
 Read this first, then `general.md`, then the `stepN.md` for whatever step is current.
 If you are a fresh agent picking this up: **everything you need is in this directory.** Do not

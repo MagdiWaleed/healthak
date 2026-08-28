@@ -54,18 +54,40 @@ class DayRepository {
     return _refs.firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(ref);
       final current = snapshot.data();
+      // Equality, not `>=`. This is a content fingerprint, not a counter --
+      // it has no ordering, so "greater or equal" was never a meaningful test
+      // of freshness: roughly half the time a *stale* stored value compared
+      // greater than a current one and materialization was skipped, and the
+      // other half an *unchanged* schedule compared lower and the day was
+      // needlessly rebuilt.
       if (current != null &&
-          current.materializedFromScheduleVersion >= scheduleVersion) {
+          current.materializedFromScheduleVersion == scheduleVersion) {
         return current;
       }
 
       var day = current ?? DayLog.empty(date, targets);
+      // What the user has already ticked off has to survive a
+      // re-materialization. Rebuilding a scheduled row from its schedule item
+      // produces a fresh entry with `eaten: false` and a new uuid, so without
+      // this, any genuine schedule edit -- adding tomorrow's lunch, reordering
+      // -- would silently un-tick everything eaten so far today.
+      //
+      // This does not weaken the daily reset: a new day has no document, so
+      // there is nothing here to carry over and every entry still starts
+      // false, with no reset code to get wrong.
+      final previous = {
+        for (final entry in day.entries)
+          if (entry.origin == DayEntryOrigin.scheduled &&
+              entry.scheduleItemId != null)
+            entry.scheduleItemId!: entry,
+      };
       final retained = day.entries
           .where((entry) => entry.origin != DayEntryOrigin.scheduled);
       day = day.copyWith(
         entries: [
           ...retained,
-          for (final item in scheduled) _fromSchedule(item),
+          for (final item in scheduled)
+            _fromSchedule(item, previous: previous[item.id]),
         ],
         materializedFromScheduleVersion: scheduleVersion,
       );
@@ -106,14 +128,22 @@ class DayRepository {
     });
   }
 
-  DayEntry _fromSchedule(ScheduleItem item) => DayEntry(
-        entryId: _uuid.v4(),
+  /// Builds today's row for a scheduled item, carrying over [previous]'s
+  /// identity and eaten state when this day already had a row for it.
+  ///
+  /// Reusing the entryId matters as much as the flag: entries are addressed by
+  /// localId everywhere (list keys, an in-flight eat toggle, a `Dismissible`),
+  /// so minting a new one mid-session would repoint all of them.
+  DayEntry _fromSchedule(ScheduleItem item, {DayEntry? previous}) => DayEntry(
+        entryId: previous?.entryId ?? _uuid.v4(),
         origin: DayEntryOrigin.scheduled,
         scheduleItemId: item.id,
         sourceMealId: item.mealId,
         name: item.name,
         slot: item.slot,
         order: item.order,
+        eaten: previous?.eaten ?? false,
+        eatenAt: previous?.eatenAt,
         items: item.snapshot,
       );
 }

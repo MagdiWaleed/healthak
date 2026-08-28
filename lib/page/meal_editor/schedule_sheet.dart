@@ -4,6 +4,7 @@ import '../../domain/day/day_log.dart';
 import '../../domain/schedule/schedule_item.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/glass/glass_sheet.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 
@@ -23,10 +24,8 @@ class ScheduleSheet extends StatefulWidget {
   const ScheduleSheet({super.key});
 
   static Future<ScheduleChoice?> show(BuildContext context) =>
-      showModalBottomSheet<ScheduleChoice>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
+      GlassSheet.show<ScheduleChoice>(
+        context,
         builder: (_) => const ScheduleSheet(),
       );
 
@@ -41,36 +40,16 @@ class _ScheduleSheetState extends State<ScheduleSheet> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    return Padding(
-      padding: EdgeInsets.only(top: media.padding.top + 160),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppSpacing.radiusLg)),
-        child: DecoratedBox(
-          decoration:
-              BoxDecoration(color: AppPalette.surface.withValues(alpha: .97)),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md,
-                AppSpacing.md, media.padding.bottom + AppSpacing.md),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .25),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const Text('إضافة للجدول',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 17,
-                        color: AppPalette.text)),
-                const SizedBox(height: AppSpacing.md),
+    return GlassSheet(
+      title: 'إضافة للجدول',
+      topInset: 160,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md,
+            AppSpacing.md, media.padding.bottom + AppSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                 const Text('الوقت', style: TextStyle(color: AppPalette.muted)),
                 const SizedBox(height: AppSpacing.xs),
                 Wrap(
@@ -119,9 +98,7 @@ class _ScheduleSheetState extends State<ScheduleSheet> {
                             ScheduleChoice(slot: _slot, daysOfWeek: _days),
                           ),
                 ),
-              ],
-            ),
-          ),
+          ],
         ),
       ),
     );
