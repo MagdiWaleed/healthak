@@ -1078,6 +1078,29 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 - Emulator visual QA on `emulator-5554` confirmed the floating snackbar clears the bottom nav
   and FAB, keeps RTL layout, and reads as the same Living Glass material as the shell.
 
+### Shared specular-light navigation sweep (2026-08-29)
+
+- `GlassScaffold` now gives its existing screen-scoped specular light source one 360-degree
+  perimeter sweep when a route arrives. Device feedback showed the original 280ms ease-out
+  compressed most of the orbit into a flash; it is now a non-blocking 650ms custom ease-in-out
+  material sweep and lands at the identical physical light angle, so there is no final-frame
+  snap.
+- Shell tab navigation passes `lightEventKey: tabIndex`, replaying that same material response
+  while preserving the tab `IndexedStack`, Firestore subscriptions, and scroll positions. If a
+  second navigation happens during the sweep it joins the active controller instead of
+  restarting or stacking repaint work.
+- Scrolling continues to refract that same one-per-screen light angle by the Kimi token
+  (`refractionShift`), publishing only after a 2-degree change. The first pass incorrectly used
+  the 2px physical-source shift directly as 2 degrees per 100px; a 9x angular conversion now
+  makes that 18 degrees per 100px, so ordinary drags visibly move the 30-degree highlight.
+  Today's repeated entry cards add an 8-degree positional phase per row, placing each next
+  highlight slightly farther to the right instead of forming a rigid vertical line. This is
+  still one shared notifier with no per-card controller, blur, layout animation, or loop; each
+  `SpecularBorder` remains isolated by its existing `RepaintBoundary`.
+- Route, tab-replay, scroll, and reduced-motion behavior are pinned in
+  `test/ui/glass_scaffold_specular_test.dart`. OS reduced-motion disables both the entrance
+  sweep and scroll-linked movement.
+
 ### Deviations specific to Step 2 (also folded into the table below)
 
 - **`AsyncView<T>` not used in the food catalog.** It models loading/data/error as three

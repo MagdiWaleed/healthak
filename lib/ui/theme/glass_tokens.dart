@@ -13,7 +13,16 @@ abstract final class GlassTokens {
 
   static const specularSweepDeg = 30.0;
   static const innerGlowAlpha = .06;
+
+  /// Kimi's physical light-source shift per 100px of scroll.
   static const refractionShift = 2.0;
+
+  /// Converts that source displacement into the border painter's angular
+  /// coordinate. Treating [refractionShift] itself as degrees made a normal
+  /// 100px drag move the highlight only 2 degrees -- less than a tenth of its
+  /// own 30-degree width, so it looked stationary.
+  static const refractionAngleGain = 9.0;
+  static const listSpecularStepDeg = 8.0;
   static const pressedTintDelta = .05;
 
   static double topTint(GlassElevation level) => switch (level) {

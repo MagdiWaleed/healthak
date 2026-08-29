@@ -24,12 +24,14 @@ class SpecularBorder extends StatelessWidget {
   final Widget child;
   final BorderRadius borderRadius;
   final double intensity;
+  final double angleOffsetDegrees;
 
   const SpecularBorder({
     required this.child,
     required this.borderRadius,
     super.key,
     this.intensity = 1,
+    this.angleOffsetDegrees = 0,
   });
 
   @override
@@ -41,6 +43,7 @@ class SpecularBorder extends StatelessWidget {
           foregroundPainter: _SpecularBorderPainter(
             borderRadius: borderRadius,
             intensity: intensity,
+            angleDegrees: -135 + angleOffsetDegrees,
           ),
           child: child,
         ),
@@ -54,7 +57,7 @@ class SpecularBorder extends StatelessWidget {
           foregroundPainter: _SpecularBorderPainter(
             borderRadius: borderRadius,
             intensity: intensity,
-            angleDegrees: value,
+            angleDegrees: value + angleOffsetDegrees,
           ),
           child: child,
         ),

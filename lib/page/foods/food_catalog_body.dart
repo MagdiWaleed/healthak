@@ -11,6 +11,7 @@ import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/app_typography.dart';
+import '../../ui/theme/glass_tokens.dart';
 import 'component_editor_sheet.dart';
 import 'food_catalog_controller.dart';
 
@@ -190,6 +191,7 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
                     maxStaggered: 6,
                     child: _FoodRow(
                       food: food,
+                      specularIndex: index,
                       mine: c.isPersonal(food),
                       onTap: () =>
                           (widget.onSelect ?? widget.onOpenDetail)?.call(food),
@@ -238,9 +240,11 @@ class _FoodRow extends StatelessWidget {
   /// catalog. Only these can be deleted, and only these get the badge.
   final bool mine;
   final VoidCallback? onDelete;
+  final int specularIndex;
 
   const _FoodRow({
     required this.food,
+    required this.specularIndex,
     this.onTap,
     this.mine = false,
     this.onDelete,
@@ -248,6 +252,8 @@ class _FoodRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GlassCard(
+        specularAngleOffset:
+            specularIndex * GlassTokens.listSpecularStepDeg,
         onTap: onTap,
         onLongPress: onDelete == null ? null : () => _confirmDelete(context),
         child: Row(

@@ -13,6 +13,7 @@ import '../../ui/motion/navigation.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
+import '../../ui/theme/glass_tokens.dart';
 import '../meal_editor/meal_editor_screen.dart';
 import 'my_meals_controller.dart';
 
@@ -154,7 +155,11 @@ class _LibraryView extends StatelessWidget {
                   ),
                 ),
                 onDismissed: (_) => controller.deleteMeal(meal.id),
-                child: _MealCard(meal: meal, onTap: () => onOpen(meal.id)),
+                child: _MealCard(
+                  meal: meal,
+                  specularIndex: index,
+                  onTap: () => onOpen(meal.id),
+                ),
               ),
             );
           },
@@ -165,11 +170,18 @@ class _LibraryView extends StatelessWidget {
 class _MealCard extends StatelessWidget {
   final MealDefinition meal;
   final VoidCallback onTap;
+  final int specularIndex;
 
-  const _MealCard({required this.meal, required this.onTap});
+  const _MealCard({
+    required this.meal,
+    required this.onTap,
+    required this.specularIndex,
+  });
 
   @override
   Widget build(BuildContext context) => GlassCard(
+        specularAngleOffset:
+            specularIndex * GlassTokens.listSpecularStepDeg,
         onTap: onTap,
         child: Row(
           children: [
@@ -230,6 +242,7 @@ class _ScheduleView extends StatelessWidget {
             message: 'أضف وجبة من مكتبتك لجدولك اليومي',
           );
         }
+        var specularIndex = 0;
         return ListView(
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.md, AppSpacing.md, AppSpacing.md, 120),
@@ -245,7 +258,11 @@ class _ScheduleView extends StatelessWidget {
                         ?.copyWith(color: AppPalette.emerald)),
               ),
               for (final item in controller.forSlot(slot)) ...[
-                _ScheduleCard(controller: controller, item: item),
+                _ScheduleCard(
+                  controller: controller,
+                  item: item,
+                  specularIndex: specularIndex++,
+                ),
                 const SizedBox(height: AppSpacing.sm),
               ],
             ],
@@ -257,11 +274,18 @@ class _ScheduleView extends StatelessWidget {
 class _ScheduleCard extends StatelessWidget {
   final MyMealsController controller;
   final ScheduleItem item;
+  final int specularIndex;
 
-  const _ScheduleCard({required this.controller, required this.item});
+  const _ScheduleCard({
+    required this.controller,
+    required this.item,
+    required this.specularIndex,
+  });
 
   @override
   Widget build(BuildContext context) => GlassCard(
+        specularAngleOffset:
+            specularIndex * GlassTokens.listSpecularStepDeg,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

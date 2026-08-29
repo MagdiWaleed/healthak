@@ -21,6 +21,11 @@ class GlassCard extends StatelessWidget {
   final BorderRadius borderRadius;
   final GlassElevation elevation;
 
+  /// A positional phase for repeated cards. List builders can advance this
+  /// slightly per row so one physical light source lands farther along each
+  /// successive rounded edge without creating per-card controllers.
+  final double specularAngleOffset;
+
   /// Lifts the tint and edge. Use for the one card that should draw the eye.
   final bool highlighted;
 
@@ -40,6 +45,7 @@ class GlassCard extends StatelessWidget {
     this.highlighted = false,
     this.elevation = GlassElevation.card,
     this.tint,
+    this.specularAngleOffset = 0,
   });
 
   @override
@@ -62,6 +68,7 @@ class GlassCard extends StatelessWidget {
           // child that fills the card, such as an image.
           borderRadius: borderRadius,
           intensity: GlassTokens.borderIntensity(effectiveElevation),
+          angleOffsetDegrees: specularAngleOffset,
           child: Stack(
             children: [
               const Positioned.fill(

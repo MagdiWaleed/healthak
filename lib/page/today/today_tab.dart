@@ -17,6 +17,7 @@ import '../../ui/motion/celebration.dart';
 import '../../ui/motion/eat_toggle/eat_check.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
+import '../../ui/theme/glass_tokens.dart';
 import '../../ui/theme/mood_palette.dart';
 import '../../ui/theme/motion_settings.dart';
 import 'edit_entry_sheet.dart';
@@ -224,6 +225,7 @@ class _TodayTabState extends State<TodayTab> {
     final readOnly =
         !controller.isViewingToday && !controller.editingPast.value;
 
+    var specularIndex = 0;
     final sections = <Widget>[
       const SizedBox(key: ValueKey('spacer-header'), height: AppSpacing.lg),
       for (final slot in day.activeSlots) ...[
@@ -244,7 +246,12 @@ class _TodayTabState extends State<TodayTab> {
             // where a row disappears under it.
             stackTop: _TodayRingHeaderDelegate.collapsedExtent + 8,
             child: _EntryTile(
-                controller: controller, entry: entry, readOnly: readOnly),
+              controller: controller,
+              entry: entry,
+              readOnly: readOnly,
+              specularAngleOffset:
+                  specularIndex++ * GlassTokens.listSpecularStepDeg,
+            ),
           ),
           SizedBox(
               key: ValueKey('spacer-entry-${entry.entryId}'),
@@ -828,6 +835,7 @@ class _EntryTile extends StatelessWidget {
   /// -- and false again once that day is deliberately unlocked for
   /// correction.
   final bool readOnly;
+  final double specularAngleOffset;
 
   // No `key`: the list's stable key now lives on the `StackingCard` that
   // wraps this, which is the widget the sliver actually recycles.
@@ -835,6 +843,7 @@ class _EntryTile extends StatelessWidget {
     required this.controller,
     required this.entry,
     required this.readOnly,
+    required this.specularAngleOffset,
   });
 
   @override
@@ -865,6 +874,7 @@ class _EntryTile extends StatelessWidget {
                 );
               },
         child: GlassCard(
+          specularAngleOffset: specularAngleOffset,
           // The read-only treatment: a green-tinted glass body instead of a
           // checkbox that looks tappable but isn't -- the surface itself
           // says "locked", nothing pretending to be a control.
