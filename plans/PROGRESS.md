@@ -26,6 +26,68 @@ say so plainly. The same card now appears above the profile target diff and repl
 onboarding target preview, with live ticker values as the inputs change. Full analyzer/test/APK
 validation is still pending alongside Workstream A for the same local analyzer-process reason.
 
+**Side Plan 2 (Workstream C, started):** Added the pure-Dart cost vocabulary in
+`lib/domain/nutrition/cost.dart` with coverage, known-total, missing-price, and explicit-skip
+semantics, plus focused unit tests. The next slice is the local `PriceBook`, then the read-only
+cost aggregation/controller and UI. This does not overlap the current uncommitted today-target
+refresh fix in `DayRepository` / `TodayController`.
+
+Workstream C now also merges frozen day leaves by `foodId` before a caller resolves local
+override/catalog prices, so multiple uses of one food become one price-editable line. `PriceBook`
+persists price overrides, currency, and intentional skips locally with focused tests; no
+Firestore data shape was added.
+
+`CostController` now composes the current frozen day, the active weekly schedule, and the
+30.4-day monthly estimate; catalog prices are read-only fallbacks beneath local overrides.
+The budget screen is finished and wired at `/cost`, reached from the Account list beside
+السجل and تصفح المكوّنات — **not** the fifth shell tab it was first built as. The plan
+(sideplan2 C.3) required confirming the tab count with the boss first, and the nav bar's Row is
+four `Expanded` destinations plus a fixed 64px FAB notch: a fifth leaves ~51dp per destination
+on a 360dp screen and less than the icon pill needs below that, so the documented fallback
+placement was taken instead. Moving it back is one route entry away if the boss wants the tab.
+
+`CostController` was rewritten from the first pass: `refresh` renamed to `reload` (it was
+shadowing `GetxController.refresh`), the `late PriceBook` + `try/catch`-on-`LateInitializationError`
+guard replaced with a plain nullable, catalog prices fetched once with `Future.wait` instead of
+one sequential round trip per component per reload, an epoch guard added (the day stream and the
+period chips can both fire a reload across an `await`, and the later result must win), and an
+error path added — a throw used to leave the spinner up forever. A day with nothing logged yet
+now falls back to the scheduled week scaled to one day rather than reporting that the diet costs
+nothing, and the week composition adds this week's one-shot entries while skipping materialized
+scheduled ones, which the schedule already accounts for. The screen carries the period chips,
+the total hero with its coverage line and estimate caption, staggered priced rows, the «بلا سعر»
+section with its count badge and تخطَّ action, an empty state, and currency editing through
+`GlassSheet`.
+
+A skip is now reversible: `PriceBook.unskip` plus a `CostController.unskip`, and the row's
+action slot flips from تخطَّ to an amber undo once skipped. Previously the only way out of a
+skip was to invent a price, which is exactly what the skip marker exists to avoid.
+
+**Found on device and fixed:** switching period changed the heading instantly (it reads
+`period.value`) but the figures could not change until a schedule read and a day-range read came
+back, so the screen spent that window showing a week's totals under the شهر heading — the same
+class of stale-state bug as the Today tab's day-switch flash. `CostController.renderedPeriod`
+records which period the numbers in `components` were computed for, and `isStale` drives a
+`LinearProgressIndicator` under the chips plus a 35% fade over the whole body, so an outgoing
+period's numbers are never presented as the incoming one's.
+
+**Crash on cancelling the currency sheet, found on device.**
+`'_dependents.isEmpty': is not true` (`InheritedElement.debugDeactivated`), every time the
+sheet was dismissed. `_editCurrency` owned the `TextEditingController` and disposed it as soon
+as `GlassSheet.show`'s future resolved -- but that future completes when the pop *starts*, so
+the controller was torn out from under a `TextField` still mounted for the exit animation.
+Replaced with a `_CurrencySheet` `StatefulWidget` that disposes in its own `dispose`, where the
+ordering cannot be got wrong. Audited every other `TextEditingController` in `lib/page` and
+`lib/ui`: all the rest are owned by a `State` or a GetX controller with a matching dispose, so
+this was the only instance.
+
+**Device verification (emulator-5554):** priced four components with dummy values
+(12 / 8 / 6 / 25 per 100g). يوم 266 ج.م from the day log; أسبوع 1358 from the schedule with the
+«من جدولك الأسبوعي» caption; شهر 5898 = 1358 x 30.4/7 with the estimate caption. Coverage line
+tracked 0→4 of 5 and the «بلا سعر» badge counted down 5→1. Prices survived leaving and
+re-entering the screen (SharedPreferences). Skip and un-skip both round-tripped. Currency editing verified in both directions: cancelling
+is clean, and saving re-labels the hero and every row (ج.م -> SAR).
+
 **Living Glass:** Kimi's Phase 1 foundations are implemented: shared springs, haptics, mood
 tokens, reduced-motion gate, ticker number, and the requested glass/typography/copy tokens.
 They remain deliberately opt-in apart from routing existing haptics and `Pressable` through the
@@ -841,6 +903,17 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   snacks and pops. The profile screen showed "تم حفظ التغييرات" and stayed on the form, which
   reads as the save not having taken. It now pops on success and stays put on failure so the
   input is not lost.
+
+- **A new calorie target did not reach the Today ring.** `DayLog` freezes its `targets` so that
+  editing a goal never rewrites history, and only `ensureDay` rebuilds a day — but its early-out
+  compared the schedule fingerprint alone, so a profile save left today's document holding the
+  old targets until the next midnight produced a fresh one. `ensureDay` now treats targets as
+  part of the freshness test and writes them through; the frozen-history guarantee is unaffected
+  because `TodayController` only ever calls it for today. `TodayController` also watches
+  `_session.profile` and re-materializes when the targets differ (compared first — the day
+  stream re-emits on every eat toggle, and an unconditional call would be a transaction per
+  emission). That also closes a cold-start gap where the profile arrived after the first
+  `selectDate` and nothing materialized.
 
 ### Deviations specific to Step 2 (also folded into the table below)
 

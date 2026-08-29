@@ -11,6 +11,7 @@ import '../../domain/meal/meal_definition.dart';
 import '../../domain/meal/meal_math.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../domain/nutrition/macros.dart';
+import '../../domain/profile/user_profile.dart';
 import '../../service/session_controller.dart';
 import '../../ui/feedback/haptics.dart';
 import '../../ui/theme/mood_palette.dart';
@@ -150,6 +151,11 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _scheduleRollover();
     _watchWeek();
+    // A target saved on the profile screen has to reach today's ring now,
+    // not at the next midnight. Today's document holds a frozen copy of the
+    // targets (so that editing a goal never rewrites history), and only
+    // `ensureDay` refreshes it.
+    ever(_session.profile, _onProfileChanged);
     selectDate(DateTime.now());
   }
 
@@ -202,6 +208,19 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     // than trust it, and re-arm it for the next boundary.
     _refreshToday();
     _scheduleRollover();
+  }
+
+  void _onProfileChanged(UserProfile? profile) {
+    if (profile == null || !_isToday(selectedDate.value)) return;
+    // Compare before writing: the day stream re-emits on every eat toggle,
+    // and an unconditional `ensureDay` here would be a transaction per
+    // profile emission for no change at all.
+    if (day.value?.targets == profile.targets) return;
+    unawaited(_materializeToday(
+      date: selectedDate.value,
+      targets: profile.targets,
+      epoch: _selectionEpoch,
+    ));
   }
 
   void ensureCurrentDay() {

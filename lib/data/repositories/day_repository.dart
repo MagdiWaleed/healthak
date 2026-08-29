@@ -72,8 +72,15 @@ class DayRepository {
       // greater than a current one and materialization was skipped, and the
       // other half an *unchanged* schedule compared lower and the day was
       // needlessly rebuilt.
+      //
+      // Targets are part of the freshness test as well as the schedule.
+      // A day's targets are frozen so that editing a goal never rewrites
+      // history -- but *today* is not history, and without this a new
+      // calorie target saved on the profile screen did not reach the ring
+      // until the next midnight produced a fresh document.
       if (current != null &&
-          current.materializedFromScheduleVersion == scheduleVersion) {
+          current.materializedFromScheduleVersion == scheduleVersion &&
+          current.targets == targets) {
         return current;
       }
 
@@ -96,6 +103,7 @@ class DayRepository {
       final retained = day.entries
           .where((entry) => entry.origin != DayEntryOrigin.scheduled);
       day = day.copyWith(
+        targets: targets,
         entries: [
           ...retained,
           for (final item in scheduled)

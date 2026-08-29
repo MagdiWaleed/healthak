@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../page/cost/cost_screen.dart';
 import '../page/dev/gallery_screen.dart';
 import '../page/foods/food_catalog_screen.dart';
 import '../page/guest/guest_preview_screen.dart';
@@ -11,6 +12,7 @@ import '../page/profile/profile_screen.dart';
 import '../page/splash/splash_screen.dart';
 import '../ui/motion/transitions.dart';
 import 'app_routes.dart';
+import 'bindings/cost_binding.dart';
 import 'bindings/food_catalog_binding.dart';
 import 'bindings/home_binding.dart';
 import 'bindings/onboarding_binding.dart';
@@ -36,6 +38,7 @@ abstract final class AppPages {
     _page(AppRoutes.history, () => const HistoryScreen()),
     _page(AppRoutes.foods, () => const FoodCatalogScreen(),
         binding: FoodCatalogBinding()),
+    _page(AppRoutes.cost, () => const CostScreen(), binding: CostBinding()),
   ];
 
   static GetPage<dynamic> _page(

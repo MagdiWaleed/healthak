@@ -280,6 +280,12 @@ class _AccountTab extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           _AccountRow(
+            icon: Icons.payments_outlined,
+            label: 'الميزانية',
+            onTap: () => Get.toNamed(AppRoutes.cost),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _AccountRow(
             icon: Icons.palette_outlined,
             label: 'معرض التصميم',
             onTap: onGallery,

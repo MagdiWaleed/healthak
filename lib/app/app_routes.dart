@@ -7,4 +7,5 @@ abstract final class AppRoutes {
   static const profile = '/profile';
   static const history = '/history';
   static const foods = '/foods';
+  static const cost = '/cost';
 }
