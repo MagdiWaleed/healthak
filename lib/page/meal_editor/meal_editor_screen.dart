@@ -91,7 +91,7 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
 
   Future<void> _balance() => BalanceSheet.show(context, controller);
 
-  Future<void> _save({bool pop = true}) async {
+  Future<void> _save() async {
     if (controller.name.value.trim().isEmpty) {
       _snack('أدخل اسماً للوجبة أولاً');
       return;
@@ -135,10 +135,12 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
       }
     }
 
-    if (pop && mounted) {
-      _snack('تم حفظ الوجبة');
-      Get.back(result: saved);
-    }
+    if (!mounted) return;
+    // Saving finishes the job the screen exists for, so it leaves. The
+    // app-bar check used to save in place with no snack and no navigation,
+    // which was indistinguishable from the tap doing nothing at all.
+    _snack('تم حفظ الوجبة');
+    Get.back(result: saved);
   }
 
   Future<void> _addToToday() async {
@@ -198,7 +200,7 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2.4)),
                   )
                 : IconButton(
-                    onPressed: () => _save(pop: false),
+                    onPressed: _save,
                     icon: const Icon(Icons.check_rounded),
                     tooltip: 'حفظ',
                   )),

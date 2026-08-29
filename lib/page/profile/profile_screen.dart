@@ -7,6 +7,7 @@ import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/components/energy_breakdown_card.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/theme/app_colors.dart';
@@ -46,8 +47,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final ok = await controller.save();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok ? 'تم حفظ التغييرات' : (controller.error.value ?? 'تعذر الحفظ')),
+      content: Text(
+          ok ? 'تم حفظ التغييرات' : (controller.error.value ?? 'تعذر الحفظ')),
     ));
+    // A successful save leaves nothing to do here. Staying on a form that has
+    // just been committed reads as "it didn't take" -- everywhere else in the
+    // app (the meal editor, every sheet) a confirmed action closes what it
+    // was performed in. A failure keeps the screen so the input is not lost.
+    if (ok) Get.back();
   }
 
   Future<void> _confirmDelete() async {
@@ -80,14 +87,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('البيانات الجسدية', style: Theme.of(context).textTheme.titleMedium),
+                  Text('البيانات الجسدية',
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.sm),
                   Row(children: [
                     Expanded(
                       child: TextField(
                         controller: controller.height,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'الطول (سم)'),
+                        decoration:
+                            const InputDecoration(labelText: 'الطول (سم)'),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -95,7 +104,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: TextField(
                         controller: controller.weight,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'الوزن (كغ)'),
+                        decoration:
+                            const InputDecoration(labelText: 'الوزن (كغ)'),
                       ),
                     ),
                   ]),
@@ -134,7 +144,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('مستوى النشاط', style: Theme.of(context).textTheme.titleMedium),
+                  Text('مستوى النشاط',
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.xs),
                   Obx(() => Wrap(
                         spacing: 8,
@@ -173,17 +184,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+            _RateCard(controller: controller),
+            const SizedBox(height: AppSpacing.md),
+            Obx(() {
+              final profile = controller.previewProfile;
+              return profile == null
+                  ? const SizedBox.shrink()
+                  : EnergyBreakdownCard(profile: profile);
+            }),
+            const SizedBox(height: AppSpacing.md),
             _TargetPreview(controller: controller),
             const SizedBox(height: AppSpacing.md),
             Obx(() => GlassButton(
-                  label: controller.saving.value ? '...جارٍ الحفظ' : 'حفظ التغييرات',
+                  label: controller.saving.value
+                      ? '...جارٍ الحفظ'
+                      : 'حفظ التغييرات',
                   onPressed: controller.saving.value ? null : _save,
                 )),
             const SizedBox(height: AppSpacing.xxl),
             Center(
               child: TextButton.icon(
                 onPressed: _confirmDelete,
-                icon: const Icon(Icons.delete_forever_outlined, color: AppPalette.danger),
+                icon: const Icon(Icons.delete_forever_outlined,
+                    color: AppPalette.danger),
                 label: const Text('حذف الحساب نهائياً',
                     style: TextStyle(color: AppPalette.danger)),
               ),
@@ -191,6 +214,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       );
+}
+
+/// How hard the cut (or bulk) is, set in the unit people actually think in
+/// -- kcal off the daily target -- with the resulting weight change spelled
+/// out in kilograms so the number means something.
+///
+/// The two are one value in two units: the slider writes
+/// `controller.dailyDelta`, which is `weeklyRateKg` converted through
+/// [kKcalPerKg]. Nothing here recomputes the target itself.
+class _RateCard extends StatelessWidget {
+  final ProfileController controller;
+  const _RateCard({required this.controller});
+
+  /// 1 kg/week is 1100 kcal/day, past which the energy floor would clamp
+  /// almost everyone anyway. Divisible by the 50 kcal step.
+  static const _maxDelta = 1100.0;
+
+  @override
+  Widget build(BuildContext context) => Obx(() {
+        final goal = controller.goal.value;
+        if (goal == Goal.maintain) {
+          return const GlassCard(
+            child: Text(
+              'الهدف هو الحفاظ على الوزن، لا يوجد عجز أو فائض يومي',
+              style: TextStyle(color: AppPalette.muted),
+            ),
+          );
+        }
+
+        final cutting = goal == Goal.cut;
+        final delta = controller.dailyDelta.clamp(0.0, _maxDelta);
+        // The rate the target actually delivers, not the one requested --
+        // the energy floor can clamp an aggressive cut down.
+        final effective = controller.effectiveWeeklyKg;
+        final weekly = effective?.abs() ?? controller.weeklyRate.value;
+
+        return GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(cutting ? 'العجز اليومي' : 'الفائض اليومي',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text('${delta.round()}',
+                      style: Theme.of(context).textTheme.displaySmall),
+                  const SizedBox(width: 6),
+                  const Text('سعرة/يوم',
+                      style: TextStyle(color: AppPalette.muted)),
+                ],
+              ),
+              Slider(
+                value: delta,
+                min: 0,
+                max: _maxDelta,
+                divisions: (_maxDelta / 50).round(),
+                label: '${delta.round()} سعرة',
+                activeColor: AppPalette.emerald,
+                onChanged: (value) => controller.dailyDelta = value,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                cutting
+                    ? 'ستفقد حوالي ${weekly.toStringAsFixed(2)} كغ أسبوعياً'
+                    : 'ستزيد حوالي ${weekly.toStringAsFixed(2)} كغ أسبوعياً',
+                style: const TextStyle(
+                    color: AppPalette.emerald, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'أي ${(weekly * 30 / 7).toStringAsFixed(1)} كغ في الشهر  •  '
+                '${(weekly * 365 / 7).toStringAsFixed(0)} كغ في السنة',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              if (controller.rateWasClamped) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'العجز المطلوب يخفض السعرات تحت الحد الآمن، '
+                  'لذلك تم تقليله إلى ما هو معروض أعلاه',
+                  style: const TextStyle(color: AppPalette.amber)
+                      .copyWith(fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+        );
+      });
 }
 
 /// The before/after banner -- the requirement that made this screen more
@@ -216,7 +329,8 @@ class _TargetPreview extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('الهدف الجديد', style: TextStyle(color: AppPalette.muted)),
+              const Text('الهدف الجديد',
+                  style: TextStyle(color: AppPalette.muted)),
               const SizedBox(height: 4),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -231,7 +345,8 @@ class _TargetPreview extends StatelessWidget {
                     Text(
                       '${increased ? '+' : ''}${delta.round()}',
                       style: TextStyle(
-                        color: increased ? AppPalette.amber : AppPalette.emerald,
+                        color:
+                            increased ? AppPalette.amber : AppPalette.emerald,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -294,7 +409,8 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             onPressed: _text.text.trim() == _phrase
                 ? () => Navigator.of(context).pop(true)
                 : null,
-            child: const Text('حذف', style: TextStyle(color: AppPalette.danger)),
+            child:
+                const Text('حذف', style: TextStyle(color: AppPalette.danger)),
           ),
         ],
       );

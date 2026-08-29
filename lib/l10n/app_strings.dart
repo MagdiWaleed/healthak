@@ -33,6 +33,28 @@ abstract final class AppStrings {
   static const retry = 'إعادة المحاولة';
   static const newDay = 'يوم جديد';
   static const emptyDay = 'لم يُسجَّل أي شيء في هذا اليوم';
+  static const protein = 'بروتين';
+  static const carbs = 'كارب';
+  static const fat = 'دهون';
+  static const grams = 'ج';
+  static const macroConsumed = 'المأكول';
+  static const macroPlanned = 'المخطط';
+  static const macroProgressToggle = 'التبديل بين المأكول والمخطط';
+  static const kcal = 'سعرة';
+  static const energyBreakdownTitle = 'من أين جاء رقمك؟';
+  static const energyBmr = 'معدل الحرق الأساسي (BMR)';
+  static const energyBmrDetail = 'جسمك يحرقها وأنت نائم';
+  static const energyTdeeDetail = 'احتراقك الكلي اليومي';
+  static const energyAdjustmentDetail = 'التعديل للوصول إلى هدفك';
+  static const energyTarget = 'هدفك اليومي';
+  static const energyTargetDetail = 'السعرات المقترحة ليومك';
+  static const energyExplanation =
+      'تنقص سعراتك عن احتراقك الكلي، لا عن معدل الحرق الأساسي.';
+  static const energyManualTitle = 'هدفك اليومي اليدوي';
+  static const energyManualDescription = 'أدخلت هذا الهدف يدويًا.';
+  static String energyActivity(String activity) => '× $activity';
+  static String energyWeeklyGoal(String goal, double rate) =>
+      '$goal ${rate.toStringAsFixed(2)} كجم/أسبوع';
   static const goalReached = [
     'وصلت لهدفك اليوم! 🎯',
     'يوم مثالي، استمر!',

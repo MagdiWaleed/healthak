@@ -9,6 +9,23 @@ is deleted. Not yet committed to git; not yet walked by hand on a device/emulato
 **Side Plan 1:** the first-launch guest preview is complete. It is local and read-only; see
 `sideplan1_guest_mode.md`.
 
+**Side Plan 2 (started, Workstream A):** Today now has a filter-free
+`MacroNumbersPanel` directly below the calorie ring. It presents protein, carbs, and fat as
+exact consumed/target grams with the same emerald/amber/violet mapping as the ring, a
+direction-aware `TickerNumber`, and a planned-versus-consumed toggle. `MacroBar` now supports
+the specified faded planned extension and 60ms staggered fills without adding blur or packages.
+The panel fades out with the pinned ring header's existing collapse. Automated validation is
+still pending: the local Flutter/Dart analyzer processes were already occupied and produced no
+completion result during this handoff, so this slice is not yet marked verified.
+
+**Side Plan 2 (Workstream B, implementation complete pending validation):** Added
+`EnergyBreakdownCard`, a presentational BMR → activity-adjusted total burn → goal adjustment
+→ daily-target chain. It uses the existing `bmrMifflinStJeor`, `tdee`, and frozen
+`NutritionTargets` values rather than changing or duplicating nutrition logic; manual targets
+say so plainly. The same card now appears above the profile target diff and replaces the bare
+onboarding target preview, with live ticker values as the inputs change. Full analyzer/test/APK
+validation is still pending alongside Workstream A for the same local analyzer-process reason.
+
 **Living Glass:** Kimi's Phase 1 foundations are implemented: shared springs, haptics, mood
 tokens, reduced-motion gate, ticker number, and the requested glass/typography/copy tokens.
 They remain deliberately opt-in apart from routing existing haptics and `Pressable` through the
@@ -801,6 +818,29 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   .loggedDayKeys`, and the strip renders only those days plus today and the current selection,
   so it can never become a strip with no way back. Re-subscribed on rollover only when the week
   itself changed.
+
+- **`Sex.preferNotToSay` removed.** It existed so the app could still compute *something*,
+  using the midpoint (-78) of the male/female Mifflin-St Jeor constants. Dropped at the user's
+  request. `ProfileMapper` falls back to `Sex.male` for profiles written before the change, since
+  the stored string no longer matches any enum value; the profile screen can correct it.
+- **The rate of loss is now editable, in kcal.** `weeklyRateKg` had no UI on the profile screen
+  at all — it was set once in onboarding from a `.25/.5/.75/1.0` dropdown and never revisited.
+  The profile screen now has a 0–1100 kcal/day slider (step 50) writing
+  `ProfileController.dailyDelta`, which is the same value as `weeklyRateKg` converted through
+  `kKcalPerKg`, not a second stored field. `dailyDeltaForWeeklyRate` / `weeklyRateForDailyDelta`
+  in `energy.dart` are the one pair of conversions, shared by `dailyTarget` and the UI.
+  Projections (kg/week, /month, /year) are computed from `effectiveWeeklyRateKg` — what the
+  finished target actually delivers — because `dailyTarget` clamps at the energy floor, so an
+  aggressive cut becomes a gentler one and showing the requested rate would be a lie. The card
+  says so explicitly when the clamp bites.
+
+- **Committing an action now leaves the screen it was performed on.** Two places broke the rule
+  every sheet in the app already followed. The meal editor's app-bar check called
+  `_save(pop: false)` — the *only* caller of that flag — so it saved with no snack and no
+  navigation, indistinguishable from the tap doing nothing; the flag is gone and `_save` always
+  snacks and pops. The profile screen showed "تم حفظ التغييرات" and stayed on the form, which
+  reads as the save not having taken. It now pops on success and stays put on failure so the
+  input is not lost.
 
 ### Deviations specific to Step 2 (also folded into the table below)
 

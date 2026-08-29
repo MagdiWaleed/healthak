@@ -24,7 +24,10 @@ class ProfileMapper {
       displayName: json['displayName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       photoUrl: json['photoUrl'] as String?,
-      sex: enumValue(Sex.values, json['sex'], Sex.preferNotToSay),
+      // Profiles written before `preferNotToSay` was dropped no longer
+      // match any enum value and land on this fallback. Male is the
+      // Mifflin-St Jeor default; the profile screen lets it be corrected.
+      sex: enumValue(Sex.values, json['sex'], Sex.male),
       birthYear: intValue(json['birthYear'], DateTime.now().year - 25),
       heightCm: doubleValue(json['heightCm']),
       weightKg: doubleValue(json['weightKg']),

@@ -9,6 +9,7 @@ import '../../service/auth_service.dart';
 import '../../ui/components/calorie_ring.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
+import '../../ui/components/macro_numbers_panel.dart';
 import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/staggered_entry.dart';
@@ -169,6 +170,14 @@ class _TodayTabState extends State<TodayTab> {
       const SizedBox(key: ValueKey('spacer-ring'), height: AppSpacing.md),
       _TargetSummary(
           key: const ValueKey('target-summary'), controller: controller),
+      const SizedBox(key: ValueKey('spacer-macro-progress'), height: AppSpacing.md),
+      MacroNumbersPanel(
+        key: const ValueKey('macro-progress'),
+        consumed: day.consumedTotals,
+        target: day.targets.macros,
+        planned: day.plannedTotals,
+        animationTrigger: controller.eatPulse.value,
+      ),
     ];
 
     // A `ListView` top-aligns short content, and the FAB is docked at a
@@ -321,7 +330,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
   double get minExtent => 108;
 
   @override
-  double get maxExtent => 520;
+  double get maxExtent => 650;
 
   @override
   Widget build(
@@ -391,6 +400,20 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
             child: Opacity(
               opacity: detailOpacity,
               child: const _RingLegend(),
+            ),
+          ),
+          Positioned(
+            left: 22,
+            right: 22,
+            top: 398,
+            child: Opacity(
+              opacity: detailOpacity,
+              child: MacroNumbersPanel(
+                consumed: day.consumedTotals,
+                target: day.targets.macros,
+                planned: day.plannedTotals,
+                animationTrigger: rippleTrigger,
+              ),
             ),
           ),
           Positioned(

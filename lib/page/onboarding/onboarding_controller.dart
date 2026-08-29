@@ -22,7 +22,7 @@ class OnboardingController extends GetxController {
   final collectingProfile = false.obs;
   final busy = false.obs;
   final error = RxnString();
-  final sex = Sex.preferNotToSay.obs;
+  final sex = Sex.male.obs;
   final activity = ActivityLevel.moderate.obs;
   final goal = Goal.maintain.obs;
   final weeklyRate = .5.obs;

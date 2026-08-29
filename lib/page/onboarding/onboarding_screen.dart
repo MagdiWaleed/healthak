@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/glass_button.dart';
+import '../../ui/components/energy_breakdown_card.dart';
 import '../../ui/components/glass_field.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
@@ -247,34 +248,23 @@ class _ProfileForm extends StatelessWidget {
         const SizedBox(height: 16),
         Obx(() {
           final targets = controller.previewTargets.value;
+          final year = int.tryParse(controller.birthYear.text);
+          final height = double.tryParse(controller.height.text);
+          final weight = double.tryParse(controller.weight.text);
           return AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
             child: targets == null
                 ? const SizedBox.shrink()
-                : Container(
+                : EnergyBreakdownCard.preview(
                     key: ValueKey(targets.kcal.round()),
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(children: [
-                      const Text('هدفك اليومي المحسوب'),
-                      Text(
-                        '${targets.kcal.round()} سعرة',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      Text(
-                        'بروتين ${targets.macros.protein.round()} ج  •  '
-                        'كربوهيدرات ${targets.macros.carbs.round()} ج  •  '
-                        'دهون ${targets.macros.fat.round()} ج',
-                        textAlign: TextAlign.center,
-                      ),
-                    ]),
+                    weightKg: weight!,
+                    heightCm: height!,
+                    ageYears: DateTime.now().year - year!,
+                    sex: controller.sex.value,
+                    activity: controller.activity.value,
+                    goal: controller.goal.value,
+                    weeklyRateKg: controller.weeklyRate.value,
+                    targets: targets,
                   ),
           );
         }),
