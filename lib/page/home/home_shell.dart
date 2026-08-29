@@ -5,6 +5,7 @@ import '../../app/app_routes.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_panel.dart';
 import '../../ui/glass/glass_scaffold.dart';
@@ -27,16 +28,18 @@ void _onFabPressed(BuildContext context, int tabIndex) {
       final today = Get.find<TodayController>();
       today.ensureCurrentDay();
       if (!today.canEditSelectedDay) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('اضغط "تعديل" أولاً لتصحيح يوم سابق')));
+        GlassSnackBar.show(
+          context,
+          'اضغط "تعديل" أولاً لتصحيح يوم سابق',
+          tone: GlassSnackTone.warning,
+        );
         return;
       }
       QuickAddSheet.show(context, today);
     case 1:
       pushHealthak(() => const MealEditorScreen());
     default:
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text(AppStrings.comingNext)));
+      GlassSnackBar.show(context, AppStrings.comingNext);
   }
 }
 

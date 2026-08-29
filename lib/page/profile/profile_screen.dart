@@ -8,6 +8,7 @@ import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/glass_chip.dart';
 import '../../ui/components/energy_breakdown_card.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/theme/app_colors.dart';
@@ -46,10 +47,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _save() async {
     final ok = await controller.save();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-          ok ? 'تم حفظ التغييرات' : (controller.error.value ?? 'تعذر الحفظ')),
-    ));
+    GlassSnackBar.show(
+      context,
+      ok ? 'تم حفظ التغييرات' : (controller.error.value ?? 'تعذر الحفظ'),
+      tone: ok ? GlassSnackTone.success : GlassSnackTone.error,
+    );
     // A successful save leaves nothing to do here. Staying on a form that has
     // just been committed reads as "it didn't take" -- everywhere else in the
     // app (the meal editor, every sheet) a confirmed action closes what it
@@ -67,8 +69,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final ok = await controller.deleteAccount();
     if (!mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(controller.error.value ?? 'تعذر حذف الحساب')));
+      GlassSnackBar.show(
+        context,
+        controller.error.value ?? 'تعذر حذف الحساب',
+        tone: GlassSnackTone.error,
+      );
       return;
     }
     await Get.find<AuthService>().signOut();

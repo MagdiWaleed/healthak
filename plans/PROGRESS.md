@@ -1062,6 +1062,22 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   Restored the original `light` profile and confirmed the live tab returned to `3120` / `2269`
   without restarting, again with all entries unchanged.
 
+### Glass snackbar system (2026-08-29)
+
+- Added one centralized `GlassSnackBar` treatment for info, success, warning, and error
+  feedback, including an in-surface action for undo. It uses the existing glass gradient,
+  specular edge, panel shadow, Cairo typography, and palette-specific icon/tint rather than the
+  default opaque Material bar.
+- The surface is deliberately filter-free `GlassCard`, not `GlassSurface`: a snackbar can be
+  visible beside the blurred header and bottom navigation, so another `BackdropFilter` would
+  exceed the project's two-filter budget. It remains floating, horizontally dismissible, and
+  replaces an existing snackbar instead of building a stale queue.
+- Migrated every `SnackBar`, `ScaffoldMessenger.showSnackBar`, and `Get.snackbar` caller in
+  `lib/` to the shared component. A widget test pins the glass surface, success icon, accessible
+  undo action, and absence of `BackdropFilter`.
+- Emulator visual QA on `emulator-5554` confirmed the floating snackbar clears the bottom nav
+  and FAB, keeps RTL layout, and reads as the same Living Glass material as the shell.
+
 ### Deviations specific to Step 2 (also folded into the table below)
 
 - **`AsyncView<T>` not used in the food catalog.** It models loading/data/error as three

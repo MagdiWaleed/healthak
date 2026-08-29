@@ -9,6 +9,7 @@ import '../../service/auth_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/gram_stepper.dart';
 import '../../ui/components/scale_stepper.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
@@ -73,11 +74,13 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
   }
 
   void _snack(String message, {VoidCallback? undo}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      action:
-          undo == null ? null : SnackBarAction(label: 'تراجع', onPressed: undo),
-    ));
+    GlassSnackBar.show(
+      context,
+      message,
+      tone: undo == null ? GlassSnackTone.warning : GlassSnackTone.success,
+      actionLabel: undo == null ? null : 'تراجع',
+      onAction: undo,
+    );
   }
 
   Future<void> _addFood() async {
@@ -677,8 +680,10 @@ class _ActionBar extends StatelessWidget {
                 ),
                 Expanded(
                   child: TextButton.icon(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text(AppStrings.comingNext))),
+                    onPressed: () => GlassSnackBar.show(
+                      context,
+                      AppStrings.comingNext,
+                    ),
                     icon: const Icon(Icons.storefront_outlined),
                     label: const Text('نشر'),
                   ),

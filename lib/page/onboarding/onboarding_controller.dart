@@ -8,6 +8,7 @@ import '../../data/repositories/profile_repository.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../domain/profile/user_profile.dart';
 import '../../service/auth_service.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 
 class OnboardingController extends GetxController {
   final AuthService _auth;
@@ -146,10 +147,20 @@ class OnboardingController extends GetxController {
   Future<void> resetPassword() async {
     try {
       await _auth.sendPasswordReset(email.text);
-      Get.snackbar('تم الإرسال', 'تحقق من بريدك الإلكتروني');
+      _showResetSent();
     } on AuthFailure catch (failure) {
       error.value = failure.messageAr;
     }
+  }
+
+  void _showResetSent() {
+    final context = Get.context;
+    if (context == null) return;
+    GlassSnackBar.show(
+      context,
+      'تم الإرسال. تحقق من بريدك الإلكتروني',
+      tone: GlassSnackTone.success,
+    );
   }
 
   @override

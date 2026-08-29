@@ -5,6 +5,7 @@ import '../../domain/food/food_item.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
@@ -78,8 +79,11 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
       widget.onSelect?.call(saved);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('تعذر حفظ المكوّن: $e')));
+      GlassSnackBar.show(
+        context,
+        'تعذر حفظ المكوّن: $e',
+        tone: GlassSnackTone.error,
+      );
     }
   }
 
@@ -306,8 +310,8 @@ class _FoodRow extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('حذف',
-                style: TextStyle(color: AppPalette.danger)),
+            child:
+                const Text('حذف', style: TextStyle(color: AppPalette.danger)),
           ),
         ],
       ),

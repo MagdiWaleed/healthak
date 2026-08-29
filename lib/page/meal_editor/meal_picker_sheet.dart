@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../ui/components/empty_state.dart';
 import '../../ui/glass/glass_card.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_sheet.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
@@ -50,7 +51,8 @@ class MealPickerSheet extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xs,
                   AppSpacing.md, media.padding.bottom + 24),
               itemCount: meals.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final meal = meals[index];
                 final check = controller.checkNest(meal);
@@ -62,12 +64,18 @@ class MealPickerSheet extends StatelessWidget {
                             final refusal = controller.addMealRef(meal);
                             Navigator.of(context).pop();
                             if (refusal != null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(refusal)));
+                              GlassSnackBar.show(
+                                context,
+                                refusal,
+                                tone: GlassSnackTone.warning,
+                              );
                             }
                           }
-                        : () => ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(check.messageAr!))),
+                        : () => GlassSnackBar.show(
+                              context,
+                              check.messageAr!,
+                              tone: GlassSnackTone.warning,
+                            ),
                     child: Row(
                       children: [
                         Expanded(
@@ -75,7 +83,8 @@ class MealPickerSheet extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(meal.name,
-                                  style: Theme.of(context).textTheme.titleMedium),
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium),
                               const SizedBox(height: 2),
                               Text(
                                 '${meal.totalsCache.kcal.round()} سعرة  •  '

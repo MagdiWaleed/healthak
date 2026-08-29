@@ -7,6 +7,7 @@ import '../../domain/schedule/schedule_item.dart';
 import '../../service/auth_service.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/navigation.dart';
 import '../../ui/motion/staggered_entry.dart';
@@ -314,9 +315,12 @@ class _ScheduleCard extends StatelessWidget {
                   onPressed: () async {
                     final ok = await controller.quickAddToday(item);
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content:
-                              Text(ok ? 'أُضيفت لليوم' : 'تعذرت الإضافة')));
+                      GlassSnackBar.show(
+                        context,
+                        ok ? 'أُضيفت لليوم' : 'تعذرت الإضافة',
+                        tone:
+                            ok ? GlassSnackTone.success : GlassSnackTone.error,
+                      );
                     }
                   },
                   icon: const Icon(Icons.today_outlined, size: 16),
