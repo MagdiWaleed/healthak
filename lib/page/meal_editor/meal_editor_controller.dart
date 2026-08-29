@@ -352,6 +352,18 @@ class MealEditorController extends GetxController {
         name: name.value.trim(),
         entries: entries,
       ));
+      if (_editingId != null) {
+        final flat = flattenMeal(
+          saved,
+          MealResolver([..._otherMeals.values, saved]),
+        );
+        await _days.refreshMealOccurrences(
+          dateKey: DayLog.keyFor(DateTime.now()),
+          sourceMealId: saved.id,
+          name: saved.name,
+          items: [for (final item in flat) FrozenItem.fromFlat(item)],
+        );
+      }
       return saved;
     } catch (e) {
       error.value = e.toString();

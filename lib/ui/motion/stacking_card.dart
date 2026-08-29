@@ -77,8 +77,19 @@ class _StackingCardState extends State<StackingCard> {
     // Global coordinates: this list runs full-bleed from the top of the
     // screen, so there is no intermediate frame of reference to resolve
     // against and one `localToGlobal` is the whole calculation.
-    final top = box.localToGlobal(Offset.zero).dy;
-    return math.max(0, widget.stackTop - top);
+    // A sliver can detach/re-parent this child between the checks above and
+    // `localToGlobal` while its list is rebuilding (for example when Today's
+    // Firestore stream replaces its entries). Flutter deliberately rejects a
+    // transform through that transient tree. Stacking is decorative, so skip
+    // one animation frame instead of taking down the functional screen.
+    try {
+      final top = box.localToGlobal(Offset.zero).dy;
+      return top.isFinite ? math.max(0, widget.stackTop - top) : 0;
+    } on FlutterError {
+      return 0;
+    } on AssertionError {
+      return 0;
+    }
   }
 
   @override

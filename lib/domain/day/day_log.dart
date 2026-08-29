@@ -303,4 +303,25 @@ class DayLog {
   DayLog withoutEntry(String entryId) => copyWith(
         entries: entries.where((e) => e.entryId != entryId).toList(),
       );
+
+  /// Refreshes this meal's occurrences in the current day after an explicit
+  /// recipe save, while preserving each log entry's identity and eaten state.
+  /// Historical days are never passed through this operation.
+  DayLog refreshMealOccurrences({
+    required String sourceMealId,
+    required String name,
+    required List<FrozenItem> items,
+  }) {
+    var changed = false;
+    final next = <DayEntry>[];
+    for (final entry in entries) {
+      if (entry.sourceMealId == sourceMealId) {
+        changed = true;
+        next.add(entry.copyWith(name: name, items: List.unmodifiable(items)));
+      } else {
+        next.add(entry);
+      }
+    }
+    return changed ? copyWith(entries: next) : this;
+  }
 }

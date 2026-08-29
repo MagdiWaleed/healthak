@@ -51,6 +51,41 @@ void main() {
         otherMeal + draft * 2,
       );
     });
+
+    test('saved meal refresh preserves occurrence identity and eaten state',
+        () {
+      final eatenAt = DateTime(2026, 8, 29, 12);
+      final original = _entry(
+        'edited',
+        oldMeal,
+        sourceMealId: 'meal-1',
+        eaten: true,
+        eatenAt: eatenAt,
+      );
+      final day = _day([original, _entry('other', otherMeal)]);
+      final replacementItems = [
+        const FrozenItem(
+          foodId: 'replacement-food',
+          name: 'replacement',
+          per100: draft,
+          grams: 100,
+        ),
+      ];
+
+      final refreshed = day.refreshMealOccurrences(
+        sourceMealId: 'meal-1',
+        name: 'updated meal',
+        items: replacementItems,
+      );
+      final entry = refreshed.entries.first;
+
+      expect(entry.entryId, original.entryId);
+      expect(entry.eaten, isTrue);
+      expect(entry.eatenAt, eatenAt);
+      expect(entry.name, 'updated meal');
+      expect(entry.totals, draft);
+      expect(refreshed.entries.last, same(day.entries.last));
+    });
   });
 }
 
@@ -65,11 +100,15 @@ DayEntry _entry(
   String id,
   Macros macros, {
   String? sourceMealId,
+  bool eaten = false,
+  DateTime? eatenAt,
 }) =>
     DayEntry(
       entryId: id,
       origin: DayEntryOrigin.oneShot,
       sourceMealId: sourceMealId,
+      eaten: eaten,
+      eatenAt: eatenAt,
       name: id,
       slot: MealSlot.lunch,
       order: 0,

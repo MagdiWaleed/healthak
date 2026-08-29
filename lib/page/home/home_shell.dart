@@ -62,10 +62,7 @@ class HomeShell extends GetView<HomeController> {
     // The shell owns the ambient response. Today keeps the controller's
     // lifecycle, while the shell observes its mood so the background can
     // change without rebuilding or resubscribing the tab subtree.
-    final today = Get.isRegistered<TodayController>()
-        ? Get.find<TodayController>()
-        : Get.put(
-            TodayController(uid: Get.find<AuthService>().currentUser!.uid));
+    final today = Get.find<TodayController>();
 
     return Obx(() {
       final index = controller.tabIndex.value;

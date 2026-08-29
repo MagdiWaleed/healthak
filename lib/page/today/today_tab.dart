@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/day/day_log.dart';
-import '../../service/auth_service.dart';
 import '../../ui/components/calorie_ring.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
@@ -41,15 +40,7 @@ class TodayTab extends StatefulWidget {
 }
 
 class _TodayTabState extends State<TodayTab> {
-  late final TodayController controller = Get.isRegistered<TodayController>()
-      ? Get.find<TodayController>()
-      : Get.put(TodayController(uid: Get.find<AuthService>().currentUser!.uid));
-
-  @override
-  void dispose() {
-    Get.delete<TodayController>();
-    super.dispose();
-  }
+  late final TodayController controller = Get.find<TodayController>();
 
   @override
   Widget build(BuildContext context) => Obx(() {
@@ -923,12 +914,19 @@ class _StrikeText extends StatelessWidget {
         alignment: AlignmentDirectional.centerStart,
         children: [
           Text(text, style: Theme.of(context).textTheme.titleMedium),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            height: 1.4,
-            width: struck ? double.infinity : 0,
-            color: AppPalette.muted,
+          PositionedDirectional(
+            start: 0,
+            end: 0,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: struck ? 1 : 0),
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              builder: (context, factor, _) => FractionallySizedBox(
+                alignment: AlignmentDirectional.centerStart,
+                widthFactor: factor,
+                child: Container(height: 1.4, color: AppPalette.muted),
+              ),
+            ),
           ),
         ],
       );

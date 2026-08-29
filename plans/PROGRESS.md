@@ -92,11 +92,37 @@ this as a planned total; Today's main ring centre remains consumed-only and its 
 caption is the matching figure. This is guidance-only and is not persisted into the reusable
 meal definition or used to rewrite a frozen day log.
 Regression coverage: `test/domain/day_log_draft_totals_test.dart` proves new-draft addition,
-single-occurrence replacement, and multiple-occurrence replacement.
+single-occurrence replacement, multiple-occurrence replacement, and preservation of entry id /
+eaten state when today's occurrence is refreshed after Save.
+
+**Explicit current-day refresh deviation:** saving an existing meal now re-flattens and replaces
+that meal's occurrence(s) in **today's** log in a Firestore transaction. This was requested after
+device testing showed an edited 256-kcal recipe still had a stale 512-kcal frozen copy in Today,
+making the editor preview 1983 while Today stayed at 2239. Entry ids, slots, order, origin, and
+eaten state are preserved. Past days remain frozen, and linked future schedule snapshots still
+use their existing explicit update prompt.
 
 **Today baseline calories:** the summary below the calorie ring now shows the user's maintenance
 calories (`TDEE = BMR x activity`) as `سعرات الثبات`, rather than exposing raw BMR.
 The adjacent daily target remains the saved goal-adjusted `DayLog.targets.kcal` value.
+
+**Emulator-only runtime crash fixed:** rebuilding Today's sliver list could detach a
+`StackingCard` between its render-object checks and `localToGlobal()`, producing
+`RenderSliverMultiBoxAdaptor.childMainAxisPosition` and a null-check exception. The scroll-stack
+effect now treats that transient frame as zero overshoot; the motion is skipped for one frame
+instead of crashing the screen. Reproduced on Pixel 4 / `emulator-5554` before the fix.
+
+**Global FAB controller crash fixed:** Pixel 4 testing also reproduced
+`"TodayController" not found` from `HomeShell._onFabPressed`. Ownership was split between
+`HomeShell` and `TodayTab`, whose `dispose()` could delete the shared controller. `HomeBinding`
+now owns the controller for the home route; both widgets only resolve it and neither manually
+deletes it.
+
+**Eat-toggle render assertion fixed:** device testing proved the Firestore toggle and consumed
+macro/kcal updates worked, but `_StrikeText` animated its width between `0` and
+`double.infinity`, causing `Cannot interpolate between finite constraints and unbounded
+constraints`. The strike now animates a finite `widthFactor` from 0 to 1. The test toggle was
+returned to its original uneaten state after verification.
 
 **Crash on cancelling the currency sheet, found on device.**
 `'_dependents.isEmpty': is not true` (`InheritedElement.debugDeactivated`), every time the

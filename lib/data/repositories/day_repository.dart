@@ -127,6 +127,28 @@ class DayRepository {
     });
   }
 
+  /// Replaces every current-day occurrence sourced from one explicitly saved
+  /// meal. The transaction preserves entry ids, ordering, and eaten state and
+  /// cannot overwrite a concurrent eat toggle with a stale controller copy.
+  Future<void> refreshMealOccurrences({
+    required String dateKey,
+    required String sourceMealId,
+    required String name,
+    required List<FrozenItem> items,
+  }) async {
+    final ref = _refs.days(uid).doc(dateKey);
+    await _refs.firestore.runTransaction((transaction) async {
+      final day = (await transaction.get(ref)).data();
+      if (day == null) return;
+      final refreshed = day.refreshMealOccurrences(
+        sourceMealId: sourceMealId,
+        name: name,
+        items: items,
+      );
+      if (!identical(refreshed, day)) transaction.set(ref, refreshed);
+    });
+  }
+
   Future<void> removeEntry(String dateKey, String entryId) async {
     final ref = _refs.days(uid).doc(dateKey);
     await _refs.firestore.runTransaction((transaction) async {
