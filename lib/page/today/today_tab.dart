@@ -934,25 +934,25 @@ class _StrikeText extends StatelessWidget {
       );
 }
 
-/// BMR and today's target, in plain numbers -- the ring shows progress, this
-/// shows what it's progress *toward* and where that number came from.
+/// Maintenance calories and today's target, in plain numbers -- the ring shows
+/// progress, while this shows the baseline before the user's goal adjustment.
 class _TargetSummary extends StatelessWidget {
   final TodayController controller;
   const _TargetSummary({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    final bmr = controller.bmr;
+    final baseCalories = controller.baseCalories;
     final target = controller.targetKcal;
-    if (bmr == null && target <= 0) return const SizedBox.shrink();
+    if (baseCalories == null && target <= 0) return const SizedBox.shrink();
 
     return GlassCard(
       child: Row(
         children: [
           Expanded(
             child: _StatColumn(
-              label: 'الأيض الأساسي (BMR)',
-              value: bmr == null ? '—' : '${bmr.round()}',
+              label: 'سعرات الثبات (TDEE)',
+              value: baseCalories == null ? '—' : '${baseCalories.round()}',
               unit: 'سعرة',
             ),
           ),

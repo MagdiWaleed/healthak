@@ -490,17 +490,22 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   double get plannedKcal => day.value?.plannedKcal ?? 0;
   Macros get plannedMacros => day.value?.plannedTotals ?? Macros.zero;
 
-  /// Basal metabolic rate, recomputed from the live profile rather than
-  /// cached -- so it reflects the current weight/height/age even before a
-  /// profile edit's new target has propagated to today's frozen `DayLog`.
-  double? get bmr {
+  /// Maintenance calories (TDEE), recomputed from the live profile.
+  ///
+  /// This is the user's practical baseline before the goal adjustment, not
+  /// raw BMR. Keeping it live means profile changes are visible even before a
+  /// new target snapshot has propagated to today's frozen `DayLog`.
+  double? get baseCalories {
     final profile = _session.profile.value;
     if (profile == null) return null;
-    return bmrMifflinStJeor(
-      weightKg: profile.weightKg,
-      heightCm: profile.heightCm,
-      ageYears: profile.ageAt(DateTime.now()),
-      sex: profile.sex,
+    return tdee(
+      bmr: bmrMifflinStJeor(
+        weightKg: profile.weightKg,
+        heightCm: profile.heightCm,
+        ageYears: profile.ageAt(DateTime.now()),
+        sex: profile.sex,
+      ),
+      activity: profile.activityLevel,
     );
   }
 

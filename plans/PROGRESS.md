@@ -82,6 +82,22 @@ blob), not as one screen-wide setting, because rice comes by the kilo and a spic
 each row carries a tappable `/كجم` chip that cycles it. Default is `perKg`. First built as a
 global toggle and changed on the boss's call.
 
+**Meal editor target guidance:** the live header now compares the planned daily kcal, protein,
+carbs, and fat after applying the current draft against the user's targets. Amounts still needed
+render muted grey; once a metric reaches or exceeds its target, it changes to emerald and states
+the amount above target. For a new meal this is every meal already planned today plus the draft.
+When editing a meal already present today, its frozen occurrence(s) are removed from the preview
+and replaced one-for-one by the draft, preventing double-counting. The editor explicitly labels
+this as a planned total; Today's main ring centre remains consumed-only and its `planned to`
+caption is the matching figure. This is guidance-only and is not persisted into the reusable
+meal definition or used to rewrite a frozen day log.
+Regression coverage: `test/domain/day_log_draft_totals_test.dart` proves new-draft addition,
+single-occurrence replacement, and multiple-occurrence replacement.
+
+**Today baseline calories:** the summary below the calorie ring now shows the user's maintenance
+calories (`TDEE = BMR x activity`) as `سعرات الثبات`, rather than exposing raw BMR.
+The adjacent daily target remains the saved goal-adjusted `DayLog.targets.kcal` value.
+
 **Crash on cancelling the currency sheet, found on device.**
 `'_dependents.isEmpty': is not true` (`InheritedElement.debugDeactivated`), every time the
 sheet was dismissed. `_editCurrency` owned the `TextEditingController` and disposed it as soon

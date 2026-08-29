@@ -263,47 +263,120 @@ class _TotalsHeader extends StatelessWidget {
       // is a plain getter, not a Rx.
       // ignore: unused_local_variable
       final _ = controller.entries.length;
-      final totals = controller.totals;
+      final target = controller.dailyTargets;
+      final dayTotals = controller.totalsAfterApplyingDraft;
 
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         child: GlassCard(
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: totals.kcal),
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, _) => Text(
-                  '${value.round()}',
-                  style: const TextStyle(
-                    fontFamily: AppTypography.family,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: AppPalette.text,
-                    fontFeatures: AppTypography.tabular,
+              const Text(
+                AppStrings.dayTotalAfterMeal,
+                style: TextStyle(fontSize: 11, color: AppPalette.muted),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: dayTotals.kcal),
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, _) => Text(
+                      '${value.round()}',
+                      style: const TextStyle(
+                        fontFamily: AppTypography.family,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: AppPalette.text,
+                        fontFeatures: AppTypography.tabular,
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 6),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child:
+                        Text('سعرة', style: TextStyle(color: AppPalette.muted)),
+                  ),
+                  const Spacer(),
+                  _MacroPill(
+                      label: 'ب',
+                      value: dayTotals.protein,
+                      color: AppPalette.emerald),
+                  const SizedBox(width: 8),
+                  _MacroPill(
+                      label: 'ك',
+                      value: dayTotals.carbs,
+                      color: AppPalette.amber),
+                  const SizedBox(width: 8),
+                  _MacroPill(
+                      label: 'د',
+                      value: dayTotals.fat,
+                      color: AppPalette.violet),
+                ],
+              ),
+              if (target != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                    height: 1, color: Colors.white.withValues(alpha: .10)),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    _TargetDelta(
+                        label: 'سعرة',
+                        value: dayTotals.kcal,
+                        target: target.kcal),
+                    _TargetDelta(
+                        label: 'بروتين',
+                        value: dayTotals.protein,
+                        target: target.macros.protein),
+                    _TargetDelta(
+                        label: 'كارب',
+                        value: dayTotals.carbs,
+                        target: target.macros.carbs),
+                    _TargetDelta(
+                        label: 'دهون',
+                        value: dayTotals.fat,
+                        target: target.macros.fat),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Padding(
-                padding: EdgeInsets.only(top: 6),
-                child: Text('سعرة', style: TextStyle(color: AppPalette.muted)),
-              ),
-              const Spacer(),
-              _MacroPill(
-                  label: 'ب', value: totals.protein, color: AppPalette.emerald),
-              const SizedBox(width: 8),
-              _MacroPill(
-                  label: 'ك', value: totals.carbs, color: AppPalette.amber),
-              const SizedBox(width: 8),
-              _MacroPill(
-                  label: 'د', value: totals.fat, color: AppPalette.violet),
+              ],
             ],
           ),
         ),
       );
     });
+  }
+}
+
+class _TargetDelta extends StatelessWidget {
+  final String label;
+  final double value;
+  final double target;
+  const _TargetDelta({
+    required this.label,
+    required this.value,
+    required this.target,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = value - target;
+    final complete = delta >= 0;
+    final amount = delta.abs().round();
+    return Text(
+      complete ? '$label +$amount فوق الهدف' : '$label باقي $amount',
+      style: TextStyle(
+        color: complete ? AppPalette.emerald : AppPalette.muted,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        fontFeatures: AppTypography.tabular,
+      ),
+    );
   }
 }
 
