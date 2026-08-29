@@ -23,7 +23,7 @@ void main() {
     await tester.pump();
     expect(scope.notifier!.value, isNot(resting));
 
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 3400));
     // A complete 360 degree sweep lands on the same physical light angle.
     expect((scope.notifier!.value - resting).abs(), closeTo(360, 0.01));
   });
@@ -38,7 +38,7 @@ void main() {
 
     await tester.pumpWidget(app(0));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 3400));
     final scope = tester.widget<SpecularScope>(find.byType(SpecularScope));
     final settled = scope.notifier!.value;
 
@@ -63,7 +63,7 @@ void main() {
 
     final scope = tester.widget<SpecularScope>(find.byType(SpecularScope));
     final resting = scope.notifier!.value;
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 3400));
 
     expect(scope.notifier!.value, resting);
   });
@@ -80,7 +80,7 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 3400));
 
     final scope = tester.widget<SpecularScope>(find.byType(SpecularScope));
     final before = scope.notifier!.value;

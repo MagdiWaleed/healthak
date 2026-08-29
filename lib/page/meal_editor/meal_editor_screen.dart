@@ -267,7 +267,13 @@ class _TotalsHeader extends StatelessWidget {
       // ignore: unused_local_variable
       final _ = controller.entries.length;
       final target = controller.dailyTargets;
-      final dayTotals = controller.totalsAfterApplyingDraft;
+      // The headline is always this meal alone, so the number means one thing
+      // regardless of what today looks like. The day projection is a separate,
+      // clearly labelled section below -- and only shown when it is real.
+      final mealTotals = controller.totals;
+      final showDay = target != null && controller.projectsOntoToday;
+      final dayTotals =
+          showDay ? controller.totalsAfterApplyingDraft : mealTotals;
 
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -276,14 +282,14 @@ class _TotalsHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                AppStrings.dayTotalAfterMeal,
+                AppStrings.mealOwnTotal,
                 style: TextStyle(fontSize: 11, color: AppPalette.muted),
               ),
               const SizedBox(height: AppSpacing.xs),
               Row(
                 children: [
                   TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: dayTotals.kcal),
+                    tween: Tween(begin: 0, end: mealTotals.kcal),
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeOutCubic,
                     builder: (context, value, _) => Text(
@@ -306,25 +312,33 @@ class _TotalsHeader extends StatelessWidget {
                   const Spacer(),
                   _MacroPill(
                       label: 'ب',
-                      value: dayTotals.protein,
+                      value: mealTotals.protein,
                       color: AppPalette.emerald),
                   const SizedBox(width: 8),
                   _MacroPill(
                       label: 'ك',
-                      value: dayTotals.carbs,
+                      value: mealTotals.carbs,
                       color: AppPalette.amber),
                   const SizedBox(width: 8),
                   _MacroPill(
                       label: 'د',
-                      value: dayTotals.fat,
+                      value: mealTotals.fat,
                       color: AppPalette.violet),
                 ],
               ),
-              if (target != null) ...[
+              if (showDay) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Container(
                     height: 1, color: Colors.white.withValues(alpha: .10)),
                 const SizedBox(height: AppSpacing.sm),
+                Text(
+                  controller.isNew
+                      ? AppStrings.dayAfterAdding
+                      : AppStrings.dayAfterEditing,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppPalette.muted),
+                ),
+                const SizedBox(height: AppSpacing.xs),
                 Wrap(
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.xs,
@@ -368,13 +382,20 @@ class _TargetDelta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final delta = value - target;
-    final complete = delta >= 0;
-    final amount = delta.abs().round();
+    final delta = (value - target).round();
+    final met = delta >= 0;
+    final String text;
+    if (delta == 0) {
+      text = '$label · ${AppStrings.onTarget}';
+    } else if (delta > 0) {
+      text = '$label +$delta فوق الهدف';
+    } else {
+      text = '$label باقي ${-delta}';
+    }
     return Text(
-      complete ? '$label +$amount فوق الهدف' : '$label باقي $amount',
+      text,
       style: TextStyle(
-        color: complete ? AppPalette.emerald : AppPalette.muted,
+        color: met ? AppPalette.emerald : AppPalette.muted,
         fontSize: 11,
         fontWeight: FontWeight.w700,
         fontFeatures: AppTypography.tabular,

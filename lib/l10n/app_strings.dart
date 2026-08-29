@@ -40,7 +40,10 @@ abstract final class AppStrings {
   static const macroConsumed = 'المأكول';
   static const macroPlanned = 'المخطط';
   static const macroProgressToggle = 'التبديل بين المأكول والمخطط';
-  static const dayTotalAfterMeal = 'إجمالي اليوم المخطط بعد هذه الوجبة';
+  static const mealOwnTotal = 'إجمالي هذه الوجبة';
+  static const dayAfterAdding = 'اليوم المخطط لو أضفتها اليوم';
+  static const dayAfterEditing = 'اليوم المخطط بعد هذا التعديل';
+  static const onTarget = 'على الهدف';
   static const kcal = 'سعرة';
   static const energyBreakdownTitle = 'من أين جاء رقمك؟';
   static const energyBmr = 'معدل الحرق الأساسي (BMR)';

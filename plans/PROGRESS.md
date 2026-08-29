@@ -176,6 +176,69 @@ offline-capable `set`, which queues sync while retaining the visible eaten state
 emulator with Firestore DNS unavailable: the meal remained ticked and the calorie ring stayed at
 152 kcal after five seconds; no Flutter exception was emitted.
 
+**Runtime performance pass (2026-08-29):** three steady-state CPU/GPU costs cut, no behaviour or
+data-model change. `flutter analyze` clean, all 132 tests pass, debug APK builds, walked on
+`emulator-5554` (aurora drift, Today load, scroll/header-collapse, cold relaunch — no exceptions).
+
+1. **Aurora repaint rate.** `AuroraBackground` drove a full-screen 6× radial-gradient overdraw at
+   60fps on every screen via four `AnimationController`s + `Listenable.merge` + `AnimatedBuilder`.
+   Replaced with **one `Ticker`** feeding a `ValueNotifier<int>` that only bumps at `maxFps`
+   (30 high / 20 balanced) — the blobs move well under a pixel per frame so the drift looks
+   identical while every other frame's aurora raster is gone. Per-blob phase is now a computed
+   `0..1..0` triangle off the single shared clock (matches the old `repeat(reverse:true)` shape).
+   `maxFps` threads `ReactiveAurora` → `AuroraBackground`; `GlassScaffold` passes it per tier.
+2. **Aurora drift feel.** Periods slowed 7–13s → 11–20s with slightly wider amplitudes, per the
+   boss's "a bit slower / more satisfying" call. Calmer, still legible in the first seconds of a
+   freshly pushed route.
+3. **Specular border on scroll.** Every scroll notification republished the shared specular angle,
+   repainting every visible `GlassCard` border and invalidating its `RepaintBoundary` raster —
+   at 60fps during the one interaction that must stay smooth. `GlassScaffold._onScroll` now
+   rate-limits scroll-driven publishes to ~17fps (`_scrollPublishGap`), with an immediate publish
+   on gesture start/end or a ≥9° jump so fling ends still land; `_publishSpecularAngle(coarse:)`
+   widens the delta gate to 5° for the scroll path only (arrival glint keeps its 2°). Specular
+   widget tests unchanged and green.
+4. **`حسابي` shift.** The Account tab list and the Profile screen list are short enough not to
+   scroll on many phones, so the glass edge never refracted there. Both now use
+   `AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())` — a downward drag overscrolls
+   and springs back, feeding the specular angle.
+5. **`PerformanceProbe` no longer a permanent one-way downgrade.** It sampled during the jankiest
+   frames the app ever renders (startup) and `applyDetectedQuality` only ever moved toward `low`
+   and persisted — one bad cold start pinned a capable device to reduced quality forever. Now:
+   sample is delayed 3s after first frame, first 20 frames discarded, timeout falls back to `high`
+   (or the p95 of whatever ≥15 frames it saw) instead of `balanced`, and `applyDetectedQuality`
+   is symmetric so the next clean launch self-corrects.
+
+Real-device DevTools raster p95 before/after is still the right verification and is still open —
+the desktop-taskbar emulator is not valid evidence for it.
+
+**Follow-ups (2026-08-29, same session):** analyzer clean, 132 tests pass, debug APK walked on
+`emulator-5554` (Today panel, meal editor header, aurora — no exceptions/overflow).
+
+- **Glass arrival glint** (`GlassScaffold`): duration 650ms → **3250ms** (×5), curve
+  `Cubic(.77,0,.175,1)` → `Curves.easeOut` (near-constant speed, soft stop) at the boss's
+  request. The existing 2° publish gate now naturally thins the sweep to ~30fps at this length,
+  so the slower glint does not cost more per-card border repaints. Three `pump(700)`s in
+  `glass_scaffold_specular_test.dart` → `pump(3400)` to outlast it; assertions unchanged.
+- **`MacroNumbersPanel` (المأكول)**: consumed/planned toggle removed. Each row shows eaten grams
+  as the bold headline and, when today's plan still has more of that macro coming, the planned
+  figure beside it — small, grey, with a faded dot at the same `.38` alpha as the bar's faded
+  planned segment. Header carries a matching «● المخطط» legend only when some macro has a planned
+  extra. Now a `StatelessWidget`.
+- **Meal editor header logic** — reviewed and corrected:
+  - Headline was the projected *day* total, not the meal — and silently meant draft-only vs
+    whole-day depending on whether today was materialised, jumping when the day stream arrived.
+    Headline + pills are now always `controller.totals` (this meal alone), under «إجمالي هذه
+    الوجبة».
+  - Editing a library meal not on today fabricated a day projection (`plannedTotalsAfterDraft`'s
+    `replacedOccurrences == 0 ? 1` fallback added the draft to a day that saving never touches).
+    New `MealEditorController.projectsOntoToday` (`isNew || editedMealIsOnToday`) gates it;
+    `totalsAfterApplyingDraft` returns the draft alone when there is nothing real to project
+    onto. The day section shows only when real, under «اليوم المخطط لو أضفتها اليوم» /
+    «…بعد هذا التعديل».
+  - `_TargetDelta` showed «+0 فوق الهدف» exactly on target — now three-state: «باقي N» /
+    «· على الهدف» / «+N فوق الهدف». (Emerald at-or-over for carbs/fat as well as protein/kcal is
+    unchanged — documented design.)
+
 **Living Glass Phase 4 (in progress):** the route transition now has fade-through-scale behavior,
 staggered entries resolve their start edge in RTL and add the planned subtle rotation, steppers use
 the shared direction-aware `TickerNumber`, and pull-to-refresh uses the emerald ring language.

@@ -11,9 +11,11 @@ class SettingsController extends GetxController {
 
   void load(AppSettings value) => settings.value = value;
 
+  /// The probe re-runs every launch, so this moves the tier in either
+  /// direction: a device mis-flagged as slow by one bad startup sample
+  /// recovers on the next clean run instead of being pinned forever.
   Future<void> applyDetectedQuality(GraphicsQuality detected) async {
-    final current = settings.value.graphicsQuality;
-    if (detected.index <= current.index) return;
+    if (detected == settings.value.graphicsQuality) return;
     await save(settings.value.copyWith(graphicsQuality: detected));
   }
 

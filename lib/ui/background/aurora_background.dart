@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../theme/app_colors.dart';
 import 'grain_texture.dart';
@@ -11,14 +12,12 @@ import 'grain_texture.dart';
 /// Each blob owns its own period. The periods are deliberately coprime-ish
 /// so the composite pattern takes minutes to repeat -- a single shared
 /// controller made all four move in lockstep, which reads as a pulse rather
-/// than as drift. Kept short enough (7-13s) that the drift is visible within
-/// the first few seconds of a freshly opened screen: a route pushed via
-/// `Get.to()` starts its own `AuroraBackground` from t=0, and at the
-/// originally-tuned 19-31s periods that first few seconds of a fresh instance
-/// showed essentially no motion -- correct code, imperceptible result, which
-/// read as "the background stopped moving" on every screen except the one
-/// tab (Today) the app happens to have been sitting on long enough to
-/// accumulate visible drift.
+/// than as drift.
+///
+/// Periods are on the slow side (11-20s) for a calm, "breathing room" drift.
+/// A previous pass at 19-31s read as motionless in the first seconds of a
+/// freshly pushed route; the amplitudes here are a touch wider than that
+/// attempt so the drift stays legible without speeding the field back up.
 class _BlobSpec {
   final Alignment anchor;
   final Color color;
@@ -51,37 +50,37 @@ const _blobs = <_BlobSpec>[
     anchor: Alignment(-0.75, -0.85),
     color: AppPalette.emerald,
     radius: 0.95,
-    ampX: 0.10,
-    ampY: 0.07,
+    ampX: 0.115,
+    ampY: 0.08,
     phase: 0.0,
-    period: Duration(seconds: 7),
+    period: Duration(seconds: 11),
   ),
   _BlobSpec(
     anchor: Alignment(0.85, -0.55),
     color: AppPalette.violet,
     radius: 0.88,
-    ampX: 0.09,
-    ampY: 0.10,
+    ampX: 0.105,
+    ampY: 0.115,
     phase: 1.7,
-    period: Duration(seconds: 9),
+    period: Duration(seconds: 14),
   ),
   _BlobSpec(
     anchor: Alignment(-0.35, 0.55),
     color: AppPalette.amber,
     radius: 0.80,
-    ampX: 0.12,
-    ampY: 0.06,
+    ampX: 0.14,
+    ampY: 0.07,
     phase: 3.1,
-    period: Duration(seconds: 11),
+    period: Duration(seconds: 17),
   ),
   _BlobSpec(
     anchor: Alignment(0.80, 0.95),
     color: AppPalette.mint,
     radius: 0.70,
-    ampX: 0.07,
-    ampY: 0.09,
+    ampX: 0.08,
+    ampY: 0.105,
     phase: 4.4,
-    period: Duration(seconds: 13),
+    period: Duration(seconds: 20),
   ),
 ];
 
@@ -91,16 +90,27 @@ const _blobs = <_BlobSpec>[
 /// The softness comes entirely from the gradients. There is no [ImageFilter]
 /// here and there must never be one -- the whole glass budget is reserved for
 /// the two [GlassSurface]s above this layer.
+///
+/// The field is driven by a single [Ticker] that only rebuilds the painter
+/// at [maxFps] rather than every vsync. The blobs move well under a pixel per
+/// frame, so a 30fps drift is visually identical to 60 while removing a
+/// full-screen multi-gradient raster from every other frame -- this is the
+/// single largest steady-state GPU cost in the app.
 class AuroraBackground extends StatefulWidget {
   final Widget child;
 
-  /// When false the field renders once, statically, and no controller ticks.
+  /// When false the field renders once, statically, and no ticker runs.
   final bool animate;
   final bool showGrain;
 
   /// Scales every blob period. `> 1` is slower. Used by the balanced quality
-  /// tier to halve the tick rate's perceptual cost without stopping motion.
+  /// tier alongside a lower [maxFps].
   final double speedScale;
+
+  /// Painter rebuilds per second while animating. 30 for the high tier, lower
+  /// for balanced. Does not change how fast the drift *looks*, only how often
+  /// it is re-rasterized.
+  final double maxFps;
 
   /// Optional Phase-2 color treatment. The geometry remains fixed so mood
   /// changes do not add painter work or a second animation layer.
@@ -115,6 +125,7 @@ class AuroraBackground extends StatefulWidget {
     this.animate = true,
     this.showGrain = true,
     this.speedScale = 1.0,
+    this.maxFps = 30,
     this.blobColors,
     this.blobAlphaMultiplier = 1.0,
     this.vignetteAlpha = .55,
@@ -126,80 +137,92 @@ class AuroraBackground extends StatefulWidget {
 }
 
 class _AuroraBackgroundState extends State<AuroraBackground>
-    with TickerProviderStateMixin {
-  late List<AnimationController> _controllers;
-  late Listenable _merged;
+    with SingleTickerProviderStateMixin {
+  Ticker? _ticker;
+
+  /// Bumped on each throttled frame to drive the painter rebuild. A plain
+  /// counter rather than a time value so identical repeats still repaint.
+  final ValueNotifier<int> _frame = ValueNotifier<int>(0);
+
+  Duration _elapsed = Duration.zero;
+  Duration _lastEmit = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _create();
+    if (widget.animate) _startTicker();
   }
 
-  void _create() {
-    _controllers = [
-      for (final blob in _blobs)
-        AnimationController(
-          vsync: this,
-          duration: blob.period * widget.speedScale,
-        ),
-    ];
-    _merged = Listenable.merge(_controllers);
-    if (widget.animate) {
-      for (final c in _controllers) {
-        c.repeat(reverse: true);
-      }
+  void _startTicker() {
+    final ticker = _ticker ??= createTicker(_onTick);
+    if (!ticker.isActive) ticker.start();
+  }
+
+  Duration get _minInterval =>
+      Duration(microseconds: (1000000 / widget.maxFps).round());
+
+  void _onTick(Duration elapsed) {
+    _elapsed = elapsed;
+    if (elapsed - _lastEmit >= _minInterval) {
+      _lastEmit = elapsed;
+      _frame.value++;
     }
   }
 
   @override
   void didUpdateWidget(covariant AuroraBackground oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.speedScale != widget.speedScale) {
-      for (var i = 0; i < _controllers.length; i++) {
-        _controllers[i].duration = _blobs[i].period * widget.speedScale;
-      }
-    }
-    if (oldWidget.animate != widget.animate) {
-      for (final c in _controllers) {
-        if (widget.animate) {
-          c.repeat(reverse: true);
-        } else {
-          c.stop();
-        }
+    if (widget.animate != oldWidget.animate) {
+      if (widget.animate) {
+        _startTicker();
+      } else {
+        _ticker?.stop();
       }
     }
   }
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
+    _ticker?.dispose();
+    _frame.dispose();
     super.dispose();
   }
+
+  /// 0..1..0 ping-pong for one blob, matching the shape the old
+  /// `AnimationController.repeat(reverse: true)` produced but computed from
+  /// the single shared clock.
+  double _blobT(_BlobSpec blob) {
+    final halfPeriodUs = blob.period.inMicroseconds * widget.speedScale;
+    if (halfPeriodUs <= 0) return 0;
+    final cycle = (_elapsed.inMicroseconds / halfPeriodUs) % 2.0;
+    return cycle <= 1.0 ? cycle : 2.0 - cycle;
+  }
+
+  Widget _field() => CustomPaint(
+        painter: _AuroraPainter(
+          t: [for (final blob in _blobs) _blobT(blob)],
+          colors: widget.blobColors,
+          alphaMultiplier: widget.blobAlphaMultiplier,
+          vignetteAlpha: widget.vignetteAlpha,
+        ),
+        isComplex: true,
+        willChange: widget.animate,
+        size: Size.infinite,
+      );
 
   @override
   Widget build(BuildContext context) => Stack(
         fit: StackFit.expand,
         children: [
-          // Its own layer. Without this boundary the aurora's 60fps repaint
-          // drags every widget in `child` into the same dirty layer.
+          // Its own layer. Without this boundary the aurora's repaint drags
+          // every widget in `child` into the same dirty layer.
           RepaintBoundary(
-            child: AnimatedBuilder(
-              animation: _merged,
-              builder: (context, _) => CustomPaint(
-                painter: _AuroraPainter(
-                  t: [for (final c in _controllers) c.value],
-                  colors: widget.blobColors,
-                  alphaMultiplier: widget.blobAlphaMultiplier,
-                  vignetteAlpha: widget.vignetteAlpha,
-                ),
-                isComplex: true,
-                willChange: widget.animate,
-                size: Size.infinite,
-              ),
-            ),
+            child: widget.animate
+                ? ValueListenableBuilder<int>(
+                    valueListenable: _frame,
+                    builder: (context, _, __) => _field(),
+                  )
+                : _field(),
           ),
           if (widget.showGrain) GrainTexture(opacity: widget.grainOpacity),
           widget.child,

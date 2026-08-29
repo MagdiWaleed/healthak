@@ -92,15 +92,34 @@ class MealEditorController extends GetxController {
   /// draft itself remains a reusable recipe and never stores this value.
   NutritionTargets? get dailyTargets => _session.profile.value?.targets;
 
+  /// True when the meal being edited already has at least one frozen
+  /// occurrence in today's log or schedule-materialised entries. Only then is
+  /// "today after this edit" a real number rather than a hypothetical.
+  bool get editedMealIsOnToday {
+    if (_editingId == null) return false;
+    final day = _todayDay.value;
+    if (day == null) return false;
+    return day.entries.any((e) => e.sourceMealId == _editingId);
+  }
+
+  /// Whether the header should project this draft onto today's planned total.
+  /// A brand-new meal is assumed bound for today; an edit only counts if the
+  /// meal is actually on today. Editing a library meal that is not on today
+  /// must not fabricate a day total that adding it never produced.
+  bool get projectsOntoToday => isNew || editedMealIsOnToday;
+
   /// The whole planned day after applying this draft.
   ///
   /// While editing a meal that is already present today, its frozen entry is
   /// removed from the comparison before the draft is added. Otherwise the
   /// same meal is counted twice and every editor page reports a different,
   /// inflated remainder. Multiple occurrences are replaced one-for-one.
+  ///
+  /// Returns [totals] (the draft alone) when there is no day projection to
+  /// make -- an unmaterialised today, or editing a meal not on today.
   Macros get totalsAfterApplyingDraft {
     final day = _todayDay.value;
-    if (day == null) return totals;
+    if (day == null || !projectsOntoToday) return totals;
     return day.plannedTotalsAfterDraft(
       replacingMealId: _editingId,
       draftTotals: totals,

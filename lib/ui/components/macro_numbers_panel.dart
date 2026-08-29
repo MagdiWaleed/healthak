@@ -5,12 +5,17 @@ import '../../l10n/app_strings.dart';
 import '../glass/glass_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import 'macro_bar.dart';
 import 'ticker_number.dart';
 
 /// Readable macro progress for Today. The ring stays the visual headline;
 /// this panel makes its three inner arcs useful when a user needs exact grams.
-class MacroNumbersPanel extends StatefulWidget {
+///
+/// Each row shows the eaten grams as the headline number and, when today's
+/// plan still has more of that macro coming, the planned figure beside it --
+/// small, grey, with a faded dot that matches the faded segment on the bar.
+class MacroNumbersPanel extends StatelessWidget {
   final Macros consumed;
   final Macros target;
   final Macros planned;
@@ -24,65 +29,73 @@ class MacroNumbersPanel extends StatefulWidget {
     super.key,
   });
 
-  @override
-  State<MacroNumbersPanel> createState() => _MacroNumbersPanelState();
-}
-
-class _MacroNumbersPanelState extends State<MacroNumbersPanel> {
-  bool _showPlanned = false;
+  bool _hasPlannedExtra(double eaten, double plan) => plan.round() > eaten.round();
 
   @override
   Widget build(BuildContext context) {
-    final values = _showPlanned ? widget.planned : widget.consumed;
+    final anyPlanned = _hasPlannedExtra(consumed.protein, planned.protein) ||
+        _hasPlannedExtra(consumed.carbs, planned.carbs) ||
+        _hasPlannedExtra(consumed.fat, planned.fat);
+
     return GlassCard(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       child: Column(
         children: [
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Semantics(
-              button: true,
-              label: AppStrings.macroProgressToggle,
-              child: TextButton(
-                onPressed: () => setState(() => _showPlanned = !_showPlanned),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppPalette.muted,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          Row(
+            children: [
+              const Text(
+                AppStrings.macroConsumed,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppPalette.muted,
+                  fontWeight: FontWeight.w700,
                 ),
-                child: Text(_showPlanned
-                    ? AppStrings.macroPlanned
-                    : AppStrings.macroConsumed),
               ),
-            ),
+              const Spacer(),
+              if (anyPlanned)
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _FadedDot(color: Colors.white),
+                    SizedBox(width: 4),
+                    Text(
+                      AppStrings.macroPlanned,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: AppPalette.muted,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
+          const SizedBox(height: AppSpacing.xs),
           _MacroProgressRow(
             label: AppStrings.protein,
-            value: values.protein,
-            target: widget.target.protein,
-            planned: widget.planned.protein,
+            consumed: consumed.protein,
+            target: target.protein,
+            planned: planned.protein,
             color: AppPalette.emerald,
-            animationTrigger: widget.animationTrigger,
+            animationTrigger: animationTrigger,
           ),
           const SizedBox(height: AppSpacing.sm),
           _MacroProgressRow(
             label: AppStrings.carbs,
-            value: values.carbs,
-            target: widget.target.carbs,
-            planned: widget.planned.carbs,
+            consumed: consumed.carbs,
+            target: target.carbs,
+            planned: planned.carbs,
             color: AppPalette.amber,
-            animationTrigger: widget.animationTrigger,
+            animationTrigger: animationTrigger,
             stagger: const Duration(milliseconds: 60),
           ),
           const SizedBox(height: AppSpacing.sm),
           _MacroProgressRow(
             label: AppStrings.fat,
-            value: values.fat,
-            target: widget.target.fat,
-            planned: widget.planned.fat,
+            consumed: consumed.fat,
+            target: target.fat,
+            planned: planned.fat,
             color: AppPalette.violet,
-            animationTrigger: widget.animationTrigger,
+            animationTrigger: animationTrigger,
             stagger: const Duration(milliseconds: 120),
           ),
         ],
@@ -91,9 +104,26 @@ class _MacroNumbersPanelState extends State<MacroNumbersPanel> {
   }
 }
 
+/// A hollow-looking dot at the same alpha the faded planned segment uses on
+/// [MacroBar], so the grey planned number reads as "that faded part".
+class _FadedDot extends StatelessWidget {
+  final Color color;
+  const _FadedDot({required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 5,
+        height: 5,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .38),
+          shape: BoxShape.circle,
+        ),
+      );
+}
+
 class _MacroProgressRow extends StatelessWidget {
   final String label;
-  final double value;
+  final double consumed;
   final double target;
   final double planned;
   final Color color;
@@ -102,7 +132,7 @@ class _MacroProgressRow extends StatelessWidget {
 
   const _MacroProgressRow({
     required this.label,
-    required this.value,
+    required this.consumed,
     required this.target,
     required this.planned,
     required this.color,
@@ -112,8 +142,10 @@ class _MacroProgressRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final over = value > target && target > 0;
+    final over = consumed > target && target > 0;
     final numberColor = over ? AppPalette.amber : AppPalette.text;
+    final showPlanned = planned.round() > consumed.round();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -127,19 +159,43 @@ class _MacroProgressRow extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(child: Text(label)),
             TickerNumber(
-              value: value.round(),
-              format: (number) => '$number / ${target.round()} ${AppStrings.grams}',
+              value: consumed.round(),
+              format: (number) => '$number',
               style: TextStyle(
                 color: numberColor,
                 fontWeight: FontWeight.w800,
+                fontFeatures: AppTypography.tabular,
               ),
             ),
+            Text(
+              ' / ${target.round()} ${AppStrings.grams}',
+              style: const TextStyle(
+                color: AppPalette.muted,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                fontFeatures: AppTypography.tabular,
+              ),
+            ),
+            if (showPlanned) ...[
+              const SizedBox(width: 8),
+              _FadedDot(color: color),
+              const SizedBox(width: 3),
+              Text(
+                '${planned.round()}',
+                style: const TextStyle(
+                  color: AppPalette.muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: AppTypography.tabular,
+                ),
+              ),
+            ],
           ],
         ),
         const SizedBox(height: 5),
         MacroBar(
           label: '',
-          value: value,
+          value: consumed,
           target: target,
           planned: planned,
           color: color,

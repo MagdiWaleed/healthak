@@ -14,6 +14,7 @@ class ReactiveAurora extends StatefulWidget {
   final bool animate;
   final bool showGrain;
   final double speedScale;
+  final double maxFps;
 
   const ReactiveAurora({
     required this.child,
@@ -22,6 +23,7 @@ class ReactiveAurora extends StatefulWidget {
     this.animate = true,
     this.showGrain = true,
     this.speedScale = 1,
+    this.maxFps = 30,
   });
 
   @override
@@ -68,6 +70,7 @@ class _ReactiveAuroraState extends State<ReactiveAurora>
           return AuroraBackground(
             animate: widget.animate,
             showGrain: widget.showGrain,
+            maxFps: widget.maxFps,
             speedScale: widget.speedScale / palette.auroraSpeedMultiplier,
             blobColors: _blobColors(palette),
             blobAlphaMultiplier: palette.auroraAlphaMultiplier,

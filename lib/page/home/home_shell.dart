@@ -258,6 +258,10 @@ class _AccountTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
+        // Bounces even when the row list fits the screen, so dragging down
+        // still refracts the shared glass edge instead of doing nothing.
+        physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(22, 88, 22, 120),
         children: [
           Text(AppStrings.account,

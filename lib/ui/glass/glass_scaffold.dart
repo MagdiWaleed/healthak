@@ -42,10 +42,12 @@ class _GlassScaffoldState extends State<GlassScaffold>
     with SingleTickerProviderStateMixin {
   static const _restingAngle = -135.0;
   // This is an ambient shader sweep, not a transition that blocks input. It
-  // deliberately outlives the 250ms route transition so the light can be
-  // followed around the rounded edge instead of reading as a single flash.
-  static const _arrivalDuration = Duration(milliseconds: 650);
-  static const _arrivalCurve = Cubic(.77, 0, .175, 1);
+  // deliberately far outlives the route transition so the light can be
+  // followed slowly around the rounded edge instead of reading as a flash.
+  // Near-constant speed with a soft deceleration at the very end; the 2 degree
+  // publish gate below naturally thins this to ~30fps at this duration.
+  static const _arrivalDuration = Duration(milliseconds: 3250);
+  static const _arrivalCurve = Curves.easeOut;
 
   final ValueNotifier<double> _specularAngle = ValueNotifier(-135);
   late final AnimationController _arrival = AnimationController(
@@ -53,6 +55,15 @@ class _GlassScaffoldState extends State<GlassScaffold>
     duration: _arrivalDuration,
   )..addListener(() => _publishSpecularAngle());
   double _scrollAngle = _restingAngle;
+
+  // Scroll drives the specular angle, and every angle change repaints every
+  // visible glass card's border. At 60fps that is a lot of redundant stroke
+  // work for a highlight nobody tracks pixel-by-pixel, so scroll-driven
+  // publishes are rate-limited to ~17fps -- with an immediate publish when a
+  // gesture starts, settles, or jumps far, so the ends of a fling still land.
+  static const _scrollPublishGap = Duration(milliseconds: 58);
+  DateTime _lastScrollPublish = DateTime.fromMillisecondsSinceEpoch(0);
+  double _lastScrollAnglePublished = _restingAngle;
 
   @override
   void initState() {
@@ -88,10 +99,12 @@ class _GlassScaffoldState extends State<GlassScaffold>
     _arrival.forward();
   }
 
-  void _publishSpecularAngle({bool force = false}) {
+  void _publishSpecularAngle({bool force = false, bool coarse = false}) {
     final orbit = _arrivalCurve.transform(_arrival.value) * 360;
     final next = _scrollAngle + orbit;
-    if (force || (next - _specularAngle.value).abs() >= 2) {
+    // The arrival glint wants every small step; a scroll shimmer does not.
+    final threshold = coarse ? 5.0 : 2.0;
+    if (force || (next - _specularAngle.value).abs() >= threshold) {
       _specularAngle.value = next;
     }
   }
@@ -113,7 +126,19 @@ class _GlassScaffoldState extends State<GlassScaffold>
             100 *
             GlassTokens.refractionShift *
             GlassTokens.refractionAngleGain;
-    _publishSpecularAngle();
+
+    final now = DateTime.now();
+    final atGestureEdge = notification is ScrollStartNotification ||
+        notification is ScrollEndNotification;
+    final jumpedFar =
+        (_scrollAngle - _lastScrollAnglePublished).abs() >= 9;
+    if (atGestureEdge ||
+        jumpedFar ||
+        now.difference(_lastScrollPublish) >= _scrollPublishGap) {
+      _lastScrollPublish = now;
+      _lastScrollAnglePublished = _scrollAngle;
+      _publishSpecularAngle(coarse: true);
+    }
     return false;
   }
 
@@ -129,9 +154,11 @@ class _GlassScaffoldState extends State<GlassScaffold>
         mood: widget.mood,
         animate: effective != GraphicsQuality.low,
         showGrain: effective != GraphicsQuality.low,
-        // Balanced halves the drift rate rather than stopping it. Motion that
-        // slows reads as calm; motion that stops reads as broken.
+        // Balanced slows the drift and drops its repaint rate rather than
+        // stopping it. Motion that slows reads as calm; motion that stops
+        // reads as broken.
         speedScale: effective == GraphicsQuality.balanced ? 2.0 : 1.0,
+        maxFps: effective == GraphicsQuality.balanced ? 20 : 30,
         child: SafeArea(child: widget.body),
       );
     }

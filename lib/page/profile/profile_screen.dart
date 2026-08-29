@@ -85,6 +85,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) => GlassScaffold(
         appBar: AppBar(title: const Text('حسابي')),
         body: ListView(
+          // Always drag-responsive so the glass edge still refracts on a
+          // short form that would otherwise not scroll at all.
+          physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics()),
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.md, 88, AppSpacing.md, AppSpacing.xxl),
           children: [
