@@ -239,6 +239,23 @@ the desktop-taskbar emulator is not valid evidence for it.
     «· على الهدف» / «+N فوق الهدف». (Emerald at-or-over for carbs/fat as well as protein/kcal is
     unchanged — documented design.)
 
+- **Today arrival fill sweep** (calorie ring + `MacroNumbersPanel`), verified on `emulator-5554`
+  mid-animation (ring at `9`, planned bands and bars swept ahead of the solid fill) and settled:
+  - `TodayController.arrivalPulse` + `replayArrival()`; `_TodayTabState` watches
+    `HomeController.tabIndex` and replays on entering Today (plus once on first mount). Since the
+    tab lives in an `IndexedStack`, becoming visible is not a rebuild — the `ever(tabIndex)`
+    worker is what makes it fire.
+  - `CalorieRing` is now stateful, driven by a 1250ms `AnimationController` on `arrivalTrigger`.
+    Two stages on `Curves.easeOut` (near-linear, decel only at the tail): the **faded planned**
+    band + macro sub-rings sweep out over 0–58%, then the **solid consumed** arc and the counter
+    fill over them from 42–100%. `_RingPainter` takes `consumedFactor` / `plannedFactor`
+    envelopes; both settle at 1. An eat-toggle changes only the value (short `easeOut` tween),
+    never `arrivalTrigger`, so it does not re-sweep.
+  - `MacroBar._MacroFill` rewritten stateful for the same reason — the old `TweenAnimationBuilder`
+    keyed on `animationTrigger` never actually animated on a key remount (a fresh
+    `ImplicitlyAnimatedWidget` does not `forward()` on init). Now a real controller, same
+    two-stage `easeOut` (planned band 0–60%, solid 32–100%), 820ms + per-row stagger.
+
 **Living Glass Phase 4 (in progress):** the route transition now has fade-through-scale behavior,
 staggered entries resolve their start edge in RTL and add the planned subtle rotation, steppers use
 the shared direction-aware `TickerNumber`, and pull-to-refresh uses the emerald ring language.

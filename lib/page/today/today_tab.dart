@@ -20,6 +20,7 @@ import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/glass_tokens.dart';
 import '../../ui/theme/mood_palette.dart';
 import '../../ui/theme/motion_settings.dart';
+import '../home/home_controller.dart';
 import 'edit_entry_sheet.dart';
 import 'quick_add_sheet.dart';
 import 'today_controller.dart';
@@ -42,6 +43,28 @@ class TodayTab extends StatefulWidget {
 
 class _TodayTabState extends State<TodayTab> {
   late final TodayController controller = Get.find<TodayController>();
+  Worker? _tabWorker;
+
+  @override
+  void initState() {
+    super.initState();
+    // The tab lives in an IndexedStack, so becoming visible is not a rebuild.
+    // Watch the shell's tab index and replay the arrival sweep each time Today
+    // is entered; fire once now for the first mount.
+    final home = Get.find<HomeController>();
+    _tabWorker = ever(home.tabIndex, (int index) {
+      if (index == 0) controller.replayArrival();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) controller.replayArrival();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabWorker?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Obx(() {
@@ -147,8 +170,8 @@ class _TodayTabState extends State<TodayTab> {
                 plannedMacros: day.plannedTotals,
                 ringAccent: ringAccent,
                 rippleTrigger: controller.eatPulse.value,
-                // A ring rebuilt on every eat-toggle shouldn't re-sweep from
-                // zero every time -- only the very first render does.
+                // Re-sweeps only on tab arrival, never on an eat-toggle.
+                arrivalTrigger: controller.arrivalPulse.value,
                 animateFromZero: false,
               ),
             ),
@@ -293,6 +316,7 @@ class _TodayTabState extends State<TodayTab> {
             goalTrigger: controller.goalCelebration.value,
             rippleTrigger: controller.eatPulse.value,
             macroTrigger: controller.macroPulse.value,
+            arrivalTrigger: controller.arrivalPulse.value,
           ),
         ),
         SliverPadding(
@@ -331,6 +355,9 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
   /// whichever way the toggle went.
   final int macroTrigger;
 
+  /// Replays the ring's from-zero fill sweep; bumped on tab arrival only.
+  final int arrivalTrigger;
+
   _TodayRingHeaderDelegate({
     required this.day,
     required this.controller,
@@ -338,6 +365,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.goalTrigger,
     required this.rippleTrigger,
     required this.macroTrigger,
+    required this.arrivalTrigger,
   });
 
   /// Also the line the entry rows pile up against -- see [StackingCard].
@@ -516,6 +544,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
                       plannedMacros: day.plannedTotals,
                       ringAccent: ringAccent,
                       rippleTrigger: rippleTrigger,
+                      arrivalTrigger: arrivalTrigger,
                       animateFromZero: false,
                     ),
                   ),
@@ -567,6 +596,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.goalTrigger != goalTrigger ||
       oldDelegate.rippleTrigger != rippleTrigger ||
       oldDelegate.macroTrigger != macroTrigger ||
+      oldDelegate.arrivalTrigger != arrivalTrigger ||
       oldDelegate.controller.selectedDate.value !=
           controller.selectedDate.value;
 }

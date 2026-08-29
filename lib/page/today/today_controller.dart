@@ -89,6 +89,12 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   /// fires the ring's ripple, which is deliberately tick-only, while the bars
   /// should animate to their new length whichever way the toggle went.
   final macroPulse = 0.obs;
+
+  /// Bumped when the Today tab is entered, so the calorie ring and the macro
+  /// panel can replay their fill sweep from zero. Kept apart from [eatPulse] /
+  /// [macroPulse]: those fire on every toggle, and the arrival sweep must not.
+  final arrivalPulse = 0.obs;
+
   final goalCelebration = 0.obs;
   final goalCelebratedToday = false.obs;
   final _celebratedDateKeys = <String>{};
@@ -216,6 +222,14 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     // than trust it, and re-arm it for the next boundary.
     _refreshToday();
     _scheduleRollover();
+  }
+
+  /// Called by the tab shell when Today becomes the visible tab (and once on
+  /// first mount). Also re-tweens the macro bars so the two read as one
+  /// arrival gesture.
+  void replayArrival() {
+    arrivalPulse.value++;
+    macroPulse.value++;
   }
 
   void _onProfileChanged(UserProfile? profile) {

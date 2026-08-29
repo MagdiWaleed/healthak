@@ -12,8 +12,9 @@ class MacroBar extends StatelessWidget {
   /// sits behind the eaten amount as a quiet, translucent preview.
   final double? planned;
 
-  /// An incrementing token from a parent action. Each macro can add a small
-  /// delay so the three bars settle as a sequence rather than together.
+  /// An incrementing token from a parent action. A change replays the fill
+  /// from zero; each macro can add a small delay so the three bars settle as
+  /// a sequence rather than together.
   final int animationTrigger;
   final Duration stagger;
   final bool showHeader;
@@ -52,7 +53,7 @@ class MacroBar extends StatelessWidget {
       );
 }
 
-class _MacroFill extends StatelessWidget {
+class _MacroFill extends StatefulWidget {
   final double value;
   final double? planned;
   final double target;
@@ -70,43 +71,98 @@ class _MacroFill extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final total = const Duration(milliseconds: 360) + stagger;
-    final delay = stagger.inMilliseconds / total.inMilliseconds;
-    final curve = Interval(delay, 1, curve: Curves.easeOutCubic);
-    final eaten = target <= 0 ? 0.0 : (value / target).clamp(0.0, 1.0);
-    final plannedProgress = planned == null || target <= 0
-        ? 0.0
-        : (planned! / target).clamp(0.0, 1.0);
+  State<_MacroFill> createState() => _MacroFillState();
+}
 
-    return TweenAnimationBuilder<double>(
-      key: ValueKey(animationTrigger),
-      tween: Tween(end: 1.0),
-      duration: MotionSettings.duration(context, total),
-      curve: curve,
-      builder: (_, progress, __) => ClipRRect(
-        borderRadius: BorderRadius.circular(99),
-        child: SizedBox(
-          height: 6,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ColoredBox(color: color.withValues(alpha: .13)),
-              if (plannedProgress > eaten)
+class _MacroFillState extends State<_MacroFill>
+    with SingleTickerProviderStateMixin {
+  static const _base = Duration(milliseconds: 820);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _base + widget.stagger,
+    value: 1,
+  );
+  bool _primed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_primed) return;
+    _primed = true;
+    _play();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MacroFill old) {
+    super.didUpdateWidget(old);
+    if (old.animationTrigger != widget.animationTrigger) _play();
+  }
+
+  void _play() {
+    if (MotionSettings.enabled(context)) {
+      _controller.forward(from: 0);
+    } else {
+      _controller.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = _base + widget.stagger;
+    final delay = total.inMilliseconds == 0
+        ? 0.0
+        : widget.stagger.inMilliseconds / total.inMilliseconds;
+    final eaten =
+        widget.target <= 0 ? 0.0 : (widget.value / widget.target).clamp(0.0, 1.0);
+    final plannedProgress = widget.planned == null || widget.target <= 0
+        ? 0.0
+        : (widget.planned! / widget.target).clamp(0.0, 1.0);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        // Linear ramp after the stagger delay; the two stages ease their own
+        // tails so the bar reads as "linear, slowing only at the end".
+        final raw = delay >= 1
+            ? _controller.value
+            : ((_controller.value - delay) / (1 - delay)).clamp(0.0, 1.0);
+        final plannedT =
+            Curves.easeOut.transform((raw / 0.60).clamp(0.0, 1.0));
+        final eatenT =
+            Curves.easeOut.transform(((raw - 0.32) / 0.68).clamp(0.0, 1.0));
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(99),
+          child: SizedBox(
+            height: 6,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ColoredBox(color: widget.color.withValues(alpha: .13)),
+                if (plannedProgress > eaten)
+                  FractionallySizedBox(
+                    alignment: AlignmentDirectional.centerStart,
+                    widthFactor: plannedProgress * plannedT,
+                    child:
+                        ColoredBox(color: widget.color.withValues(alpha: .38)),
+                  ),
                 FractionallySizedBox(
                   alignment: AlignmentDirectional.centerStart,
-                  widthFactor: plannedProgress * progress,
-                  child: ColoredBox(color: color.withValues(alpha: .38)),
+                  widthFactor: eaten * eatenT,
+                  child: ColoredBox(color: widget.color),
                 ),
-              FractionallySizedBox(
-                alignment: AlignmentDirectional.centerStart,
-                widthFactor: eaten * progress,
-                child: ColoredBox(color: color),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

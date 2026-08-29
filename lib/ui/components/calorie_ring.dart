@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../domain/nutrition/macros.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../theme/motion_settings.dart';
 import '../motion/eat_toggle/ring_ripple.dart';
 
 /// The day's headline figure: a sweeping calorie arc with three macro rings
@@ -19,7 +20,13 @@ import '../motion/eat_toggle/ring_ripple.dart';
 /// everything already on today's plan, do I still need to add or remove
 /// something?" without waiting until it's actually eaten to find out. Passing
 /// neither leaves the ring exactly as it was: solid arc only.
-class CalorieRing extends StatelessWidget {
+///
+/// On tab arrival ([arrivalTrigger] changing) the ring plays a two-stage fill:
+/// the faded planned band sweeps out first, then the solid consumed arc and
+/// the counter follow over it -- both on a near-linear curve that eases only
+/// at the very end. An eat-toggle does not replay this; the value simply
+/// tweens to its new length.
+class CalorieRing extends StatefulWidget {
   final double consumed;
   final double target;
   final double size;
@@ -30,6 +37,10 @@ class CalorieRing extends StatelessWidget {
   final Macros? plannedMacros;
   final Color ringAccent;
   final int rippleTrigger;
+
+  /// Bumped by the Today tab when it is entered. A change replays the
+  /// two-stage fill sweep from zero.
+  final int arrivalTrigger;
 
   /// Set false for a ring rebuilt on every eat-toggle, where a sweep from zero
   /// would fight the user.
@@ -46,112 +57,190 @@ class CalorieRing extends StatelessWidget {
     this.plannedMacros,
     this.ringAccent = AppPalette.emerald,
     this.rippleTrigger = 0,
+    this.arrivalTrigger = 0,
     this.animateFromZero = true,
   });
 
   @override
+  State<CalorieRing> createState() => _CalorieRingState();
+}
+
+class _CalorieRingState extends State<CalorieRing>
+    with SingleTickerProviderStateMixin {
+  // Near-constant speed, decelerating only near the finish -- the "slow at the
+  // end" the sweep is meant to read as.
+  static const _arrivalCurve = Curves.easeOut;
+
+  late final AnimationController _arrival = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1250),
+    value: 1,
+  );
+  bool _primed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_primed) return;
+    _primed = true;
+    // First mount is itself an arrival.
+    _play();
+  }
+
+  @override
+  void didUpdateWidget(covariant CalorieRing old) {
+    super.didUpdateWidget(old);
+    if (old.arrivalTrigger != widget.arrivalTrigger) _play();
+  }
+
+  void _play() {
+    if (MotionSettings.enabled(context)) {
+      _arrival.forward(from: 0);
+    } else {
+      _arrival.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _arrival.dispose();
+    super.dispose();
+  }
+
+  /// A 0..1 stage envelope: linear rise across [start]..[end] of the sweep,
+  /// eased at its own tail.
+  double _stage(double t, double start, double end) =>
+      _arrivalCurve.transform(((t - start) / (end - start)).clamp(0.0, 1.0));
+
+  @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final planned = plannedKcal;
+    final planned = widget.plannedKcal;
+    final size = widget.size;
 
-    return TweenAnimationBuilder<double>(
-      // Animating kcal rather than the 0..1 ratio keeps the counter and the
-      // arc reading from one source.
-      tween: Tween(begin: animateFromZero ? 0 : consumed, end: consumed),
-      duration: const Duration(milliseconds: 900),
-      curve: Curves.easeOutCubic,
-      builder: (context, kcal, _) {
-        final progress = target <= 0 ? 0.0 : kcal / target;
-        final plannedProgress =
-            (planned != null && target > 0) ? planned / target : null;
-        final over = progress > 1;
-        final remaining = (target - kcal).round();
+    return AnimatedBuilder(
+      animation: _arrival,
+      builder: (context, _) {
+        final sweep = _arrival.value;
+        final plannedFactor = _stage(sweep, 0.0, 0.58);
+        final consumedFactor = _stage(sweep, 0.42, 1.0);
 
-        return RingRipple(
-          trigger: rippleTrigger,
-          color: ringAccent,
-          child: SizedBox.square(
-            dimension: size,
-            child: CustomPaint(
-              painter: _RingPainter(
-                progress: progress,
-                plannedProgress: plannedProgress,
-                consumedMacros: consumedMacros,
-                targetMacros: targetMacros,
-                plannedMacros: plannedMacros,
-                ringAccent: ringAccent,
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      kcal.round().toString(),
-                      style: text.displayLarge?.copyWith(
-                        fontSize: size * .19,
-                        fontWeight: FontWeight.w900,
-                        height: 1.05,
-                        letterSpacing: -1,
-                        fontFeatures: AppTypography.tabular,
-                        color: over ? AppPalette.amber : AppPalette.text,
+        return TweenAnimationBuilder<double>(
+          // Value-to-value smoothing for eat-toggles; the arrival envelope
+          // above is what handles the from-zero sweep.
+          tween: Tween(
+            begin: widget.animateFromZero ? 0 : widget.consumed,
+            end: widget.consumed,
+          ),
+          duration: const Duration(milliseconds: 520),
+          curve: Curves.easeOut,
+          builder: (context, smoothConsumed, __) {
+            return TweenAnimationBuilder<double>(
+              tween: Tween(end: planned ?? 0),
+              duration: const Duration(milliseconds: 520),
+              curve: Curves.easeOut,
+              builder: (context, smoothPlanned, ___) {
+                final shownKcal = smoothConsumed * consumedFactor;
+                final progress =
+                    widget.target <= 0 ? 0.0 : shownKcal / widget.target;
+                final plannedProgress =
+                    (planned != null && widget.target > 0)
+                        ? (smoothPlanned * plannedFactor) / widget.target
+                        : null;
+                final over = progress > 1;
+                final remaining = (widget.target - shownKcal).round();
+
+                return RingRipple(
+                  trigger: widget.rippleTrigger,
+                  color: widget.ringAccent,
+                  child: SizedBox.square(
+                    dimension: size,
+                    child: CustomPaint(
+                      painter: _RingPainter(
+                        progress: progress,
+                        plannedProgress: plannedProgress,
+                        consumedMacros: widget.consumedMacros,
+                        targetMacros: widget.targetMacros,
+                        plannedMacros: widget.plannedMacros,
+                        ringAccent: widget.ringAccent,
+                        consumedFactor: consumedFactor,
+                        plannedFactor: plannedFactor,
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              shownKcal.round().toString(),
+                              style: text.displayLarge?.copyWith(
+                                fontSize: size * .19,
+                                fontWeight: FontWeight.w900,
+                                height: 1.05,
+                                letterSpacing: -1,
+                                fontFeatures: AppTypography.tabular,
+                                color:
+                                    over ? AppPalette.amber : AppPalette.text,
+                              ),
+                            ),
+                            // The captions do not scale with the ring, so on a
+                            // collapsed one they spill straight out of the
+                            // circle. The big number alone still says
+                            // everything a compact ring needs to.
+                            if (size > 120) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                over
+                                    ? '${AppRingLabels.over} ${-remaining}'
+                                    : '$remaining ${AppRingLabels.remaining}',
+                                style: text.bodyMedium?.copyWith(
+                                  color: over
+                                      ? AppPalette.amber
+                                      : AppPalette.muted,
+                                  fontFeatures: AppTypography.tabular,
+                                ),
+                              ),
+                              if (plannedProgress != null &&
+                                  plannedProgress > progress + 0.005) ...[
+                                const SizedBox(height: 1),
+                                Text(
+                                  '${AppRingLabels.plannedTo} '
+                                  '${(smoothPlanned * plannedFactor).round()}',
+                                  style: text.labelSmall
+                                      ?.copyWith(color: AppPalette.muted),
+                                ),
+                              ],
+                            ],
+                            if (size > 145) ...[
+                              const SizedBox(height: 5),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _MacroStat(
+                                      color: AppPalette.emerald,
+                                      grams: widget.consumedMacros.protein *
+                                          consumedFactor),
+                                  const SizedBox(width: 8),
+                                  _MacroStat(
+                                      color: AppPalette.amber,
+                                      grams: widget.consumedMacros.carbs *
+                                          consumedFactor),
+                                  const SizedBox(width: 8),
+                                  _MacroStat(
+                                      color: AppPalette.violet,
+                                      grams: widget.consumedMacros.fat *
+                                          consumedFactor),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
-                    // The captions do not scale with the ring, so on a
-                    // collapsed one they spill straight out of the circle and
-                    // over whatever is beside it. The big number alone still
-                    // says everything a compact ring needs to.
-                    if (size > 120) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        over
-                            ? '${AppRingLabels.over} ${-remaining}'
-                            : '$remaining ${AppRingLabels.remaining}',
-                        style: text.bodyMedium?.copyWith(
-                          color: over ? AppPalette.amber : AppPalette.muted,
-                          fontFeatures: AppTypography.tabular,
-                        ),
-                      ),
-                      if (plannedProgress != null &&
-                          plannedProgress > progress + 0.005) ...[
-                        const SizedBox(height: 1),
-                        Text(
-                          '${AppRingLabels.plannedTo} ${planned!.round()}',
-                          style: text.labelSmall
-                              ?.copyWith(color: AppPalette.muted),
-                        ),
-                      ],
-                    ],
-                    // The macro rings around the arc carry no numbers of their
-                    // own -- only the legend says which color is which. Below
-                    // a collapse threshold that roughly matches where the
-                    // header fades its other detail (`detailOpacity` in
-                    // `_TodayRingHeaderDelegate`), there isn't room for a
-                    // third line without crowding the kcal figure, so this
-                    // only shows on the big ring.
-                    if (size > 145) ...[
-                      const SizedBox(height: 5),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _MacroStat(
-                              color: AppPalette.emerald,
-                              grams: consumedMacros.protein),
-                          const SizedBox(width: 8),
-                          _MacroStat(
-                              color: AppPalette.amber,
-                              grams: consumedMacros.carbs),
-                          const SizedBox(width: 8),
-                          _MacroStat(
-                              color: AppPalette.violet,
-                              grams: consumedMacros.fat),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -205,13 +294,21 @@ class _RingPainter extends CustomPainter {
   final Macros? plannedMacros;
   final Color ringAccent;
 
+  /// Arrival-sweep envelopes, 0..1. The solid consumed arc and its macro
+  /// sub-rings scale by [consumedFactor]; the faded planned band by
+  /// [plannedFactor]. Both settle at 1.
+  final double consumedFactor;
+  final double plannedFactor;
+
   const _RingPainter({
     required this.progress,
     required this.consumedMacros,
     required this.targetMacros,
+    required this.ringAccent,
     this.plannedProgress,
     this.plannedMacros,
-    required this.ringAccent,
+    this.consumedFactor = 1,
+    this.plannedFactor = 1,
   });
 
   /// Twelve o'clock. Every arc and the sweep gradient are anchored here.
@@ -384,17 +481,17 @@ class _RingPainter extends CustomPainter {
 
   void _macroRings(Canvas canvas, Rect rect, double stroke) {
     final consumedRatios = [
-      _ratio(consumedMacros.protein, targetMacros.protein),
-      _ratio(consumedMacros.carbs, targetMacros.carbs),
-      _ratio(consumedMacros.fat, targetMacros.fat),
+      _ratio(consumedMacros.protein, targetMacros.protein) * consumedFactor,
+      _ratio(consumedMacros.carbs, targetMacros.carbs) * consumedFactor,
+      _ratio(consumedMacros.fat, targetMacros.fat) * consumedFactor,
     ];
     final planned = plannedMacros;
     final plannedRatios = planned == null
         ? null
         : [
-            _ratio(planned.protein, targetMacros.protein),
-            _ratio(planned.carbs, targetMacros.carbs),
-            _ratio(planned.fat, targetMacros.fat),
+            _ratio(planned.protein, targetMacros.protein) * plannedFactor,
+            _ratio(planned.carbs, targetMacros.carbs) * plannedFactor,
+            _ratio(planned.fat, targetMacros.fat) * plannedFactor,
           ];
     final width = math.max(2.5, stroke * .22);
 
@@ -457,5 +554,7 @@ class _RingPainter extends CustomPainter {
       old.consumedMacros != consumedMacros ||
       old.targetMacros != targetMacros ||
       old.plannedMacros != plannedMacros ||
-      old.ringAccent != ringAccent;
+      old.ringAccent != ringAccent ||
+      old.consumedFactor != consumedFactor ||
+      old.plannedFactor != plannedFactor;
 }
