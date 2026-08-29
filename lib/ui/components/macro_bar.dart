@@ -12,10 +12,10 @@ class MacroBar extends StatelessWidget {
   /// sits behind the eaten amount as a quiet, translucent preview.
   final double? planned;
 
-  /// An incrementing token from a parent action. A change replays the fill
-  /// from zero; each macro can add a small delay so the three bars settle as
-  /// a sequence rather than together.
-  final int animationTrigger;
+  /// Incrementing token from a tab arrival. A change replays the two-stage
+  /// fill from zero. A plain [value] change (an eat-toggle) is NOT this -- the
+  /// bar just glides to its new length in place.
+  final int arrivalTrigger;
   final Duration stagger;
   final bool showHeader;
 
@@ -25,7 +25,7 @@ class MacroBar extends StatelessWidget {
       required this.target,
       required this.color,
       this.planned,
-      this.animationTrigger = 0,
+      this.arrivalTrigger = 0,
       this.stagger = Duration.zero,
       this.showHeader = true,
       super.key});
@@ -46,7 +46,7 @@ class MacroBar extends StatelessWidget {
             planned: planned,
             target: target,
             color: color,
-            animationTrigger: animationTrigger,
+            arrivalTrigger: arrivalTrigger,
             stagger: stagger,
           ),
         ],
@@ -58,7 +58,7 @@ class _MacroFill extends StatefulWidget {
   final double? planned;
   final double target;
   final Color color;
-  final int animationTrigger;
+  final int arrivalTrigger;
   final Duration stagger;
 
   const _MacroFill({
@@ -66,7 +66,7 @@ class _MacroFill extends StatefulWidget {
     required this.planned,
     required this.target,
     required this.color,
-    required this.animationTrigger,
+    required this.arrivalTrigger,
     required this.stagger,
   });
 
@@ -78,7 +78,9 @@ class _MacroFillState extends State<_MacroFill>
     with SingleTickerProviderStateMixin {
   static const _base = Duration(milliseconds: 820);
 
-  late final AnimationController _controller = AnimationController(
+  /// The from-zero arrival envelope. Sits at 1 (settled) except while a tab
+  /// arrival is replaying.
+  late final AnimationController _sweep = AnimationController(
     vsync: this,
     duration: _base + widget.stagger,
     value: 1,
@@ -96,22 +98,33 @@ class _MacroFillState extends State<_MacroFill>
   @override
   void didUpdateWidget(covariant _MacroFill old) {
     super.didUpdateWidget(old);
-    if (old.animationTrigger != widget.animationTrigger) _play();
+    // Only a tab arrival replays the sweep. A value change (eat-toggle) is
+    // left to the implicit tweens below, so the page does not re-animate
+    // under the user.
+    if (old.arrivalTrigger != widget.arrivalTrigger) _play();
   }
 
   void _play() {
     if (MotionSettings.enabled(context)) {
-      _controller.forward(from: 0);
+      _sweep.forward(from: 0);
     } else {
-      _controller.value = 1;
+      _sweep.value = 1;
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _sweep.dispose();
     super.dispose();
   }
+
+  double get _eatenTarget => widget.target <= 0
+      ? 0
+      : (widget.value / widget.target).clamp(0.0, 1.0);
+
+  double get _plannedTarget => widget.planned == null || widget.target <= 0
+      ? 0
+      : (widget.planned! / widget.target).clamp(0.0, 1.0);
 
   @override
   Widget build(BuildContext context) {
@@ -119,48 +132,58 @@ class _MacroFillState extends State<_MacroFill>
     final delay = total.inMilliseconds == 0
         ? 0.0
         : widget.stagger.inMilliseconds / total.inMilliseconds;
-    final eaten =
-        widget.target <= 0 ? 0.0 : (widget.value / widget.target).clamp(0.0, 1.0);
-    final plannedProgress = widget.planned == null || widget.target <= 0
-        ? 0.0
-        : (widget.planned! / widget.target).clamp(0.0, 1.0);
+    const glide = Duration(milliseconds: 360);
 
     return AnimatedBuilder(
-      animation: _controller,
+      animation: _sweep,
       builder: (context, _) {
-        // Linear ramp after the stagger delay; the two stages ease their own
-        // tails so the bar reads as "linear, slowing only at the end".
+        // Linear ramp after the stagger delay; each stage eases its own tail
+        // so the bar reads as "linear, slowing only at the end".
         final raw = delay >= 1
-            ? _controller.value
-            : ((_controller.value - delay) / (1 - delay)).clamp(0.0, 1.0);
-        final plannedT =
+            ? _sweep.value
+            : ((_sweep.value - delay) / (1 - delay)).clamp(0.0, 1.0);
+        final plannedStage =
             Curves.easeOut.transform((raw / 0.60).clamp(0.0, 1.0));
-        final eatenT =
+        final eatenStage =
             Curves.easeOut.transform(((raw - 0.32) / 0.68).clamp(0.0, 1.0));
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(99),
-          child: SizedBox(
-            height: 6,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(color: widget.color.withValues(alpha: .13)),
-                if (plannedProgress > eaten)
-                  FractionallySizedBox(
-                    alignment: AlignmentDirectional.centerStart,
-                    widthFactor: plannedProgress * plannedT,
-                    child:
-                        ColoredBox(color: widget.color.withValues(alpha: .38)),
+        return TweenAnimationBuilder<double>(
+          tween: Tween(end: _eatenTarget),
+          duration: glide,
+          curve: Curves.easeOut,
+          builder: (context, eaten, __) {
+            return TweenAnimationBuilder<double>(
+              tween: Tween(end: _plannedTarget),
+              duration: glide,
+              curve: Curves.easeOut,
+              builder: (context, plannedProgress, ___) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: SizedBox(
+                    height: 6,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        ColoredBox(color: widget.color.withValues(alpha: .13)),
+                        if (plannedProgress > eaten)
+                          FractionallySizedBox(
+                            alignment: AlignmentDirectional.centerStart,
+                            widthFactor: plannedProgress * plannedStage,
+                            child: ColoredBox(
+                                color: widget.color.withValues(alpha: .38)),
+                          ),
+                        FractionallySizedBox(
+                          alignment: AlignmentDirectional.centerStart,
+                          widthFactor: eaten * eatenStage,
+                          child: ColoredBox(color: widget.color),
+                        ),
+                      ],
+                    ),
                   ),
-                FractionallySizedBox(
-                  alignment: AlignmentDirectional.centerStart,
-                  widthFactor: eaten * eatenT,
-                  child: ColoredBox(color: widget.color),
-                ),
-              ],
-            ),
-          ),
+                );
+              },
+            );
+          },
         );
       },
     );

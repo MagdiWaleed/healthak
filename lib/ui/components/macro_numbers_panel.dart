@@ -19,13 +19,13 @@ class MacroNumbersPanel extends StatelessWidget {
   final Macros consumed;
   final Macros target;
   final Macros planned;
-  final int animationTrigger;
+  final int arrivalTrigger;
 
   const MacroNumbersPanel({
     required this.consumed,
     required this.target,
     required this.planned,
-    required this.animationTrigger,
+    required this.arrivalTrigger,
     super.key,
   });
 
@@ -76,7 +76,7 @@ class MacroNumbersPanel extends StatelessWidget {
             target: target.protein,
             planned: planned.protein,
             color: AppPalette.emerald,
-            animationTrigger: animationTrigger,
+            arrivalTrigger: arrivalTrigger,
           ),
           const SizedBox(height: AppSpacing.sm),
           _MacroProgressRow(
@@ -85,7 +85,7 @@ class MacroNumbersPanel extends StatelessWidget {
             target: target.carbs,
             planned: planned.carbs,
             color: AppPalette.amber,
-            animationTrigger: animationTrigger,
+            arrivalTrigger: arrivalTrigger,
             stagger: const Duration(milliseconds: 60),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -95,7 +95,7 @@ class MacroNumbersPanel extends StatelessWidget {
             target: target.fat,
             planned: planned.fat,
             color: AppPalette.violet,
-            animationTrigger: animationTrigger,
+            arrivalTrigger: arrivalTrigger,
             stagger: const Duration(milliseconds: 120),
           ),
         ],
@@ -127,7 +127,7 @@ class _MacroProgressRow extends StatelessWidget {
   final double target;
   final double planned;
   final Color color;
-  final int animationTrigger;
+  final int arrivalTrigger;
   final Duration stagger;
 
   const _MacroProgressRow({
@@ -136,7 +136,7 @@ class _MacroProgressRow extends StatelessWidget {
     required this.target,
     required this.planned,
     required this.color,
-    required this.animationTrigger,
+    required this.arrivalTrigger,
     this.stagger = Duration.zero,
   });
 
@@ -199,7 +199,7 @@ class _MacroProgressRow extends StatelessWidget {
           target: target,
           planned: planned,
           color: color,
-          animationTrigger: animationTrigger,
+          arrivalTrigger: arrivalTrigger,
           stagger: stagger,
           showHeader: false,
         ),

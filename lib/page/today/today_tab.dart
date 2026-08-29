@@ -193,7 +193,7 @@ class _TodayTabState extends State<TodayTab> {
         consumed: day.consumedTotals,
         target: day.targets.macros,
         planned: day.plannedTotals,
-        animationTrigger: controller.macroPulse.value,
+        arrivalTrigger: controller.arrivalPulse.value,
       ),
     ];
 
@@ -205,7 +205,12 @@ class _TodayTabState extends State<TodayTab> {
     // the populated branch still scrolls normally past it.
     if (day.isEmpty) {
       return CustomScrollView(
-        key: ValueKey('day-blank-$dateKey'),
+        // A PageStorageKey (not a plain ValueKey): the eat-toggle reassigns
+        // `day.value`, which rebuilds this whole subtree through the parent
+        // Obx + AnimatedSwitcher. Without the offset being parked in
+        // PageStorage, that rebuild dropped the scroll position back to the
+        // top every time a row was ticked.
+        key: PageStorageKey<String>('day-blank-$dateKey'),
         slivers: [
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(22, 66, 22, 0),
@@ -302,7 +307,10 @@ class _TodayTabState extends State<TodayTab> {
     };
 
     return CustomScrollView(
-      key: ValueKey('day-$dateKey'),
+      // PageStorageKey so the scroll offset survives the parent Obx +
+      // AnimatedSwitcher rebuild that every eat-toggle triggers (it reassigns
+      // `day.value`). A plain ValueKey let it snap back to the top.
+      key: PageStorageKey<String>('day-$dateKey'),
       // Parked rows are painted from a layout position above the viewport;
       // without this the deepest of them get recycled out from under the pile.
       cacheExtent: kStackingCacheExtent,
@@ -315,7 +323,6 @@ class _TodayTabState extends State<TodayTab> {
             ringAccent: ringAccent,
             goalTrigger: controller.goalCelebration.value,
             rippleTrigger: controller.eatPulse.value,
-            macroTrigger: controller.macroPulse.value,
             arrivalTrigger: controller.arrivalPulse.value,
           ),
         ),
@@ -350,12 +357,8 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final int goalTrigger;
   final int rippleTrigger;
 
-  /// Separate from [rippleTrigger] because that one also fires the ring's
-  /// ripple, which is deliberately tick-only, while the bars should re-tween
-  /// whichever way the toggle went.
-  final int macroTrigger;
-
-  /// Replays the ring's from-zero fill sweep; bumped on tab arrival only.
+  /// Replays the ring's and macro panel's from-zero fill sweep; bumped on tab
+  /// arrival only, never on an eat-toggle.
   final int arrivalTrigger;
 
   _TodayRingHeaderDelegate({
@@ -364,7 +367,6 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.ringAccent,
     required this.goalTrigger,
     required this.rippleTrigger,
-    required this.macroTrigger,
     required this.arrivalTrigger,
   });
 
@@ -482,10 +484,17 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
           w - _barMargin - panelVisual / _panelCollapsedScale,
           c,
         )!;
+        // Every child carries a stable key. This Stack has a conditional
+        // child (the day chip), and Flutter matches keyless Stack children by
+        // position -- so the moment a scroll made the chip appear, the ring
+        // and macro panel shifted one slot, their elements were torn down and
+        // rebuilt, and their fresh State replayed the arrival fill sweep on
+        // every scroll. Keys pin each element to its identity instead.
         return Stack(
           alignment: Alignment.topCenter,
           children: [
             PositionedDirectional(
+              key: const ValueKey('hdr-greeting'),
               start: 22,
               top: 14,
               child: Opacity(
@@ -494,6 +503,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
             ),
             Positioned(
+              key: const ValueKey('hdr-weekstrip'),
               top: 100,
               left: 22,
               right: 22,
@@ -504,6 +514,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
             if (dayOpacity > 0)
               Positioned(
+                key: const ValueKey('hdr-daychip'),
                 top: dayTop,
                 left: dayLeft,
                 width: dayWidth,
@@ -518,6 +529,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
                 ),
               ),
             Positioned(
+              key: const ValueKey('hdr-ring'),
               top: ringTop,
               left: ringLeft,
               width: ringSize,
@@ -552,6 +564,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
             ),
             Positioned(
+              key: const ValueKey('hdr-legend'),
               top: _ringTop,
               right: 8,
               child: Opacity(
@@ -560,6 +573,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
             ),
             Positioned(
+              key: const ValueKey('hdr-panel'),
               left: panelLeft,
               right: panelRight,
               top: panelTop,
@@ -570,11 +584,12 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
                   consumed: day.consumedTotals,
                   target: day.targets.macros,
                   planned: day.plannedTotals,
-                  animationTrigger: macroTrigger,
+                  arrivalTrigger: arrivalTrigger,
                 ),
               ),
             ),
             Positioned(
+              key: const ValueKey('hdr-target'),
               left: 22,
               right: 22,
               bottom: 16,
@@ -595,7 +610,6 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.ringAccent != ringAccent ||
       oldDelegate.goalTrigger != goalTrigger ||
       oldDelegate.rippleTrigger != rippleTrigger ||
-      oldDelegate.macroTrigger != macroTrigger ||
       oldDelegate.arrivalTrigger != arrivalTrigger ||
       oldDelegate.controller.selectedDate.value !=
           controller.selectedDate.value;

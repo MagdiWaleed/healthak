@@ -256,6 +256,39 @@ the desktop-taskbar emulator is not valid evidence for it.
     `ImplicitlyAnimatedWidget` does not `forward()` on init). Now a real controller, same
     two-stage `easeOut` (planned band 0–60%, solid 32–100%), 820ms + per-row stagger.
 
+- **Scroll on Today "refreshing" the ring/panel — three compounding causes, all fixed:**
+  1. **Conditional Stack child.** `_TodayRingHeaderDelegate.build`'s `Stack` has a conditional
+     day-chip child, and Flutter matches keyless `Stack` children by position — so the first
+     scroll pixel (which makes the chip appear) shifted the ring and macro panel one slot, tore
+     down their elements, and their fresh `State` replayed the arrival fill sweep. Every child in
+     that Stack now carries a stable `ValueKey`.
+  2. **`CustomScrollView` had a plain `ValueKey`** (also the fix for the earlier "snaps to top"
+     report) → `PageStorageKey<String>` so the offset survives any rebuild.
+  3. **`DayLog` has no value equality**, so Firestore `snapshots()` handed `TodayController` a
+     fresh instance on every server ack / `hasPendingWrites` flip, each re-emitting `day.value`
+     and rebuilding the whole Today tree — visibly when it landed mid-scroll. `TodayController`
+     now keeps a `_daySig` string signature (dateKey + schedule version + per-entry
+     id/eaten/order/slot/grams) and `_publishDay()` routes every write through it; the watch
+     stream drops an echo whose signature matches. A toggle now emits `day.value` exactly once
+     instead of 3–4 times.
+  Verified on `emulator-5554`: scroll deep, toggle mid-list, scroll again — offset held, ring
+  glided to its new value, no sweep, no exceptions.
+
+- **Two eat-toggle bugs, found on device, fixed:**
+  - **The list snapped back to the top on every tick.** Ticking a row reassigns
+    `TodayController.day.value`, which rebuilds the whole day subtree through the parent `Obx`
+    + `AnimatedSwitcher`. The `CustomScrollView` carried a plain `ValueKey`, so the offset was
+    not parked anywhere and reset. Both branches now use `PageStorageKey<String>('day-…')` —
+    same value-equality so the `AnimatedSwitcher` day-vs-day identity is unchanged, but the
+    scroll offset now survives the rebuild.
+  - **The ring + macro panel replayed their arrival sweep on every tick.** `toggleEaten` bumped
+    `macroPulse`, which fed the panel's trigger, which my new stateful `_MacroFill` /
+    `MacroNumbersPanel` treated as a reason to re-sweep from zero. `macroPulse` is **deleted**;
+    the panel and `MacroBar` now take `arrivalTrigger` (fed only by `arrivalPulse`, i.e. tab
+    entry). A value change on the same page just glides — the bars tween to their new length
+    (360ms `easeOut`), the ring counter tweens, neither restarts. Tab switch still replays the
+    full two-stage sweep. `_TodayRingHeaderDelegate` lost its `macroTrigger` field with it.
+
 **Living Glass Phase 4 (in progress):** the route transition now has fade-through-scale behavior,
 staggered entries resolve their start edge in RTL and add the planned subtle rotation, steppers use
 the shared direction-aware `TickerNumber`, and pull-to-refresh uses the emerald ring language.

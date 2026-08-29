@@ -83,16 +83,14 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
   /// Increasing tokens let short-lived visual effects replay without keeping
   /// animation state in the Firestore-backed [DayLog].
+  ///
+  /// Fires the ring's one-shot ripple on marking something eaten. The macro
+  /// bars are not driven from here -- they glide to their new length off the
+  /// value change itself, so ticking a row does not re-run any fill sweep.
   final eatPulse = 0.obs;
 
-  /// Re-tweens the macro bars. Separate from [eatPulse] because that one also
-  /// fires the ring's ripple, which is deliberately tick-only, while the bars
-  /// should animate to their new length whichever way the toggle went.
-  final macroPulse = 0.obs;
-
-  /// Bumped when the Today tab is entered, so the calorie ring and the macro
-  /// panel can replay their fill sweep from zero. Kept apart from [eatPulse] /
-  /// [macroPulse]: those fire on every toggle, and the arrival sweep must not.
+  /// Bumped only when the Today tab is entered, so the calorie ring and the
+  /// macro panel replay their fill sweep from zero. Never on an eat-toggle.
   final arrivalPulse = 0.obs;
 
   final goalCelebration = 0.obs;
@@ -225,12 +223,8 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   }
 
   /// Called by the tab shell when Today becomes the visible tab (and once on
-  /// first mount). Also re-tweens the macro bars so the two read as one
-  /// arrival gesture.
-  void replayArrival() {
-    arrivalPulse.value++;
-    macroPulse.value++;
-  }
+  /// first mount). Replays the ring + macro panel fill sweep.
+  void replayArrival() => arrivalPulse.value++;
 
   void _onProfileChanged(UserProfile? profile) {
     if (profile == null || !_isToday(selectedDate.value)) return;
@@ -251,6 +245,30 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     }
   }
 
+  /// Signature of the currently-published day. `DayLog` has no value equality,
+  /// so a Firestore snapshots() stream hands us a fresh instance on every
+  /// server ack and metadata flip even when nothing the UI shows has changed.
+  /// Without this guard each of those re-emitted `day.value`, rebuilding the
+  /// whole Today tree -- visibly so when it lands mid-scroll.
+  String? _daySig;
+
+  static String _sigOf(DayLog d) {
+    final b = StringBuffer('${d.dateKey}|'
+        '${d.materializedFromScheduleVersion}|${d.targets.kcal}');
+    for (final e in d.entries) {
+      b.write('~${e.entryId},${e.eaten ? 1 : 0},${e.order},${e.slot}');
+      for (final it in e.items) {
+        b.write(',${it.foodId}:${it.grams}');
+      }
+    }
+    return b.toString();
+  }
+
+  void _publishDay(DayLog? value) {
+    _daySig = value == null ? null : _sigOf(value);
+    day.value = value;
+  }
+
   Future<void> selectDate(DateTime date) async {
     final epoch = ++_selectionEpoch;
     _followingToday = _isToday(date);
@@ -259,7 +277,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     selectedDate.value = date;
     // Do not leave a previous day's content visible while the new local
     // Firestore snapshot is arriving.
-    day.value = null;
+    _publishDay(null);
     // Stay in the loading state until the first snapshot for the new day
     // actually arrives. Clearing it eagerly left a few frames of
     // `loading == false && day == null` -- the exact signature of "this day
@@ -272,11 +290,16 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
     _watchSub = _days.watch(date).listen((value) {
       if (epoch != _selectionEpoch) return;
-      day.value = value;
+      // Skip an echo that carries nothing new -- see `_daySig`.
+      final unchanged = value != null &&
+          day.value != null &&
+          _daySig == _sigOf(value);
       // A null while today's document is still being written is a
       // not-yet, not an answer. Any other null is the real, final state of
       // a past day that was never opened.
       if (value != null || !_materializing) loading.value = false;
+      if (unchanged) return;
+      _publishDay(value);
       _syncMood(value);
       goalCelebratedToday.value =
           value != null && _celebratedDateKeys.contains(value.dateKey);
@@ -351,12 +374,12 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     if (entry == null) return;
     final before = progress.value;
     final updated = current.withEntry(entry.toggleEaten());
-    day.value = updated;
+    _publishDay(updated);
     _syncMood(day.value, previousProgress: before);
-    // The ring's ripple stays tick-only -- undo is deliberately restrained --
-    // but the macro bars re-tween either way, so they get their own token.
+    // The ring's ripple stays tick-only -- undo is deliberately restrained.
+    // The macro bars need no token: they glide to the new value off the
+    // `day.value` change itself.
     if (!entry.eaten) eatPulse.value++;
-    macroPulse.value++;
     try {
       // A transaction cannot complete while Firestore is offline, so the old
       // hot path visibly flipped and then rolled itself back. A normal set is
@@ -364,7 +387,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
       // the one-tap contract even through a short network outage.
       await _days.save(updated);
     } catch (e) {
-      day.value = current; // roll back on failure
+      _publishDay(current); // roll back on failure
       _syncMood(current);
       error.value = e.toString();
     }
@@ -382,12 +405,12 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     // stream ticking), the just-dismissed item's key reappears in the tree
     // after `Dismissible` already reported it gone, which Flutter throws on:
     // "A dismissed Dismissible widget is still part of the tree."
-    day.value = current.withoutEntry(entryId);
+    _publishDay(current.withoutEntry(entryId));
     _syncMood(day.value);
     try {
       await _days.removeEntry(current.dateKey, entryId);
     } catch (e) {
-      day.value = current; // roll back on failure
+      _publishDay(current); // roll back on failure
       _syncMood(current);
       error.value = e.toString();
     }
