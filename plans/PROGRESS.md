@@ -272,9 +272,15 @@ the desktop-taskbar emulator is not valid evidence for it.
   guard) are all still correct and still carry their weight — but this was the big one behind the
   string of "it refreshes" reports.
 
-- **Macro sub-rings now animate in.** The three thin protein/carbs/fat arcs inside the ring got
-  a per-ring staggered arrival envelope (`_RingPainter._macroStage` off a new `sweepT`): ring `i`
-  starts a beat after `i-1`, so they sweep as a cascade rather than snapping with the main arc.
+- **Macro sub-rings animate in AND glide on value change.** The three thin protein/carbs/fat
+  arcs got a per-ring staggered *arrival* envelope (`_RingPainter._macroStage` off `sweepT`):
+  ring `i` starts a beat after `i-1`, so they cascade rather than snap with the main arc. And
+  `CalorieRing` gained a second controller, `_settle` (520ms easeOut): an eat-toggle changes the
+  kcal *and* every macro, and `didUpdateWidget` now re-anchors `_from*`/`_to*` (kcal, planned
+  kcal, consumed `Macros`, planned `Macros`) and glides all of them — the main arc, the three
+  sub-rings, the grams line, and the «مخطط حتى» caption — to their new figures off that one
+  controller. The painter's dead `consumedFactor`/`plannedFactor` params were removed (the main
+  arc's envelope is now baked into `progress` by the widget).
 - **Adding/toggling an entry re-animated existing rows** — worst on the section nearest the
   pinned header (breakfast re-slid on every change; dinner, further down, was fine). `StaggeredEntry`
   replays its slide-in on every mount, and a list rebuild + the pinned header's relayout can
