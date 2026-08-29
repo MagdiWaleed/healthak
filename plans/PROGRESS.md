@@ -256,6 +256,35 @@ the desktop-taskbar emulator is not valid evidence for it.
     `ImplicitlyAnimatedWidget` does not `forward()` on init). Now a real controller, same
     two-stage `easeOut` (planned band 0–60%, solid 32–100%), 820ms + per-row stagger.
 
+- **ROOT CAUSE of the Today "refresh" reports: the whole tab body was torn down on every
+  mood change.** `GlassScaffold` gave `ReactiveAurora` `key: ValueKey((effective, widget.mood))`.
+  `ReactiveAurora`'s entire reason to exist is to lerp a `DayMood` change *in place* — but the
+  `mood` in that key meant any progress-driven mood shift destroyed the `ReactiveAurora` element
+  and, with it, its `child`: `SafeArea → IndexedStack → TodayTab → the whole list`. Ticking an
+  entry that moved the ring past a mood threshold thus remounted `_TodayTabState` (confirmed:
+  `initState` fired 3× on startup + once per qualifying toggle), resetting scroll, the row replay
+  guard, and every `StaggeredEntry`. **Fix: drop the key entirely** — `ReactiveAurora.didUpdateWidget`
+  already lerps mood, and `AuroraBackground.didUpdateWidget` already handles every quality-tier
+  prop. Verified on `emulator-5554`: `_TodayTabState.initState` now fires exactly once and
+  survives toggles/adds/mood changes; scroll and row state hold.
+
+  The earlier fixes in this section (Stack keys, PageStorageKey, `_daySig` dedup, the row replay
+  guard) are all still correct and still carry their weight — but this was the big one behind the
+  string of "it refreshes" reports.
+
+- **Macro sub-rings now animate in.** The three thin protein/carbs/fat arcs inside the ring got
+  a per-ring staggered arrival envelope (`_RingPainter._macroStage` off a new `sweepT`): ring `i`
+  starts a beat after `i-1`, so they sweep as a cascade rather than snapping with the main arc.
+- **Adding/toggling an entry re-animated existing rows** — worst on the section nearest the
+  pinned header (breakfast re-slid on every change; dinner, further down, was fine). `StaggeredEntry`
+  replays its slide-in on every mount, and a list rebuild + the pinned header's relayout can
+  remount the top rows. First fix used a post-frame "seen keys" set, which lost the race for the
+  top section. Now `StaggeredEntry` takes `replayKey` + `replayGuard`: it registers its key in
+  the shared set **synchronously in `initState`** (`Set.add` returns false if already present →
+  don't animate), so a remount at any list position renders settled instead of sliding.
+  `_TodayTabState._rowReplayGuard` is the set, cleared on date change. Section-agnostic —
+  covers فطور / غداء / عشاء / سناك the same way.
+
 - **Scroll on Today "refreshing" the ring/panel — three compounding causes, all fixed:**
   1. **Conditional Stack child.** `_TodayRingHeaderDelegate.build`'s `Stack` has a conditional
      day-chip child, and Flutter matches keyless `Stack` children by position — so the first

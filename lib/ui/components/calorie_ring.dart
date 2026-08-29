@@ -165,6 +165,7 @@ class _CalorieRingState extends State<CalorieRing>
                         ringAccent: widget.ringAccent,
                         consumedFactor: consumedFactor,
                         plannedFactor: plannedFactor,
+                        sweepT: sweep,
                       ),
                       child: Center(
                         child: Column(
@@ -294,11 +295,16 @@ class _RingPainter extends CustomPainter {
   final Macros? plannedMacros;
   final Color ringAccent;
 
-  /// Arrival-sweep envelopes, 0..1. The solid consumed arc and its macro
-  /// sub-rings scale by [consumedFactor]; the faded planned band by
-  /// [plannedFactor]. Both settle at 1.
+  /// Arrival-sweep envelopes for the main arc, 0..1. The solid consumed arc
+  /// scales by [consumedFactor]; the faded planned band by [plannedFactor].
+  /// Both settle at 1.
   final double consumedFactor;
   final double plannedFactor;
+
+  /// Raw 0..1 arrival progress. The three macro sub-rings derive their own
+  /// staggered envelopes from this so they sweep one after another rather
+  /// than all with the main arc. Settles at 1.
+  final double sweepT;
 
   const _RingPainter({
     required this.progress,
@@ -309,6 +315,7 @@ class _RingPainter extends CustomPainter {
     this.plannedMacros,
     this.consumedFactor = 1,
     this.plannedFactor = 1,
+    this.sweepT = 1,
   });
 
   /// Twelve o'clock. Every arc and the sweep gradient are anchored here.
@@ -479,19 +486,38 @@ class _RingPainter extends CustomPainter {
     );
   }
 
+  /// Per-ring arrival envelope. Ring `i` starts a beat after ring `i-1`, so
+  /// the three sweep as a cascade. Settles at 1 once [sweepT] reaches 1.
+  double _macroStage(int i, {required bool planned}) {
+    final start = (planned ? 0.0 : 0.42) + i * 0.10;
+    final end = planned ? start + 0.58 : 1.0;
+    return Curves.easeOut
+        .transform(((sweepT - start) / (end - start)).clamp(0.0, 1.0));
+  }
+
   void _macroRings(Canvas canvas, Rect rect, double stroke) {
     final consumedRatios = [
-      _ratio(consumedMacros.protein, targetMacros.protein) * consumedFactor,
-      _ratio(consumedMacros.carbs, targetMacros.carbs) * consumedFactor,
-      _ratio(consumedMacros.fat, targetMacros.fat) * consumedFactor,
+      for (var i = 0; i < 3; i++)
+        _ratio(
+              [consumedMacros.protein, consumedMacros.carbs, consumedMacros.fat][i],
+              [targetMacros.protein, targetMacros.carbs, targetMacros.fat][i],
+            ) *
+            _macroStage(i, planned: false),
     ];
     final planned = plannedMacros;
     final plannedRatios = planned == null
         ? null
         : [
-            _ratio(planned.protein, targetMacros.protein) * plannedFactor,
-            _ratio(planned.carbs, targetMacros.carbs) * plannedFactor,
-            _ratio(planned.fat, targetMacros.fat) * plannedFactor,
+            for (var i = 0; i < 3; i++)
+              _ratio(
+                    [planned.protein, planned.carbs, planned.fat][i],
+                    [
+                      targetMacros.protein,
+                      targetMacros.carbs,
+                      targetMacros.fat
+                    ][i],
+                  ) *
+                  _macroStage(i, planned: true),
           ];
     final width = math.max(2.5, stroke * .22);
 
@@ -556,5 +582,6 @@ class _RingPainter extends CustomPainter {
       old.plannedMacros != plannedMacros ||
       old.ringAccent != ringAccent ||
       old.consumedFactor != consumedFactor ||
-      old.plannedFactor != plannedFactor;
+      old.plannedFactor != plannedFactor ||
+      old.sweepT != sweepT;
 }

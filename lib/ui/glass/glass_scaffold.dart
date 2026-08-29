@@ -149,8 +149,14 @@ class _GlassScaffoldState extends State<GlassScaffold>
       final reduceMotion =
           media.disableAnimations || media.accessibleNavigation;
       final effective = reduceMotion ? GraphicsQuality.low : quality;
+      // No key. `ReactiveAurora` lerps a mood change in place and
+      // `AuroraBackground` handles every quality-tier prop change in its own
+      // `didUpdateWidget`, so a key here bought nothing -- and keying on
+      // `mood` tore down `child` (the whole `IndexedStack` body, scroll
+      // position and all) on every progress-driven mood shift, which read as
+      // the list "refreshing" the moment an entry pushed the ring past a
+      // threshold.
       return ReactiveAurora(
-        key: ValueKey((effective, widget.mood)),
         mood: widget.mood,
         animate: effective != GraphicsQuality.low,
         showGrain: effective != GraphicsQuality.low,

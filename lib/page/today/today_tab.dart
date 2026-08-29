@@ -45,6 +45,14 @@ class _TodayTabState extends State<TodayTab> {
   late final TodayController controller = Get.find<TodayController>();
   Worker? _tabWorker;
 
+  /// One-shot replay guard for the list's `StaggeredEntry` rows. Adding or
+  /// toggling an entry rebuilds the whole list subtree, which was re-sliding
+  /// every row already on screen (worst near the pinned header). Each row
+  /// registers its key here the first time it mounts; a later mount finds it
+  /// already present and renders settled. Only a genuinely new row slides in.
+  final _rowReplayGuard = <Object>{};
+  String? _guardForDateKey;
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +101,12 @@ class _TodayTabState extends State<TodayTab> {
   /// stays an in-place rebuild.
   Widget _dayView(BuildContext context) {
     final dateKey = DayLog.keyFor(controller.selectedDate.value);
+    // Browsing to a different day is a fresh arrival: its rows should stagger
+    // in, so forget what was seen on the previous day.
+    if (dateKey != _guardForDateKey) {
+      _rowReplayGuard.clear();
+      _guardForDateKey = dateKey;
+    }
     if (controller.loading.value && controller.day.value == null) {
       return const Center(
         key: ValueKey('day-loading'),
@@ -330,12 +344,17 @@ class _TodayTabState extends State<TodayTab> {
           padding: const EdgeInsets.fromLTRB(22, 0, 22, 130),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
-              (context, i) => StaggeredEntry(
-                key: sections[i].key,
-                index: i,
-                maxStaggered: 8,
-                child: sections[i],
-              ),
+              (context, i) {
+                final key = sections[i].key;
+                return StaggeredEntry(
+                  key: key,
+                  index: i,
+                  maxStaggered: 8,
+                  replayKey: key,
+                  replayGuard: _rowReplayGuard,
+                  child: sections[i],
+                );
+              },
               childCount: sections.length,
               findChildIndexCallback: (key) => keyToIndex[key],
             ),

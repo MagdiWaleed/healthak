@@ -63,6 +63,12 @@ class _StackingCardState extends State<StackingCard> {
   final _boxKey = GlobalKey();
   ScrollPosition? _position;
 
+  /// Last overshoot we could actually measure. Reused on a frame where the
+  /// render object is transiently gone -- otherwise a parked row snapped from
+  /// its lifted position down to zero and back on every list rebuild (an
+  /// eat-toggle, a Firestore echo), which read as the row "refreshing".
+  double _lastOvershoot = 0;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -73,22 +79,26 @@ class _StackingCardState extends State<StackingCard> {
   /// while it is still below it.
   double _overshoot() {
     final box = _boxKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize || !box.attached) return 0;
+    if (box == null || !box.hasSize || !box.attached) return _lastOvershoot;
     // Global coordinates: this list runs full-bleed from the top of the
     // screen, so there is no intermediate frame of reference to resolve
     // against and one `localToGlobal` is the whole calculation.
     // A sliver can detach/re-parent this child between the checks above and
     // `localToGlobal` while its list is rebuilding (for example when Today's
     // Firestore stream replaces its entries). Flutter deliberately rejects a
-    // transform through that transient tree. Stacking is decorative, so skip
-    // one animation frame instead of taking down the functional screen.
+    // transform through that transient tree. Stacking is decorative, so hold
+    // the last measured position for that frame instead of snapping to zero
+    // (or taking down the functional screen).
     try {
       final top = box.localToGlobal(Offset.zero).dy;
-      return top.isFinite ? math.max(0, widget.stackTop - top) : 0;
+      if (top.isFinite) {
+        _lastOvershoot = math.max(0, widget.stackTop - top);
+      }
+      return _lastOvershoot;
     } on FlutterError {
-      return 0;
+      return _lastOvershoot;
     } on AssertionError {
-      return 0;
+      return _lastOvershoot;
     }
   }
 
