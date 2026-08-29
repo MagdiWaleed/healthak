@@ -73,15 +73,17 @@ class DayRepository {
       // other half an *unchanged* schedule compared lower and the day was
       // needlessly rebuilt.
       //
-      // Targets are part of the freshness test as well as the schedule.
-      // A day's targets are frozen so that editing a goal never rewrites
-      // history -- but *today* is not history, and without this a new
-      // calorie target saved on the profile screen did not reach the ring
-      // until the next midnight produced a fresh document.
+      // A profile-only target change must not re-materialize scheduled rows.
+      // Activity level changes the target, not the day's meals. Rebuilding
+      // those rows here can replace their snapshots, reorder the main tab,
+      // and disturb in-flight card animations even though the schedule is
+      // unchanged. Keep the exact entry list and refresh only today's target.
       if (current != null &&
-          current.materializedFromScheduleVersion == scheduleVersion &&
-          current.targets == targets) {
-        return current;
+          current.materializedFromScheduleVersion == scheduleVersion) {
+        if (current.targets == targets) return current;
+        final refreshed = current.copyWith(targets: targets);
+        transaction.set(ref, refreshed);
+        return refreshed;
       }
 
       var day = current ?? DayLog.empty(date, targets);

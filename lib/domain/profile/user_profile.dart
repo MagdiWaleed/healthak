@@ -118,10 +118,4 @@ class UserProfile {
         createdAt: createdAt,
         updatedAt: updatedAt ?? DateTime.now(),
       );
-
-  @override
-  bool operator ==(Object other) => other is UserProfile && other.uid == uid;
-
-  @override
-  int get hashCode => uid.hashCode;
 }

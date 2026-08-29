@@ -1045,6 +1045,23 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   `_EntryTile` lost its `key`: the list's stable key now lives on the `StackingCard` around it,
   which is the widget the sliver actually recycles.
 
+### Activity-level / Today live-refresh repair (2026-08-29)
+
+- **Saving a new activity level no longer leaves Today on the old profile.** `UserProfile`
+  compared equal by `uid` alone. GetX therefore suppressed every subsequent Firestore profile
+  snapshot for that user, so the profile document changed while the main tab continued to show
+  the previous activity/TDEE and targets. `UserProfile` now uses identity semantics, allowing
+  each new snapshot to propagate through `SessionController`; a regression test pins this.
+- **A target-only refresh preserves the day exactly.** When the schedule fingerprint is
+  unchanged, `DayRepository.ensureDay` now writes only `DayLog.targets` instead of rebuilding
+  scheduled entries. Activity changes cannot replace snapshots, reorder cards, mint IDs, or
+  disturb eaten state on the main tab.
+- **Emulator verification:** saved `light -> moderate` on `emulator-5554`; Today updated from
+  TDEE `3120` / target `2269` to TDEE `3517` / target `2517`. Firestore comparison confirmed
+  all 5 day entries were byte-for-byte unchanged and the schedule fingerprint stayed equal.
+  Restored the original `light` profile and confirmed the live tab returned to `3120` / `2269`
+  without restarting, again with all entries unchanged.
+
 ### Deviations specific to Step 2 (also folded into the table below)
 
 - **`AsyncView<T>` not used in the food catalog.** It models loading/data/error as three
