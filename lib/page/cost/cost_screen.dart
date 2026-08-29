@@ -11,6 +11,7 @@ import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/glass/glass_sheet.dart';
+import '../../ui/motion/pressable.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
@@ -92,6 +93,9 @@ class CostScreen extends GetView<CostController> {
                             child: _CostRow(
                               item: item,
                               currency: controller.currency.value,
+                              unit: controller.unitFor(item.foodId),
+                              onUnit: (unit) =>
+                                  controller.setPriceUnit(item.foodId, unit),
                               onPrice: (value) =>
                                   controller.setPrice(item.foodId, value),
                               onSkip: () => controller.skip(item.foodId),
@@ -117,6 +121,9 @@ class CostScreen extends GetView<CostController> {
                             child: _CostRow(
                               item: item,
                               currency: controller.currency.value,
+                              unit: controller.unitFor(item.foodId),
+                              onUnit: (unit) =>
+                                  controller.setPriceUnit(item.foodId, unit),
                               onPrice: (value) =>
                                   controller.setPrice(item.foodId, value),
                               onSkip: () => controller.skip(item.foodId),
@@ -288,6 +295,11 @@ class _CountBadge extends StatelessWidget {
 class _CostRow extends StatefulWidget {
   final ComponentCost item;
   final String currency;
+  final PriceUnit unit;
+  final ValueChanged<PriceUnit> onUnit;
+
+  /// Always receives a per-100g price -- [_CostRowState] converts out of
+  /// whatever unit the field is showing before calling this.
   final ValueChanged<double> onPrice;
   final VoidCallback onSkip;
   final VoidCallback onUnskip;
@@ -295,6 +307,8 @@ class _CostRow extends StatefulWidget {
   const _CostRow({
     required this.item,
     required this.currency,
+    required this.unit,
+    required this.onUnit,
     required this.onPrice,
     required this.onSkip,
     required this.onUnskip,
@@ -305,26 +319,29 @@ class _CostRow extends StatefulWidget {
 }
 
 class _CostRowState extends State<_CostRow> {
-  late final TextEditingController _price =
-      TextEditingController(text: _format(widget.item.pricePer100));
+  late final TextEditingController _price = TextEditingController(text: _shown);
 
-  static String _format(double? value) {
+  /// The stored per-100g price, rendered in the unit the field is showing.
+  String get _shown {
+    final value = widget.item.pricePer100;
     if (value == null) return '';
-    // Whole-number prices are the common case, so do not render "12.0".
-    return value == value.roundToDouble()
-        ? value.round().toString()
-        : value.toString();
+    final inUnit = priceIn(value, widget.unit);
+    // Whole-number prices are the common case, so do not render "15.0".
+    return inUnit == inUnit.roundToDouble()
+        ? inUnit.round().toString()
+        : inUnit.toString();
   }
 
   @override
   void didUpdateWidget(covariant _CostRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Only adopt an external change (a skip cleared the price, the book was
-    // reloaded). Rewriting the field unconditionally would fight typing.
-    final incoming = _format(widget.item.pricePer100);
-    if (oldWidget.item.pricePer100 != widget.item.pricePer100 &&
-        _price.text != incoming) {
-      _price.text = incoming;
+    // Adopt an external change (a skip cleared the price, the book reloaded)
+    // or a unit switch, which re-denominates the same price. Rewriting the
+    // field unconditionally would fight typing.
+    if (oldWidget.item.pricePer100 != widget.item.pricePer100 ||
+        oldWidget.unit != widget.unit) {
+      final incoming = _shown;
+      if (_price.text != incoming) _price.text = incoming;
     }
   }
 
@@ -335,81 +352,129 @@ class _CostRowState extends State<_CostRow> {
   }
 
   void _commit(String text) {
-    final value = double.tryParse(text.trim());
-    if (value == null || value < 0 || value == widget.item.pricePer100) return;
+    final entered = double.tryParse(text.trim());
+    if (entered == null || entered < 0) return;
+    // The field speaks the chosen unit; everything below stores per 100g.
+    final perHundred = pricePer100From(entered, widget.unit);
+    if (perHundred == widget.item.pricePer100) return;
     HapticPhrase.play(AppHaptics.step);
-    widget.onPrice(value);
+    widget.onPrice(perHundred);
   }
 
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
+    // Two lines rather than one: the price now carries its own unit control,
+    // and name + grams + field + unit + cost + action does not fit across a
+    // phone without the name being clipped to nothing.
     return GlassCard(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.name,
+          Row(
+            children: [
+              Expanded(
+                child: Text(item.name,
                     style: Theme.of(context).textTheme.titleMedium,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text('${item.grams.round()} غ',
-                    style: Theme.of(context).textTheme.bodyMedium),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          SizedBox(
-            width: 72,
-            child: TextField(
-              controller: _price,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              textAlign: TextAlign.center,
-              decoration: const InputDecoration(
-                labelText: '/١٠٠غ',
-                isDense: true,
               ),
-              onSubmitted: _commit,
-              onTapOutside: (_) => _commit(_price.text),
-            ),
+              const SizedBox(width: AppSpacing.sm),
+              if (item.cost == null)
+                Text(
+                  item.skipped ? 'متخطّى' : '—',
+                  style: const TextStyle(color: AppPalette.muted),
+                )
+              else
+                TickerNumber(
+                  value: item.cost!.round(),
+                  format: (value) => '$value ${widget.currency}',
+                  style: const TextStyle(
+                      color: AppPalette.emerald, fontWeight: FontWeight.w700),
+                ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.sm),
-          SizedBox(
-            width: 64,
-            child: item.cost == null
-                ? Text(
-                    item.skipped ? 'متخطّى' : '—',
-                    textAlign: TextAlign.end,
-                    style: const TextStyle(color: AppPalette.muted),
-                  )
-                : TickerNumber(
-                    value: item.cost!.round(),
-                    textAlign: TextAlign.end,
-                    format: (value) => '$value ${widget.currency}',
-                    style: const TextStyle(
-                        color: AppPalette.emerald, fontWeight: FontWeight.w700),
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              Text('${item.grams.round()} غ',
+                  style: Theme.of(context).textTheme.bodyMedium),
+              const Spacer(),
+              SizedBox(
+                width: 76,
+                child: TextField(
+                  controller: _price,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    labelText: 'السعر',
+                    isDense: true,
                   ),
+                  onSubmitted: _commit,
+                  onTapOutside: (_) => _commit(_price.text),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _UnitChip(unit: widget.unit, onChanged: widget.onUnit),
+              // A skip is reversible without having to type a price to escape
+              // it, so the same slot flips to an undo once the row is skipped.
+              if (item.skipped)
+                IconButton(
+                  onPressed: widget.onUnskip,
+                  icon: const Icon(Icons.undo_rounded, color: AppPalette.amber),
+                  tooltip: 'إعادة التسعير',
+                )
+              else if (item.needsPrice)
+                IconButton(
+                  onPressed: widget.onSkip,
+                  icon: const Icon(Icons.remove_circle_outline,
+                      color: AppPalette.muted),
+                  tooltip: 'تخطَّ',
+                )
+              else
+                const SizedBox(width: 48),
+            ],
           ),
-          // A skip is reversible without having to type a price to escape it,
-          // so the same slot flips to an undo once the row is skipped.
-          if (item.skipped)
-            IconButton(
-              onPressed: widget.onUnskip,
-              icon: const Icon(Icons.undo_rounded, color: AppPalette.amber),
-              tooltip: 'إعادة التسعير',
-            )
-          else if (item.needsPrice)
-            IconButton(
-              onPressed: widget.onSkip,
-              icon: const Icon(Icons.remove_circle_outline,
-                  color: AppPalette.muted),
-              tooltip: 'تخطَّ',
-            ),
         ],
+      ),
+    );
+  }
+}
+
+/// The unit this one component's price is quoted in.
+///
+/// Per component, not per screen: rice comes by the kilo and a spice does
+/// not, and having to convert one of them in your head to enter the other is
+/// exactly the arithmetic this page exists to do for you. Tapping cycles the
+/// unit; the stored per-100g price never moves, so the cost beside it does
+/// not change -- only the number in the field.
+class _UnitChip extends StatelessWidget {
+  final PriceUnit unit;
+  final ValueChanged<PriceUnit> onChanged;
+
+  const _UnitChip({required this.unit, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final next = PriceUnit.values[(unit.index + 1) % PriceUnit.values.length];
+    return Pressable(
+      onTap: () => onChanged(next),
+      pressedScale: .92,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppPalette.emerald.withValues(alpha: .14),
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          '/${unit.labelAr}',
+          style: const TextStyle(
+            color: AppPalette.emerald,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+          ),
+        ),
       ),
     );
   }

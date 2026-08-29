@@ -63,6 +63,42 @@ void main() {
     expect(month.cost, closeTo(304, 0.001));
   });
 
+  test('a per-kilo price prices a part of a kilo correctly', () {
+    // The worked example: chicken is 15 a kilo, and 200g is in the plan.
+    final perHundred = pricePer100From(15, PriceUnit.perKg);
+    expect(perHundred, closeTo(1.5, 0.0001));
+
+    final chicken = ComponentCost(
+      foodId: 'chicken',
+      name: 'صدور دجاج',
+      grams: 200,
+      pricePer100: perHundred,
+    );
+    expect(chicken.cost, closeTo(3, 0.0001));
+  });
+
+  test('unit conversion round-trips, and per-100g is the identity', () {
+    expect(priceIn(1.5, PriceUnit.perKg), closeTo(15, 0.0001));
+    expect(priceIn(1.5, PriceUnit.per100g), closeTo(1.5, 0.0001));
+    expect(pricePer100From(1.5, PriceUnit.per100g), closeTo(1.5, 0.0001));
+    for (final unit in PriceUnit.values) {
+      expect(pricePer100From(priceIn(2.75, unit), unit), closeTo(2.75, 1e-9));
+    }
+  });
+
+  test('switching the display unit does not move a cost', () {
+    // The unit is presentation only: the same stored price, read either way,
+    // has to produce the same money.
+    const component = ComponentCost(
+        foodId: 'rice', name: 'Rice', grams: 1000, pricePer100: 1.2);
+    for (final unit in PriceUnit.values) {
+      final retyped =
+          pricePer100From(priceIn(component.pricePer100!, unit), unit);
+      expect(component.copyWith(pricePer100: retyped).cost,
+          closeTo(component.cost!, 1e-9));
+    }
+  });
+
   test('aggregation is sorted by name so rows do not reshuffle on reload', () {
     const per100 = Macros(protein: 1, carbs: 1, fat: 1);
     final components = aggregateFrozenItems(const [

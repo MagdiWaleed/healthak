@@ -45,6 +45,11 @@ class CostController extends GetxController {
   final components = <ComponentCost>[].obs;
   final currency = 'ج.م'.obs;
 
+  /// Per food, the unit its price is typed and read in. Presentation only --
+  /// everything below this stays per 100g, so flipping one never rewrites a
+  /// stored price or moves a total.
+  final priceUnits = <String, PriceUnit>{}.obs;
+
   /// Which period the numbers currently in [components] were computed for.
   ///
   /// A period switch changes the heading instantly but cannot change the
@@ -99,6 +104,7 @@ class CostController extends GetxController {
       final book = await PriceBook.load();
       _book = book;
       currency.value = book.currency;
+      priceUnits.assignAll(book.units);
     } catch (e) {
       error.value = e.toString();
       loading.value = false;
@@ -142,6 +148,16 @@ class CostController extends GetxController {
     if (book == null) return;
     await book.unskip(foodId);
     await reload();
+  }
+
+  PriceUnit unitFor(String foodId) =>
+      priceUnits[foodId] ?? _book?.unitFor(foodId) ?? PriceUnit.perKg;
+
+  Future<void> setPriceUnit(String foodId, PriceUnit value) async {
+    final book = _book;
+    if (book == null) return;
+    await book.setUnitFor(foodId, value);
+    priceUnits.assignAll(book.units);
   }
 
   Future<void> setCurrency(String value) async {

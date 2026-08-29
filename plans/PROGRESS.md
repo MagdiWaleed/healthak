@@ -71,6 +71,17 @@ records which period the numbers in `components` were computed for, and `isStale
 `LinearProgressIndicator` under the chips plus a 35% fade over the whole body, so an outgoing
 period's numbers are never presented as the incoming one's.
 
+**Prices can be entered per kilo, per component.** A market quotes "chicken is 15 a kilo"
+while the catalog and the macros are per 100g, so the page now does that division instead of
+the user. `PriceUnit` (`per100g` / `perKg`, carrying its own `per100Multiplier`) plus
+`pricePer100From` / `priceIn` live in `cost.dart` and are the only place the conversion exists.
+Storage never changes shape: `ComponentCost.pricePer100` and the price book stay per 100g, so
+the unit is presentation only and flipping it cannot move a cost -- there is a test asserting
+exactly that. The unit is stored **per food** in the price book (`units` in the same JSON
+blob), not as one screen-wide setting, because rice comes by the kilo and a spice does not;
+each row carries a tappable `/كجم` chip that cycles it. Default is `perKg`. First built as a
+global toggle and changed on the boss's call.
+
 **Crash on cancelling the currency sheet, found on device.**
 `'_dependents.isEmpty': is not true` (`InheritedElement.debugDeactivated`), every time the
 sheet was dismissed. `_editCurrency` owned the `TextEditingController` and disposed it as soon
@@ -86,7 +97,9 @@ this was the only instance.
 «من جدولك الأسبوعي» caption; شهر 5898 = 1358 x 30.4/7 with the estimate caption. Coverage line
 tracked 0→4 of 5 and the «بلا سعر» badge counted down 5→1. Prices survived leaving and
 re-entering the screen (SharedPreferences). Skip and un-skip both round-tripped. Currency editing verified in both directions: cancelling
-is clean, and saving re-labels the hero and every row (ج.م -> SAR).
+is clean, and saving re-labels the hero and every row (ج.م -> SAR). Per-row units verified:
+flipping ترمس to /١٠٠غ re-denominated that field 60 -> 6, left its cost at SAR 48, and left
+every other row and the total untouched.
 
 **Living Glass:** Kimi's Phase 1 foundations are implemented: shared springs, haptics, mood
 tokens, reduced-motion gate, ticker number, and the requested glass/typography/copy tokens.
