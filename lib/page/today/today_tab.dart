@@ -178,7 +178,7 @@ class _TodayTabState extends State<TodayTab> {
         consumed: day.consumedTotals,
         target: day.targets.macros,
         planned: day.plannedTotals,
-        animationTrigger: controller.eatPulse.value,
+        animationTrigger: controller.macroPulse.value,
       ),
     ];
 
@@ -294,6 +294,7 @@ class _TodayTabState extends State<TodayTab> {
             ringAccent: ringAccent,
             goalTrigger: controller.goalCelebration.value,
             rippleTrigger: controller.eatPulse.value,
+            macroTrigger: controller.macroPulse.value,
           ),
         ),
         SliverPadding(
@@ -327,12 +328,18 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
   final int goalTrigger;
   final int rippleTrigger;
 
+  /// Separate from [rippleTrigger] because that one also fires the ring's
+  /// ripple, which is deliberately tick-only, while the bars should re-tween
+  /// whichever way the toggle went.
+  final int macroTrigger;
+
   _TodayRingHeaderDelegate({
     required this.day,
     required this.controller,
     required this.ringAccent,
     required this.goalTrigger,
     required this.rippleTrigger,
+    required this.macroTrigger,
   });
 
   /// Also the line the entry rows pile up against -- see [StackingCard].
@@ -536,7 +543,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
                   consumed: day.consumedTotals,
                   target: day.targets.macros,
                   planned: day.plannedTotals,
-                  animationTrigger: rippleTrigger,
+                  animationTrigger: macroTrigger,
                 ),
               ),
             ),
@@ -561,6 +568,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.ringAccent != ringAccent ||
       oldDelegate.goalTrigger != goalTrigger ||
       oldDelegate.rippleTrigger != rippleTrigger ||
+      oldDelegate.macroTrigger != macroTrigger ||
       oldDelegate.controller.selectedDate.value !=
           controller.selectedDate.value;
 }
@@ -712,7 +720,7 @@ class _WeekStrip extends StatelessWidget {
         // range is what History (a full calendar) is for.
         final monday = now.subtract(Duration(days: now.weekday - 1));
         final selected = controller.selectedDate.value;
-        final logged = controller.loggedDayKeys;
+        final logged = controller.loggedDayKeys.value;
         // Only days there is something to look at. A chip for an empty past
         // day, or for a future one, leads nowhere -- it either dead-ends on
         // "no record for this day" or is greyed out and untappable. Today

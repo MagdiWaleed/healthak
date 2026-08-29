@@ -11,7 +11,7 @@ abstract final class EatBurst {
   static OverlayEntry? _active;
 
   static void show(BuildContext context) {
-    _active?.remove();
+    _dismiss();
     final box = context.findRenderObject() as RenderBox?;
     final overlay = Overlay.of(context, rootOverlay: true);
     if (box == null) return;
@@ -23,18 +23,28 @@ abstract final class EatBurst {
         top: point.dy - 48,
         child: IgnorePointer(
           child: RepaintBoundary(
-            child: _Burst(
-              onDone: () {
-                entry.remove();
-                if (identical(_active, entry)) _active = null;
-              },
-            ),
+            child: _Burst(onDone: () => _dismiss(entry)),
           ),
         ),
       ),
     );
     _active = entry;
     overlay.insert(entry);
+  }
+
+  /// Takes the current burst down exactly once.
+  ///
+  /// A burst was removed from two places -- the next tap superseding it, and
+  /// its own animation finishing -- with nothing stopping both from firing for
+  /// the same entry. Ticking two items off inside half a second removed one
+  /// twice and Flutter asserted, which is the error that flashed over the
+  /// Today tab on a quick double toggle.
+  static void _dismiss([OverlayEntry? only]) {
+    final active = _active;
+    if (active == null) return;
+    if (only != null && !identical(only, active)) return;
+    _active = null;
+    if (active.mounted) active.remove();
   }
 }
 

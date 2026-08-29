@@ -84,6 +84,11 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   /// Increasing tokens let short-lived visual effects replay without keeping
   /// animation state in the Firestore-backed [DayLog].
   final eatPulse = 0.obs;
+
+  /// Re-tweens the macro bars. Separate from [eatPulse] because that one also
+  /// fires the ring's ripple, which is deliberately tick-only, while the bars
+  /// should animate to their new length whichever way the toggle went.
+  final macroPulse = 0.obs;
   final goalCelebration = 0.obs;
   final goalCelebratedToday = false.obs;
   final _celebratedDateKeys = <String>{};
@@ -93,7 +98,12 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   /// The week strip shows only these (plus today and whatever is selected):
   /// a chip for a day with nothing behind it just leads to a dead empty
   /// screen, so it should not be offered at all.
-  final loggedDayKeys = <String>{}.obs;
+  ///
+  /// An `Rx<Set<String>>` rather than an `RxSet`: reading an `RxSet` through
+  /// `contains` does not register the read with the surrounding `Obx`, so the
+  /// strip only ever showed whatever the set happened to hold at its first
+  /// build -- usually nothing, since the range query has not answered yet.
+  final loggedDayKeys = Rx<Set<String>>(<String>{});
 
   StreamSubscription<DayLog?>? _watchSub;
   StreamSubscription<List<DayLog>>? _weekSub;
@@ -133,9 +143,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     _weekSub = _days
         .watchRange(monday, monday.add(const Duration(days: 6)))
         .listen((days) {
-      loggedDayKeys
-        ..clear()
-        ..addAll({for (final day in days) day.dateKey});
+      loggedDayKeys.value = {for (final day in days) day.dateKey};
     }, onError: (Object _) {
       // A failed week query must not blank the strip -- worst case it keeps
       // showing the last known set, which is strictly better than a strip
@@ -331,7 +339,10 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     final updated = current.withEntry(entry.toggleEaten());
     day.value = updated;
     _syncMood(day.value, previousProgress: before);
+    // The ring's ripple stays tick-only -- undo is deliberately restrained --
+    // but the macro bars re-tween either way, so they get their own token.
     if (!entry.eaten) eatPulse.value++;
+    macroPulse.value++;
     try {
       // A transaction cannot complete while Firestore is offline, so the old
       // hot path visibly flipped and then rolled itself back. A normal set is

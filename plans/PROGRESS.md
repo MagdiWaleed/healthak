@@ -928,6 +928,21 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   emission). That also closes a cold-start gap where the profile arrived after the first
   `selectDate` and nothing materialized.
 
+- **The week strip lost days it should have shown.** `loggedDayKeys` was an `RxSet`, and the
+  strip reads it with `contains` -- which does not register the read with the surrounding `Obx`.
+  The strip therefore rendered whatever the set happened to hold at its *first* build, which is
+  usually nothing, since the day-range query has not answered yet; whether a past day appeared
+  came down to a race. Now an `Rx<Set<String>>` read through `.value`, which registers properly.
+- **A red error frame on a quick eat-toggle.** `EatBurst` removed its overlay entry from two
+  places -- the next tap superseding it, and its own animation finishing -- with nothing stopping
+  both firing for the same entry. Toggling twice inside the burst's 500ms removed one entry twice
+  and Flutter asserted. Both paths now go through one `_dismiss` that clears `_active` first and
+  checks `mounted`.
+- **The macro bars got their own animation token.** They keyed their tween off `eatPulse`, which
+  is deliberately only bumped when ticking *on* (the ring's ripple is a tick-only effect), so
+  un-ticking snapped the bars back with no animation. Added `macroPulse`, bumped either way, and
+  threaded it through the header delegate as `macroTrigger`.
+
 - **Today tab: week strip centred, and entry rows now stack instead of scrolling away.**
   The strip was start-aligned, which since empty days are filtered out usually left two or three
   chips pinned to the leading edge, reading as a list that had lost its other items. Now a
