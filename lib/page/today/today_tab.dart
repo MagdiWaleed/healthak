@@ -346,6 +346,19 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
   static const double _ringTop = 178;
   static const double _panelTop = _ringTop + 200 + 40;
 
+  /// The compact bar's geometry: the ring's collapsed diameter, the screen
+  /// margin the bar sits inside, and how far the macro panel is scaled down.
+  /// Deliberately not centred on the ring. A perfectly symmetric bar left the
+  /// whole leading corner empty -- the day is a square, so it cannot both
+  /// reach the margin and stay square beside a centred ring. Seating the day
+  /// near the leading margin and letting the ring sit just off centre fills
+  /// the width instead.
+  static const double _ringCollapsed = 88;
+  static const double _dayCollapsed = 72;
+  static const double _barLeading = 20;
+  static const double _barMargin = 8;
+  static const double _panelCollapsedScale = .62;
+
   @override
   double get minExtent => collapsedExtent;
 
@@ -368,7 +381,7 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
     // geometry gets both into their compact places early and then simply
     // holds them there.
     final c = Curves.easeOutCubic.transform(t);
-    final ringSize = lerpDouble(200, 96, c)!;
+    final ringSize = lerpDouble(200, _ringCollapsed, c)!;
     final detailOpacity = (1 - (t / .55)).clamp(0.0, 1.0);
     final ringTop = lerpDouble(_ringTop, 6, c)!;
     // The ring stays centred at every point of the collapse -- it is the
@@ -378,9 +391,12 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
     // The selected day rides out of the week strip into that bar as the strip
     // itself fades, so the date stays on screen while scrolling instead of
     // vanishing with the rest of the header detail.
-    final dayAlignX = lerpDouble(0, -1, c)!;
-    final dayTop = lerpDouble(100, 28, c)!;
-    final dayScale = lerpDouble(1, .78, c)!;
+    // Grows from a strip chip into a square the size of the ring, and lands
+    // on the same top edge, so the three pieces of the compact bar sit on one
+    // line at one height.
+    final dayTop = lerpDouble(100, 6, c)!;
+    final dayWidth = lerpDouble(DayChip.stripWidth, _dayCollapsed, c)!;
+    final dayHeight = lerpDouble(64, _dayCollapsed, c)!;
     final dayOpacity = 1 - detailOpacity;
     // The panel narrows in layout *and* scales about its trailing (RTL:
     // right) edge, so it compresses in both dimensions and ends up beside the
@@ -391,9 +407,9 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
     // 127px-wide box directly would reflow three labelled rows into something
     // unreadable, while laying out at 231 and scaling to .55 keeps the
     // proportions it has when open.
-    final panelScale = lerpDouble(1, .55, c)!;
-    final panelLeft = lerpDouble(22, 150, c)!;
-    final panelTop = lerpDouble(_panelTop, 8, c)!;
+    final panelScale = lerpDouble(1, _panelCollapsedScale, c)!;
+    final panelRight = lerpDouble(12, _barMargin, c)!;
+    final panelTop = lerpDouble(_panelTop, 6, c)!;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -408,58 +424,76 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
           stops: const [0, .70, 1],
         ),
       ),
-      child: Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          PositionedDirectional(
-            start: 22,
-            top: 14,
-            child: Opacity(
-              opacity: detailOpacity,
-              child: _Greeting(controller: controller),
+      // The compact bar's three pieces butt up against each other, which
+      // means knowing the width they are being laid out in. `LayoutBuilder`
+      // rather than `MediaQuery`, so the numbers come from the box this
+      // header actually got.
+      child: LayoutBuilder(builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        // The bar packs from the leading edge -- day, ring, then the panel
+        // taking whatever is left -- rather than centring on the ring.
+        const ringLeftCollapsed = _barLeading + _dayCollapsed;
+        const ringRightCollapsed = ringLeftCollapsed + _ringCollapsed;
+        final dayLeft =
+            lerpDouble((w - DayChip.stripWidth) / 2, _barLeading, c)!;
+        // Centred while the header is open, drifting just left of centre as
+        // it collapses.
+        final ringLeft = lerpDouble((w - ringSize) / 2, ringLeftCollapsed, c)!;
+        // The panel is scaled about its trailing edge, so its *visual* left
+        // is `right - scale * layoutWidth`. Solving that for the layout box
+        // is what makes the shrunken panel land exactly on the ring's edge
+        // instead of near it.
+        final panelVisual = (w - _barMargin) - ringRightCollapsed;
+        final panelLeft = lerpDouble(
+          22,
+          w - _barMargin - panelVisual / _panelCollapsedScale,
+          c,
+        )!;
+        return Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            PositionedDirectional(
+              start: 22,
+              top: 14,
+              child: Opacity(
+                opacity: detailOpacity,
+                child: _Greeting(controller: controller),
+              ),
             ),
-          ),
-          Positioned(
-            top: 100,
-            left: 22,
-            right: 22,
-            child: Opacity(
-              opacity: detailOpacity,
-              child: _WeekStrip(controller: controller),
-            ),
-          ),
-          if (dayOpacity > 0)
             Positioned(
-              top: dayTop,
-              left: 12,
-              right: 12,
-              height: 52,
-              child: Align(
-                alignment: Alignment(dayAlignX, 0),
+              top: 100,
+              left: 22,
+              right: 22,
+              child: Opacity(
+                opacity: detailOpacity,
+                child: _WeekStrip(controller: controller),
+              ),
+            ),
+            if (dayOpacity > 0)
+              Positioned(
+                top: dayTop,
+                left: dayLeft,
+                width: dayWidth,
+                height: dayHeight,
                 child: Opacity(
                   opacity: dayOpacity,
-                  child: Transform.scale(
-                    scale: dayScale,
-                    child: DayChip(
-                      date: controller.selectedDate.value,
-                      selected: true,
-                    ),
+                  child: DayChip(
+                    date: controller.selectedDate.value,
+                    selected: true,
+                    width: dayWidth,
                   ),
                 ),
               ),
-            ),
-          Positioned(
-            top: ringTop,
-            left: 12,
-            right: 12,
-            height: ringSize,
-            child: Align(
-              alignment: Alignment.center,
+            Positioned(
+              top: ringTop,
+              left: ringLeft,
+              width: ringSize,
+              height: ringSize,
               // `GoalCelebration` paints a fixed 320px burst, so left to
-              // itself it hands `Align` a 320-wide child and the ring never
-              // actually reaches the edge -- it just sits centred inside that
-              // box. Sizing it to the ring and letting the burst overflow is
-              // what makes the alignment mean what it says.
+              // itself it would force this box 320 wide and the ring would
+              // never land where it was put. Sizing it to the ring and
+              // letting the burst overflow is what keeps the placement
+              // honest.
               child: SizedBox.square(
                 dimension: ringSize,
                 child: OverflowBox(
@@ -483,41 +517,41 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
                 ),
               ),
             ),
-          ),
-          Positioned(
-            top: _ringTop,
-            right: 8,
-            child: Opacity(
-              opacity: detailOpacity,
-              child: const _RingLegend(),
-            ),
-          ),
-          Positioned(
-            left: panelLeft,
-            right: 12,
-            top: panelTop,
-            child: Transform.scale(
-              scale: panelScale,
-              alignment: Alignment.topRight,
-              child: MacroNumbersPanel(
-                consumed: day.consumedTotals,
-                target: day.targets.macros,
-                planned: day.plannedTotals,
-                animationTrigger: rippleTrigger,
+            Positioned(
+              top: _ringTop,
+              right: 8,
+              child: Opacity(
+                opacity: detailOpacity,
+                child: const _RingLegend(),
               ),
             ),
-          ),
-          Positioned(
-            left: 22,
-            right: 22,
-            bottom: 16,
-            child: Opacity(
-              opacity: detailOpacity,
-              child: _TargetSummary(controller: controller),
+            Positioned(
+              left: panelLeft,
+              right: panelRight,
+              top: panelTop,
+              child: Transform.scale(
+                scale: panelScale,
+                alignment: Alignment.topRight,
+                child: MacroNumbersPanel(
+                  consumed: day.consumedTotals,
+                  target: day.targets.macros,
+                  planned: day.plannedTotals,
+                  animationTrigger: rippleTrigger,
+                ),
+              ),
             ),
-          ),
-        ],
-      ),
+            Positioned(
+              left: 22,
+              right: 22,
+              bottom: 16,
+              child: Opacity(
+                opacity: detailOpacity,
+                child: _TargetSummary(controller: controller),
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -729,46 +763,60 @@ class DayChip extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  static const double width = 44;
+  /// Defaults to the strip's chip width. The collapsed header passes the
+  /// ring's diameter instead, so the day reads as a square the same size as
+  /// the circle beside it.
+  final double width;
+
+  static const double stripWidth = 44;
 
   const DayChip({
     required this.date,
     required this.selected,
     super.key,
     this.onTap,
+    this.width = stripWidth,
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: width,
-          decoration: BoxDecoration(
-            color: selected
-                ? AppPalette.emerald.withValues(alpha: .22)
-                : Colors.white.withValues(alpha: .06),
-            borderRadius: BorderRadius.circular(14),
-            border: selected
-                ? Border.all(color: AppPalette.emerald.withValues(alpha: .5))
-                : null,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(_weekdayLabels[date.weekday - 1],
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: selected ? AppPalette.emerald : AppPalette.muted)),
-              const SizedBox(height: 2),
-              Text('${date.day}',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: selected ? AppPalette.text : AppPalette.muted)),
-            ],
-          ),
+  Widget build(BuildContext context) {
+    // Type scales with the chip so the big square is not a small chip with a
+    // lot of empty space in it.
+    // Capped well below the width ratio: at full ratio the square reads as
+    // two oversized glyphs and overpowers the ring beside it.
+    final scale = (width / stripWidth).clamp(1.0, 1.35);
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: width,
+        decoration: BoxDecoration(
+          color: selected
+              ? AppPalette.emerald.withValues(alpha: .22)
+              : Colors.white.withValues(alpha: .06),
+          borderRadius: BorderRadius.circular(14 * scale),
+          border: selected
+              ? Border.all(color: AppPalette.emerald.withValues(alpha: .5))
+              : null,
         ),
-      );
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_weekdayLabels[date.weekday - 1],
+                style: TextStyle(
+                    fontSize: 11 * scale,
+                    color: selected ? AppPalette.emerald : AppPalette.muted)),
+            SizedBox(height: 2 * scale),
+            Text('${date.day}',
+                style: TextStyle(
+                    fontSize: 15 * scale,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? AppPalette.text : AppPalette.muted)),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _EntryTile extends StatelessWidget {

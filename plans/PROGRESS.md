@@ -944,7 +944,20 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   the boss asked for the symmetric arrangement instead.) The panel is deliberately laid out
   wider than it ends up looking and then scaled: giving it a ~127px box directly reflows three
   labelled rows into something unreadable, while laying out at 231 and scaling to .55 keeps the
-  proportions it has when open. Two mechanisms rather than one: scaling alone left the panel's
+  proportions it has when open. Final proportions: the collapsed ring is 88, the day grows from a
+  44-wide strip chip into an 88 square on the same top edge (`DayChip` gained a `width`, with the
+  type scaled off it and capped at 1.35x -- at the full width ratio the square reads as two
+  oversized glyphs and overpowers the ring), and the panel widened by pulling its layout box in
+  to 128 and its trailing margin out to 8. The three then butt up against each other with no gaps,
+  which needs the width they are laid out in: a `LayoutBuilder` around the header's `Stack`
+  supplies it (not `MediaQuery` -- the numbers should come from the box this header actually
+  got). The bar packs from the leading margin rather than centring on the ring:
+  a symmetric arrangement left the whole leading corner empty, because the day is a square and
+  cannot both reach the margin and stay square beside a centred ring. Final collapsed geometry is
+  day 72 at x=20, ring 88 immediately after it (so it drifts just left of centre as the header
+  closes), and the panel taking the rest at .62 scale. Landing the panel exactly on the ring's
+  trailing edge means solving `right - scale * layoutWidth` for the layout box, since the panel
+  is scaled about that edge -- placing its layout box by eye only ever gets it near. Two mechanisms rather than one: scaling alone left the panel's
   leading edge over the ring for most of the travel, and narrowing alone cannot shrink its
   height. All of the geometry runs on `Curves.easeOutCubic` while the fades stay linear -- run
   linearly, the ring is still half-size near the middle while the panel is still wide, and the
