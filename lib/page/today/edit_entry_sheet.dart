@@ -40,8 +40,7 @@ class _EditEntrySheetState extends State<EditEntrySheet> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final totalKcal =
-        _items.fold(0.0, (a, i) => a + i.kcal);
+    final totalKcal = _items.fold(0.0, (a, i) => a + i.kcal);
 
     return GlassSheet(
       title: widget.entry.name,
@@ -66,8 +65,8 @@ class _EditEntrySheetState extends State<EditEntrySheet> {
                       Expanded(child: Text(_items[i].name)),
                       GramStepper(
                         grams: _items[i].grams,
-                        onChanged: (g) => setState(
-                            () => _items[i] = _items[i].withGrams(g)),
+                        onChanged: (g) =>
+                            setState(() => _items[i] = _items[i].withGrams(g)),
                       ),
                     ],
                   ),

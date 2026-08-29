@@ -189,8 +189,9 @@ class _LibraryMealSheetState extends State<_LibraryMealSheet> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(meal.name,
-                                    style:
-                                        Theme.of(context).textTheme.titleMedium),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium),
                                 Text('${meal.totalsCache.kcal.round()} سعرة',
                                     style:
                                         Theme.of(context).textTheme.bodyMedium),

@@ -96,24 +96,30 @@ class CalorieRing extends StatelessWidget {
                         color: over ? AppPalette.amber : AppPalette.text,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      over
-                          ? '${AppRingLabels.over} ${-remaining}'
-                          : '$remaining ${AppRingLabels.remaining}',
-                      style: text.bodyMedium?.copyWith(
-                        color: over ? AppPalette.amber : AppPalette.muted,
-                        fontFeatures: AppTypography.tabular,
-                      ),
-                    ),
-                    if (plannedProgress != null &&
-                        plannedProgress > progress + 0.005) ...[
-                      const SizedBox(height: 1),
+                    // The captions do not scale with the ring, so on a
+                    // collapsed one they spill straight out of the circle and
+                    // over whatever is beside it. The big number alone still
+                    // says everything a compact ring needs to.
+                    if (size > 120) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        '${AppRingLabels.plannedTo} ${planned!.round()}',
-                        style:
-                            text.labelSmall?.copyWith(color: AppPalette.muted),
+                        over
+                            ? '${AppRingLabels.over} ${-remaining}'
+                            : '$remaining ${AppRingLabels.remaining}',
+                        style: text.bodyMedium?.copyWith(
+                          color: over ? AppPalette.amber : AppPalette.muted,
+                          fontFeatures: AppTypography.tabular,
+                        ),
                       ),
+                      if (plannedProgress != null &&
+                          plannedProgress > progress + 0.005) ...[
+                        const SizedBox(height: 1),
+                        Text(
+                          '${AppRingLabels.plannedTo} ${planned!.round()}',
+                          style: text.labelSmall
+                              ?.copyWith(color: AppPalette.muted),
+                        ),
+                      ],
                     ],
                     // The macro rings around the arc carry no numbers of their
                     // own -- only the legend says which color is which. Below

@@ -12,6 +12,7 @@ import '../../ui/components/error_state.dart';
 import '../../ui/components/macro_numbers_panel.dart';
 import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
+import '../../ui/motion/stacking_card.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/motion/celebration.dart';
 import '../../ui/motion/eat_toggle/eat_check.dart';
@@ -170,7 +171,8 @@ class _TodayTabState extends State<TodayTab> {
       const SizedBox(key: ValueKey('spacer-ring'), height: AppSpacing.md),
       _TargetSummary(
           key: const ValueKey('target-summary'), controller: controller),
-      const SizedBox(key: ValueKey('spacer-macro-progress'), height: AppSpacing.md),
+      const SizedBox(
+          key: ValueKey('spacer-macro-progress'), height: AppSpacing.md),
       MacroNumbersPanel(
         key: const ValueKey('macro-progress'),
         consumed: day.consumedTotals,
@@ -244,11 +246,15 @@ class _TodayTabState extends State<TodayTab> {
                   ?.copyWith(color: AppPalette.emerald)),
         ),
         for (final entry in day.entriesForSlot(slot)) ...[
-          _EntryTile(
-              key: ValueKey('entry-${entry.entryId}'),
-              controller: controller,
-              entry: entry,
-              readOnly: readOnly),
+          StackingCard(
+            key: ValueKey('entry-${entry.entryId}'),
+            // The collapsed ring header is 108 tall and the viewport runs
+            // edge to edge from the top of the screen, so this is the line
+            // where a row disappears under it.
+            stackTop: _TodayRingHeaderDelegate.collapsedExtent + 8,
+            child: _EntryTile(
+                controller: controller, entry: entry, readOnly: readOnly),
+          ),
           SizedBox(
               key: ValueKey('spacer-entry-${entry.entryId}'),
               height: AppSpacing.sm),
@@ -276,6 +282,9 @@ class _TodayTabState extends State<TodayTab> {
 
     return CustomScrollView(
       key: ValueKey('day-$dateKey'),
+      // Parked rows are painted from a layout position above the viewport;
+      // without this the deepest of them get recycled out from under the pile.
+      cacheExtent: kStackingCacheExtent,
       slivers: [
         SliverPersistentHeader(
           pinned: true,
@@ -326,11 +335,25 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.rippleTrigger,
   });
 
-  @override
-  double get minExtent => 108;
+  /// Also the line the entry rows pile up against -- see [StackingCard].
+  static const double collapsedExtent = 108;
+
+  /// Where the macro panel sits with the header fully open.
+  ///
+  /// The ring's box is 200 tall from [_ringTop], but it paints a soft glow
+  /// well past that, so butting the panel straight up against 378 read as the
+  /// two cards touching. This is that edge plus a real gap.
+  static const double _ringTop = 178;
+  static const double _panelTop = _ringTop + 200 + 40;
 
   @override
-  double get maxExtent => 650;
+  double get minExtent => collapsedExtent;
+
+  // Grown with `_panelTop`: the target summary is anchored to the bottom of
+  // this box, so pushing the macro panel down without this just trades one
+  // overlap for another.
+  @override
+  double get maxExtent => 690;
 
   @override
   Widget build(
@@ -339,9 +362,38 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final t = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
-    final ringSize = lerpDouble(200, 96, t)!;
+    // The rearrangement is front-loaded, the fades are not. Run linearly, the
+    // ring is still half-size and near the middle while the panel is still
+    // wide, and the two spend most of the travel overlapping; easing the
+    // geometry gets both into their compact places early and then simply
+    // holds them there.
+    final c = Curves.easeOutCubic.transform(t);
+    final ringSize = lerpDouble(200, 96, c)!;
     final detailOpacity = (1 - (t / .55)).clamp(0.0, 1.0);
-    final ringTop = lerpDouble(178, 6, t)!;
+    final ringTop = lerpDouble(_ringTop, 6, c)!;
+    // The ring stays centred at every point of the collapse -- it is the
+    // headline, and the compact bar is built around it: the day on one side,
+    // the macros on the other.
+    //
+    // The selected day rides out of the week strip into that bar as the strip
+    // itself fades, so the date stays on screen while scrolling instead of
+    // vanishing with the rest of the header detail.
+    final dayAlignX = lerpDouble(0, -1, c)!;
+    final dayTop = lerpDouble(100, 28, c)!;
+    final dayScale = lerpDouble(1, .78, c)!;
+    final dayOpacity = 1 - detailOpacity;
+    // The panel narrows in layout *and* scales about its trailing (RTL:
+    // right) edge, so it compresses in both dimensions and ends up beside the
+    // ring instead of under it. Two mechanisms rather than one because the
+    // scale alone left the panel's leading edge over the ring for most of the
+    // travel, and narrowing alone cannot shrink its height.
+    // Laid out wider than it ends up looking, then scaled down: giving it a
+    // 127px-wide box directly would reflow three labelled rows into something
+    // unreadable, while laying out at 231 and scaling to .55 keeps the
+    // proportions it has when open.
+    final panelScale = lerpDouble(1, .55, c)!;
+    final panelLeft = lerpDouble(22, 150, c)!;
+    final panelTop = lerpDouble(_panelTop, 8, c)!;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -376,26 +428,64 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
               child: _WeekStrip(controller: controller),
             ),
           ),
+          if (dayOpacity > 0)
+            Positioned(
+              top: dayTop,
+              left: 12,
+              right: 12,
+              height: 52,
+              child: Align(
+                alignment: Alignment(dayAlignX, 0),
+                child: Opacity(
+                  opacity: dayOpacity,
+                  child: Transform.scale(
+                    scale: dayScale,
+                    child: DayChip(
+                      date: controller.selectedDate.value,
+                      selected: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             top: ringTop,
-            child: GoalCelebration(
-              trigger: goalTrigger,
-              child: CalorieRing(
-                consumed: day.consumedKcal,
-                target: day.targets.kcal,
-                size: ringSize,
-                consumedMacros: day.consumedTotals,
-                targetMacros: day.targets.macros,
-                plannedKcal: day.plannedKcal,
-                plannedMacros: day.plannedTotals,
-                ringAccent: ringAccent,
-                rippleTrigger: rippleTrigger,
-                animateFromZero: false,
+            left: 12,
+            right: 12,
+            height: ringSize,
+            child: Align(
+              alignment: Alignment.center,
+              // `GoalCelebration` paints a fixed 320px burst, so left to
+              // itself it hands `Align` a 320-wide child and the ring never
+              // actually reaches the edge -- it just sits centred inside that
+              // box. Sizing it to the ring and letting the burst overflow is
+              // what makes the alignment mean what it says.
+              child: SizedBox.square(
+                dimension: ringSize,
+                child: OverflowBox(
+                  maxWidth: 320,
+                  maxHeight: 320,
+                  child: GoalCelebration(
+                    trigger: goalTrigger,
+                    child: CalorieRing(
+                      consumed: day.consumedKcal,
+                      target: day.targets.kcal,
+                      size: ringSize,
+                      consumedMacros: day.consumedTotals,
+                      targetMacros: day.targets.macros,
+                      plannedKcal: day.plannedKcal,
+                      plannedMacros: day.plannedTotals,
+                      ringAccent: ringAccent,
+                      rippleTrigger: rippleTrigger,
+                      animateFromZero: false,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
           Positioned(
-            top: 178,
+            top: _ringTop,
             right: 8,
             child: Opacity(
               opacity: detailOpacity,
@@ -403,11 +493,12 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
           Positioned(
-            left: 22,
-            right: 22,
-            top: 398,
-            child: Opacity(
-              opacity: detailOpacity,
+            left: panelLeft,
+            right: 12,
+            top: panelTop,
+            child: Transform.scale(
+              scale: panelScale,
+              alignment: Alignment.topRight,
               child: MacroNumbersPanel(
                 consumed: day.consumedTotals,
                 target: day.targets.macros,
@@ -598,53 +689,86 @@ class _WeekStrip extends StatelessWidget {
           if (_sameDay(date, now) || _sameDay(date, selected)) return true;
           return logged.contains(DayLog.keyFor(date));
         }).toList();
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
-          itemCount: days.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, i) {
-            final date = days[i];
-            final isSelected = _sameDay(date, selected);
-            return GestureDetector(
-              onTap: () => controller.selectDate(date),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: 44,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppPalette.emerald.withValues(alpha: .22)
-                      : Colors.white.withValues(alpha: .06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: isSelected
-                      ? Border.all(
-                          color: AppPalette.emerald.withValues(alpha: .5))
-                      : null,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(_weekdayLabels[date.weekday - 1],
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: isSelected
-                                ? AppPalette.emerald
-                                : AppPalette.muted)),
-                    const SizedBox(height: 2),
-                    Text('${date.day}',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: isSelected
-                                ? AppPalette.text
-                                : AppPalette.muted)),
+        // Centred, not start-aligned. Now that empty days are filtered out
+        // the strip is usually two or three chips wide, and a short row
+        // pinned to the leading edge read as a list that had lost its other
+        // items. `minWidth` on the row is what centres it when it fits and
+        // still lets a full seven-day week scroll.
+        return LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (final (i, date) in days.indexed) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    DayChip(
+                      date: date,
+                      selected: _sameDay(date, selected),
+                      onTap: () => controller.selectDate(date),
+                    ),
                   ],
-                ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         );
       }),
     );
   }
+}
+
+/// One day in the week strip -- and, once the header collapses, the single
+/// selected day that rides up into the compact bar. Shared so the travelling
+/// copy is literally the same chip rather than a lookalike that would drift
+/// out of sync with the strip's styling.
+class DayChip extends StatelessWidget {
+  final DateTime date;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  static const double width = 44;
+
+  const DayChip({
+    required this.date,
+    required this.selected,
+    super.key,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: width,
+          decoration: BoxDecoration(
+            color: selected
+                ? AppPalette.emerald.withValues(alpha: .22)
+                : Colors.white.withValues(alpha: .06),
+            borderRadius: BorderRadius.circular(14),
+            border: selected
+                ? Border.all(color: AppPalette.emerald.withValues(alpha: .5))
+                : null,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_weekdayLabels[date.weekday - 1],
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: selected ? AppPalette.emerald : AppPalette.muted)),
+              const SizedBox(height: 2),
+              Text('${date.day}',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: selected ? AppPalette.text : AppPalette.muted)),
+            ],
+          ),
+        ),
+      );
 }
 
 class _EntryTile extends StatelessWidget {
@@ -658,8 +782,9 @@ class _EntryTile extends StatelessWidget {
   /// correction.
   final bool readOnly;
 
+  // No `key`: the list's stable key now lives on the `StackingCard` that
+  // wraps this, which is the widget the sliver actually recycles.
   const _EntryTile({
-    super.key,
     required this.controller,
     required this.entry,
     required this.readOnly,

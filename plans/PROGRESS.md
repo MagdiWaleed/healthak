@@ -928,6 +928,53 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   emission). That also closes a cold-start gap where the profile arrived after the first
   `selectDate` and nothing materialized.
 
+- **Today tab: week strip centred, and entry rows now stack instead of scrolling away.**
+  The strip was start-aligned, which since empty days are filtered out usually left two or three
+  chips pinned to the leading edge, reading as a list that had lost its other items. Now a
+  `SingleChildScrollView` over a `Row` with `minWidth: constraints.maxWidth`, which centres when
+  the chips fit and still scrolls a full seven-day week. The day chip moved into its own
+  `_dayChip` method rather than staying inline in the item builder.
+- **Header collapse rearranges instead of just shrinking.** The macro panel sat 20px below the
+  ring's box, but the ring paints a soft glow past its box, so the two read as touching; the gap
+  is now 40 and `maxExtent` grew 650 -> 690 to match, since the target summary is anchored to the
+  bottom of that box and would otherwise just trade one overlap for another. On collapse the ring
+  stays centred -- it is the headline, and the compact bar is built around it: the selected day
+  on the left, the macros on the right -- while the macro panel narrows *and* scales about its
+  trailing edge to land beside it. (An earlier pass moved the ring itself into the left corner;
+  the boss asked for the symmetric arrangement instead.) The panel is deliberately laid out
+  wider than it ends up looking and then scaled: giving it a ~127px box directly reflows three
+  labelled rows into something unreadable, while laying out at 231 and scaling to .55 keeps the
+  proportions it has when open. Two mechanisms rather than one: scaling alone left the panel's
+  leading edge over the ring for most of the travel, and narrowing alone cannot shrink its
+  height. All of the geometry runs on `Curves.easeOutCubic` while the fades stay linear -- run
+  linearly, the ring is still half-size near the middle while the panel is still wide, and the
+  two spend most of the scroll overlapping. The ring's centre position is an `Align` fraction,
+  not a computed left edge: the arithmetic version needed the viewport width and put the ring
+  visibly off-centre. `CalorieRing` now hides its captions below 120px -- they never scaled with
+  the ring, so on the collapsed one they spilled out of the circle and over the panel next to it.
+  The selected day now rides out of the week strip into the compact bar as the strip fades, so
+  the collapsed header reads day + ring on the left and macros on the right and the date stays on
+  screen while scrolling. The chip is the same `DayChip` the strip builds, lifted out of
+  `_WeekStrip` and made shared so the travelling copy cannot drift out of sync with the strip's
+  styling. Making the ring's alignment actually bite needed one more fix: `GoalCelebration`
+  paints a fixed 320px burst, so it was handing `Align` a 320-wide child and the ring only ever
+  sat centred inside that box rather than reaching the edge -- it is now sized to the ring with
+  the burst allowed to overflow.
+- **`lib/ui/motion/stacking_card.dart` (new).** Wraps a list row so that once it reaches the pile
+  line it pins there and the following rows slide over it, forming a deck of glass edges. It only
+  ever paints a `Transform`, so layout, keys, and sliver recycling are untouched -- and the
+  measuring box sits *outside* that transform, so reading its position can never feed back into
+  the offset that moved it. `overshoot` alone would pin a row exactly on the line; subtracting a
+  `depth`-bounded term is what fans the parked rows out and what stops the pile deepening past
+  `maxVisible`. Two things the first pass got wrong and the device showed: parked rows are glass,
+  so the card behind showed its text straight through and the pile smeared into one row -- fixed
+  with an opaque plate faded in over the first row-edge of travel, plus a geometric (not linear)
+  opacity falloff that sinks the ones behind into shadow. And a pinned row is painted from a
+  layout position above the viewport, so the scroll view needs `kStackingCacheExtent` (900) or
+  the deepest rows get recycled out from under the pile. Gated on `MotionSettings`.
+  `_EntryTile` lost its `key`: the list's stable key now lives on the `StackingCard` around it,
+  which is the widget the sliver actually recycles.
+
 ### Deviations specific to Step 2 (also folded into the table below)
 
 - **`AsyncView<T>` not used in the food catalog.** It models loading/data/error as three
