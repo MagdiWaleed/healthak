@@ -87,7 +87,15 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   final goalCelebratedToday = false.obs;
   final _celebratedDateKeys = <String>{};
 
+  /// `dateKey`s in the visible week that actually have a document.
+  ///
+  /// The week strip shows only these (plus today and whatever is selected):
+  /// a chip for a day with nothing behind it just leads to a dead empty
+  /// screen, so it should not be offered at all.
+  final loggedDayKeys = <String>{}.obs;
+
   StreamSubscription<DayLog?>? _watchSub;
+  StreamSubscription<List<DayLog>>? _weekSub;
   int _selectionEpoch = 0;
 
   /// True whenever the current selection is "today", not some other day the
@@ -98,16 +106,50 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
   Timer? _rolloverTimer;
 
+  /// True between asking for today's document to be materialized and that
+  /// write landing. While it is set, a `null` from the watch stream means
+  /// "the document is being created right now", not "this day has no
+  /// record" -- so [loading] deliberately stays true and the empty state
+  /// never flashes on the way in.
+  bool _materializing = false;
+
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
 
   bool _isToday(DateTime date) => _dateOnly(date) == today.value;
+
+  static DateTime _mondayOf(DateTime date) =>
+      _dateOnly(date).subtract(Duration(days: date.weekday - 1));
+
+  /// One bounded listener over the week the strip renders. Re-subscribed on
+  /// rollover only when the week itself changed, so an ordinary midnight
+  /// inside the same week costs nothing.
+  void _watchWeek() {
+    final monday = _mondayOf(today.value);
+    if (_weekStart == monday) return;
+    _weekStart = monday;
+    _weekSub?.cancel();
+    _weekSub = _days
+        .watchRange(monday, monday.add(const Duration(days: 6)))
+        .listen((days) {
+      loggedDayKeys
+        ..clear()
+        ..addAll({for (final day in days) day.dateKey});
+    }, onError: (Object _) {
+      // A failed week query must not blank the strip -- worst case it keeps
+      // showing the last known set, which is strictly better than a strip
+      // with nothing on it but today.
+    });
+  }
+
+  DateTime? _weekStart;
 
   @override
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
     _scheduleRollover();
+    _watchWeek();
     selectDate(DateTime.now());
   }
 
@@ -116,6 +158,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     _rolloverTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _watchSub?.cancel();
+    _weekSub?.cancel();
     super.onClose();
   }
 
@@ -140,6 +183,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   void _refreshToday() {
     final current = _dateOnly(DateTime.now());
     if (current != today.value) today.value = current;
+    _watchWeek();
     ensureCurrentDay();
   }
 
@@ -175,21 +219,29 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     // Do not leave a previous day's content visible while the new local
     // Firestore snapshot is arriving.
     day.value = null;
-    // Materialization can require a schedule read + transaction. The Today
-    // screen must not wait for that network round trip before it starts its
-    // own cache-backed day stream.
-    loading.value = false;
+    // Stay in the loading state until the first snapshot for the new day
+    // actually arrives. Clearing it eagerly left a few frames of
+    // `loading == false && day == null` -- the exact signature of "this day
+    // has no record" -- so every day switch flashed the empty state before
+    // the real content faded in.
+    loading.value = true;
     error.value = null;
+    _materializing = _isToday(date);
     await _watchSub?.cancel();
 
     _watchSub = _days.watch(date).listen((value) {
       if (epoch != _selectionEpoch) return;
       day.value = value;
+      // A null while today's document is still being written is a
+      // not-yet, not an answer. Any other null is the real, final state of
+      // a past day that was never opened.
+      if (value != null || !_materializing) loading.value = false;
       _syncMood(value);
       goalCelebratedToday.value =
           value != null && _celebratedDateKeys.contains(value.dateKey);
     }, onError: (Object e) {
       if (epoch != _selectionEpoch) return;
+      loading.value = false;
       error.value = e.toString();
     });
 
@@ -214,6 +266,14 @@ class TodayController extends GetxController with WidgetsBindingObserver {
       await _days.ensureDay(date: date, targets: targets);
     } catch (e) {
       if (epoch == _selectionEpoch) error.value = e.toString();
+    } finally {
+      // Whether it succeeded or threw, the "document may still appear"
+      // window is over: release the spinner so the watch's answer -- day or
+      // empty state -- is what the screen shows.
+      if (epoch == _selectionEpoch) {
+        _materializing = false;
+        loading.value = false;
+      }
     }
   }
 

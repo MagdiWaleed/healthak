@@ -30,11 +30,23 @@ class DayRepository {
   Future<List<DayLog>> getRange(DateTime start, DateTime end) async {
     final snapshot = await _refs
         .days(uid)
-        .where(FieldPath.documentId, isGreaterThanOrEqualTo: DayLog.keyFor(start))
+        .where(FieldPath.documentId,
+            isGreaterThanOrEqualTo: DayLog.keyFor(start))
         .where(FieldPath.documentId, isLessThanOrEqualTo: DayLog.keyFor(end))
         .get();
     return snapshot.docs.map((document) => document.data()).toList();
   }
+
+  /// Live version of [getRange]: one listener over a bounded id range, so a
+  /// day document appearing (today being materialized, a past day being
+  /// corrected) updates the caller without a re-query.
+  Stream<List<DayLog>> watchRange(DateTime start, DateTime end) => _refs
+      .days(uid)
+      .where(FieldPath.documentId, isGreaterThanOrEqualTo: DayLog.keyFor(start))
+      .where(FieldPath.documentId, isLessThanOrEqualTo: DayLog.keyFor(end))
+      .snapshots()
+      .map((snapshot) =>
+          snapshot.docs.map((document) => document.data()).toList());
 
   Stream<DayLog?> watch(DateTime date) => _refs
       .days(uid)

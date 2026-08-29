@@ -782,6 +782,26 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   `FirebaseAuth` — out of scope for this pass. This matches the rest of the suite's existing
   boundary: pure-Dart/mapper logic is unit-tested, Firestore-backed reads are not.
 
+- **Day switching flashed "لا يوجد سجل لهذا اليوم" before every day loaded.** `selectDate`
+  nulled `day.value` and set `loading.value = false` in the same breath, so for the frames
+  before the Firestore snapshot arrived the screen was in `loading == false && day == null` —
+  the exact signature the view uses for "this day has no record". Fixed by keeping `loading`
+  true until the first snapshot lands, plus a `_materializing` flag so a `null` arriving while
+  today's document is still being written is treated as not-yet rather than as an answer.
+  `_materializeToday` releases both in a `finally`. Today's screen is now an `AnimatedSwitcher`
+  whose child is keyed on `DayLog.keyFor(selectedDate)`, so a date change cross-fades while an
+  eat-toggle on the same day stays an in-place rebuild. The switcher needs a custom
+  `layoutBuilder` — the default centres the outgoing child and sizes the stack to the incoming
+  one, collapsing a full-height `CustomScrollView` mid-transition.
+
+- **Week strip only shows days that exist.** A chip for an empty past day dead-ended on "no
+  record for this day", and a future chip was rendered at 35% opacity with `onTap: null` — both
+  are places with nothing to see. `DayRepository.watchRange` (a live version of `getRange`: one
+  bounded `FieldPath.documentId` listener, no composite index) feeds `TodayController
+  .loggedDayKeys`, and the strip renders only those days plus today and the current selection,
+  so it can never become a strip with no way back. Re-subscribed on rollover only when the week
+  itself changed.
+
 ### Deviations specific to Step 2 (also folded into the table below)
 
 - **`AsyncView<T>` not used in the food catalog.** It models loading/data/error as three
