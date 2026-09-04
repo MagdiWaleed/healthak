@@ -54,6 +54,11 @@ class DayRepository {
       .snapshots()
       .map((snapshot) => snapshot.data());
 
+  /// One cache-aware read used by callers that need a bounded snapshot rather
+  /// than a live subscription, such as the read-only assistant tools.
+  Future<DayLog?> get(DateTime date) async =>
+      (await _refs.days(uid).doc(DayLog.keyFor(date)).get()).data();
+
   Future<DayLog> ensureDay({
     required DateTime date,
     required NutritionTargets targets,

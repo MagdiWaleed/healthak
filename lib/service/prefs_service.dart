@@ -60,6 +60,21 @@ class PrefsService extends GetxService implements ProfileCache {
     );
   }
 
+  bool get assistantDisclosureAccepted =>
+      _prefs.getBool('assistantDisclosureAccepted') ?? false;
+
+  Future<void> acceptAssistantDisclosure() =>
+      _prefs.setBool('assistantDisclosureAccepted', true);
+
+  /// The xAI model id the user picked for the assistant. Falls back to the
+  /// build-time `--dart-define=XAI_MODEL`, then to the cheapest model.
+  String get assistantModelId =>
+      _prefs.getString('assistantModelId') ??
+      const String.fromEnvironment('XAI_MODEL', defaultValue: 'grok-3-mini');
+
+  Future<void> setAssistantModelId(String id) =>
+      _prefs.setString('assistantModelId', id);
+
   @override
   Future<void> clearProfile() async {
     await _prefs.remove('uid');

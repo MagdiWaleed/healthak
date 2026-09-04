@@ -1,10 +1,95 @@
 # PROGRESS — handoff
 
-**Last updated:** 2026-08-28
+**Last updated:** 2026-09-04
 **Current position:** Step 0 COMPLETE. Step 1 implementation COMPLETE (one real-device gate still
 open). **Step 2 implementation COMPLETE** — the full personal loop (catalog, meal editor with
 nesting, my meals, today, history, profile) is built, wired, and the legacy codebase it replaces
 is deleted. Not yet committed to git; not yet walked by hand on a device/emulator.
+
+**Step 5 AI Agent — Phase 5A local implementation complete, deployment gate open
+(2026-09-04):** Added the fifth shell destination «المساعد» and a full Arabic RTL read-only
+chat surface: asymmetric agent-pulse identity, first-use privacy disclosure, suggestions,
+streaming/typing states, grounded tool-read capsules, composer, and calm quota/offline/error
+cards. Message-list surfaces remain filter-free and the shell FAB is hidden on this tab so it
+does not compete with the composer. Conversation history stays in SharedPreferences only, is
+grouped by local day, and prunes after seven days; it is never written to Firestore.
+
+The client now has `XaiProxyClient`, `ChatOrchestrator`, and the six planned read tools over the
+real repositories (`get_today`, `get_history_range`, `get_profile`, `get_meals`, `search_foods`,
+`get_remaining_targets`). Correct meal totals are recomputed with `macrosOfMeal`, never trusted
+from `totalsCache`; profile email is excluded. Tool calls are capped, the restored model context
+is bounded, and actual upstream cost is read from xAI's usage ticks when returned.
+
+`functions/agentTurn` is implemented as an authenticated Node 20 Firebase v2 HTTPS proxy with
+server-owned tool schemas, a server-only `agentUsage` daily quota, streamed normalized SSE,
+`reasoning_effort: none`, and an 800-token response cap. Per the boss's Grok request, Phase 5A
+uses the stable low-cost `grok-4.3` model instead of the plan's Gemini Flash default. The API key
+was intentionally **not** written anywhere because the supplied key appeared in chat and must be
+rotated first. Nothing has been deployed and no Blaze/billing change was made. Remaining exit
+gate: rotate the key, set Firebase secret `XAI_API_KEY`, deploy the function, then live-check the
+two specified grounded Arabic questions plus forced quota/offline paths. Actual model spend is
+therefore not measured yet.
+
+Local verification: `flutter analyze` clean after the final pass; all 139 tests pass, including
+all six read tools, cache-vs-derived meal totals, streamed tool orchestration, quota handling,
+and seven-day local retention; `npm run check` passes; debug APK builds. Emulator visual QA at
+1080×2280 confirmed the new tab's RTL hierarchy, disclosure layout, model badge, pulse motif,
+five-destination nav, FAB-free composer clearance, and focused keyboard state. No Flutter error
+appeared in the runtime log. `npm audit --omit=dev` still reports the upstream Firebase Admin
+dependency chain's seven moderate `uuid <11.1.1` advisories; npm offers only a forced breaking
+downgrade to `firebase-admin@10.3.0`, so no unsafe automatic rewrite was applied.
+
+**Step 5A — direct-provider path added (2026-09-04):** the boss asked to skip the proxy and
+call xAI straight from Dart, use the cheapest Grok model, and make the model switchable. The
+404 the boss hit was simply that the proxy was never deployed (Cloud Functions API is still
+disabled on `diet-app-a908a`; `firebase functions:list` → `SERVICE_DISABLED`). Rather than
+gate on a Blaze upgrade, `ai_client.dart` now ships two `AiClient`s:
+
+- `XaiProxyClient` — unchanged, the eventual production path.
+- `XaiDirectClient` — POSTs straight to `https://api.x.ai/v1/chat/completions`, prepends the
+  shared `kAgentSystemPrompt` (`lib/service/agent/agent_prompt.dart`, byte-paired with the
+  proxy's copy), parses raw xAI SSE (text deltas, indexed `tool_calls` accumulation, usage
+  ticks). `createAiClient()` picks it whenever `--dart-define=XAI_API_KEY` is non-empty, else
+  falls back to the proxy. The key is embedded in the binary and extractable — the xAI account
+  spend cap is the only ceiling. Supply it via `ai_secrets.json` (gitignored, see
+  `ai_secrets.example.json`) + `flutter run --dart-define-from-file=ai_secrets.json`.
+
+**Model picker.** `lib/service/agent/agent_model_catalog.dart` holds the allowlist
+(`grok-3-mini` default/cheapest, `grok-4-fast-non-reasoning`, `grok-4-fast-reasoning`,
+`grok-4`), each carrying the correct `reasoning_effort` (only `grok-3-mini` sends `low`; the
+others must omit the field or xAI 400s — this also fixes the old hardcoded
+`reasoning_effort: "none"` which would have broken those models). The assistant header's static
+"Grok 4.3" badge is now a `PopupMenuButton` writing `assistantModelId` to prefs;
+`ChatOrchestrator` re-reads it each turn via a `resolveModel` callback and passes `model:` to
+the client. `functions/index.js` enforces the same allowlist server-side (`modelAllowlist`), so
+a modified client cannot request an unlisted/more expensive model through the proxy.
+
+Verification: `flutter analyze` clean; **144 tests pass** (+5: `xai_direct_client_test.dart`
+covers SSE parse, model pass-through, 401→unauthorized, 429→quota; `chat_orchestrator_test.dart`
+gains a model-resolver assertion); `node --check functions/index.js` OK; the Functions emulator
+was run locally and the endpoint answered 401/405/JSON-error correctly (no 404, no crash). A
+real end-to-end model round-trip is still unrun here — needs the boss's rotated key.
+
+**Deviation from the plan's key policy:** the plan mandated a proxy with a `kReleaseMode` assert
+blocking any embedded key. The boss overrode this for a personal-scale app. `XaiDirectClient`
+works in release with no assert; mitigation is a dedicated xAI key + a hard spend cap the boss
+sets at console.x.ai. Proxy code is kept intact for a later switch.
+
+**Voice split out of Step 5 (2026-09-04):** the boss asked to skip voice for now and
+pull it into its own plan rather than leave it as Step 5's final phase. `05_voice.md`
+moved verbatim to `plans/voice_agent_deferred.md` (top-level, sibling to `general.md`),
+marked DEFERRED/not scheduled. `07_phases.md`'s "Phase 5V" section replaced with a
+pointer to that file; Step 5's phase set is now 5A–5D only. `README.md`,
+`03_chat_ux.md` cross-references to `05_voice.md`/"Phase 5V" updated to point at the new
+file instead. No code changed — this is a planning-doc reorg so Step 5 can be considered
+complete without waiting on voice's separate dependency-approval gate
+(`speech_to_text`/`flutter_tts`).
+
+**Step 5 language decision (2026-09-04):** all assistant-authored text is Modern Standard
+Arabic. The UI copy, local status/error messages, quota/offline states, and proxy system prompt
+were normalized to neutral MSA. Grok may understand dialectal user input, but it is explicitly
+instructed never to mirror a regional dialect in its answer. The decision is now locked in the
+Step 5 README for phases 5B–5V as well.
 
 **Side Plan 1:** the first-launch guest preview is complete. It is local and read-only; see
 `sideplan1_guest_mode.md`.
@@ -1293,6 +1378,8 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 | `lib/page/setting/` deletion | Deleted with no Step 2 replacement | The legacy screen was non-functional (mutated a dead static, placeholder labels); Step 4 still owes a real Settings screen over the already-working `SettingsController`. |
 | Living Glass Phase 1 user-motion preference | OS reduced-motion/accessibility is honoured now; no persisted user toggle yet | `AppSettings` has no motion/haptics fields. Adding them would change the profile model, mapper, and persistence, conflicting with the Kimi plan's explicit Phase 1 no-data-model boundary. Wire the setting in Step 4. |
 | Kimi phases must wait for the previous real-device raster p95 exit gate | Phase 3 and the safe Phase 4 motion primitives proceeded before that measurement | The user explicitly directed the implementation to continue one phase at a time without stopping. The p95 baseline/new measurement remains an explicit release gate, not replaced by emulator or automated evidence. |
+| Step 5A proxy/model uses Gemini Flash | xAI Grok, `grok-3-mini` default (cheapest), switchable via header picker; 800-token cap | The boss supplied a Grok credential and asked for the cheapest model plus a dropdown. Provider stays isolated behind `AiClient`; Step 5D search-provider choice remains separate. |
+| Step 5A: key lives only in a proxy, blocked from release by an assert | `XaiDirectClient` embeds the key from `--dart-define`, works in release, no assert | Boss's call for a personal-scale app. Mitigation: dedicated xAI key + hard spend cap at console.x.ai. Proxy kept for a later switch. |
 
 ---
 
@@ -1314,8 +1401,9 @@ Full detail in `general.md` §2. Summary:
 
 ## Still undecided
 
-- **The AI assistant.** See `step5.md`. Not specified at all yet. Nothing in Steps 0–4 depends
-  on it. Do not write code for it.
+- **The AI assistant provider deployment.** Phase 5A is implemented locally using a secure
+  Firebase proxy and Grok 4.3. The supplied key must be rotated, stored as `XAI_API_KEY`, and the
+  proxy deployed before the live exit questions can be verified.
 - Moderation for the marketplace (a client-side mute list is the Step 3 stopgap).
 - Whether to rename the package from `com.example.diet_app2` — it would break the existing
   Firebase Android app registration and need a fresh `google-services.json`. Ask first.

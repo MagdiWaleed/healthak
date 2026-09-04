@@ -29,6 +29,24 @@ abstract final class AppStrings {
   static const myMeals = 'وجباتي';
   static const market = 'السوق';
   static const account = 'حسابي';
+  static const assistant = 'المساعد';
+  static const assistantHeadline = 'أفهم يومك من بياناتك، ولا أخمّن';
+  static const assistantEmpty =
+      'اسألني عن طعامك وأهدافك. تعتمد إجابتي على بياناتك الصحية الفعلية.';
+  static const assistantComposerHint = 'اكتب للمساعد…';
+  static const assistantDisclosureTitle = 'قبل أول سؤال';
+  static const assistantDisclosureBody =
+      'عندما تسأل، نرسل إلى المساعد البيانات اللازمة للإجابة فقط، مثل هدفك وملخص يومك. تمر البيانات عبر خادم صحتك إلى xAI، ولا نحفظ محادثتك في Firestore.';
+  static const assistantDisclosureConfirm = 'فهمت، ابدأ';
+  static const assistantPrivacyNote = 'محادثتك تبقى على جهازك';
+  static const assistantSuggestionRemaining = 'ما المتبقي من هدفي؟';
+  static const assistantSuggestionToday = 'ماذا أكلت اليوم؟';
+  static const assistantSuggestionProtein = 'اقترح وجبة بروتين من مكتبتي';
+  static const assistantSuggestionWeek = 'كيف كان أسبوعي؟';
+  static const assistantQuota = 'بلغت الحد اليومي — يمكنك المتابعة غدًا';
+  static const assistantOffline = 'يحتاج المساعد إلى اتصال بالإنترنت';
+  static const assistantRetry = 'حاول مجددًا';
+  static const assistantModelPickerTooltip = 'اختر نموذج المساعد';
   static const comingNext = 'سيكتمل هذا القسم في الخطوة التالية';
   static const retry = 'إعادة المحاولة';
   static const newDay = 'يوم جديد';

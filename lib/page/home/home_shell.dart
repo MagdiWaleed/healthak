@@ -14,6 +14,7 @@ import '../../ui/motion/navigation.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/glass_tokens.dart';
+import '../assistant/assistant_tab.dart';
 import '../meal_editor/meal_editor_screen.dart';
 import '../my_meals/my_meals_tab.dart';
 import '../today/quick_add_sheet.dart';
@@ -58,6 +59,11 @@ class HomeShell extends GetView<HomeController> {
     (Icons.today_rounded, Icons.today_outlined, AppStrings.today),
     (Icons.restaurant_menu, Icons.restaurant_menu, AppStrings.myMeals),
     (Icons.storefront_rounded, Icons.storefront_outlined, AppStrings.market),
+    (
+      Icons.auto_awesome_rounded,
+      Icons.auto_awesome_outlined,
+      AppStrings.assistant
+    ),
     (Icons.person_rounded, Icons.person_outline, AppStrings.account),
   ];
 
@@ -85,6 +91,7 @@ class HomeShell extends GetView<HomeController> {
             const MyMealsTab(),
             const _Placeholder(
                 title: AppStrings.market, icon: Icons.storefront_outlined),
+            const AssistantTab(),
             _AccountTab(
               onGallery: () => Get.toNamed(AppRoutes.gallery),
               onSignOut: () async {
@@ -117,9 +124,11 @@ class HomeShell extends GetView<HomeController> {
             ),
           ),
         ),
-        floatingActionButton: _QuickAddFab(
-          onPressed: () => _onFabPressed(context, index),
-        ),
+        floatingActionButton: index == 3
+            ? null
+            : _QuickAddFab(
+                onPressed: () => _onFabPressed(context, index),
+              ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       );
     });
@@ -160,8 +169,10 @@ class _NavDestination extends StatelessWidget {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.sizeOf(context).width < 400 ? 9 : 11,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
                   color: selected
@@ -190,6 +201,8 @@ class _NavDestination extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 3),
                         child: Text(
                           label,
+                          maxLines: 1,
+                          overflow: TextOverflow.fade,
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -330,8 +343,7 @@ class _AccountRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GlassCard(
-        specularAngleOffset:
-            specularIndex * GlassTokens.listSpecularStepDeg,
+        specularAngleOffset: specularIndex * GlassTokens.listSpecularStepDeg,
         onTap: onTap,
         child: Row(
           children: [
