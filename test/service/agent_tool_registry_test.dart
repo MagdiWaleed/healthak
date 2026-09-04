@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:diet_app2/domain/day/day_log.dart';
 import 'package:diet_app2/domain/food/food_item.dart';
 import 'package:diet_app2/domain/meal/meal_definition.dart';
@@ -380,9 +382,57 @@ void main() {
       expect(data.day!.entries.single.name, 'وجبة جديدة');
       expect(data.day!.entries.single.items.single.grams, 300);
 
-      await registry.undo(receipt);
+      final undoSteps = await registry.undo(receipt);
+      expect(undoSteps, hasLength(2)); // remove the new entry, restore the old
       expect(data.day!.entries.single.name, 'وجبة قديمة');
       expect(data.day!.entries.single.items.single.grams, 100);
+    });
+
+    test('a serialized inverse round-trips through JSON and still undoes correctly',
+        () async {
+      var day = DayLog.empty(DateTime(2026, 9, 4), targets);
+      final data = _FakeData(day: day, foods: [food]);
+      final registry = AgentToolRegistry(data: data, now: () => now);
+
+      final logResult = await registry.run(const AgentToolCall(
+        id: 'call-1',
+        name: 'propose_log_food',
+        arguments: {'food_id': 'food-1', 'grams': 150},
+      ));
+      final receipt = await registry.confirm(logResult.proposal!);
+      expect(data.day!.entries, hasLength(1));
+
+      // Simulate the persisted audit log: serialize the inverse to JSON,
+      // decode it back (as a fresh app session would), then confirm it --
+      // no live Proposal object survives this round trip, only JSON.
+      final serialized = receipt.inverse
+          .map(registry.serializeProposalForLog)
+          .whereType<Map<String, dynamic>>()
+          .toList();
+      expect(serialized, hasLength(1));
+      final decoded = jsonDecode(jsonEncode(serialized.single)) as Map<String, dynamic>;
+      final rehydrated = registry.deserializeProposalForLog(decoded);
+      expect(rehydrated, isNotNull);
+
+      await registry.confirm(rehydrated!);
+      expect(data.day!.entries, isEmpty);
+    });
+
+    test('a proposal kind that never appears as an inverse serializes to null',
+        () async {
+      final data = _FakeData(
+        day: DayLog.empty(DateTime(2026, 9, 4), targets),
+        foods: [food],
+      );
+      final registry = AgentToolRegistry(data: data, now: () => now);
+
+      final result = await registry.run(const AgentToolCall(
+        id: 'call-1',
+        name: 'propose_log_food',
+        arguments: {'food_id': 'food-1', 'grams': 150},
+      ));
+      // This is the *forward* proposal (logFood), never an inverse shape.
+      expect(registry.serializeProposalForLog(result.proposal!), isNull);
     });
 
     test('propose_create_meal only accepts real catalog foods and saves on confirm',

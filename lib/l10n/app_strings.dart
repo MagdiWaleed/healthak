@@ -53,6 +53,29 @@ abstract final class AppStrings {
   static const assistantCancelled = 'أُلغي الاقتراح';
   static const assistantUndone = 'تم التراجع';
   static const assistantEstimatedBadge = 'تقديري';
+  static const assistantNewChat = 'محادثة جديدة';
+  static const assistantHistoryTooltip = 'سجل المحادثات';
+  static const assistantHistoryTitle = 'محادثاتك';
+  static const assistantHistoryEmpty = 'لا توجد محادثات سابقة بعد';
+  static const assistantHistoryUntitled = 'محادثة بلا عنوان';
+  static const assistantHistoryDeleteTooltip = 'حذف المحادثة';
+
+  // «سجل المساعد» -- the write-action audit trail (Phase 5C), distinct from
+  // the chat-session history above.
+  static const agentLogTooltip = 'سجل المساعد';
+  static const agentLogTitle = 'سجل المساعد';
+  static const agentLogEmptyTitle = 'لا توجد إجراءات بعد';
+  static const agentLogEmptyMessage =
+      'يسجّل المساعد هنا كل تعديل ينفّذه على يومك أو وجباتك.';
+  static const agentLogFilterAll = 'الكل';
+  static const agentLogFilterAdd = 'إضافة';
+  static const agentLogFilterEdit = 'تعديل';
+  static const agentLogFilterRemove = 'حذف';
+  static const agentLogFilterSwap = 'استبدال';
+  static const agentLogUndo = 'تراجع';
+  static const agentLogUndone = 'تم التراجع';
+  static const agentLogToday = 'اليوم';
+  static const agentLogYesterday = 'أمس';
   static const comingNext = 'سيكتمل هذا القسم في الخطوة التالية';
   static const retry = 'إعادة المحاولة';
   static const newDay = 'يوم جديد';

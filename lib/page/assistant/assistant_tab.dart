@@ -13,10 +13,13 @@ import '../../service/agent/chat_orchestrator.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/glass/glass_card.dart';
+import '../../ui/glass/glass_sheet.dart';
+import '../../ui/motion/navigation.dart';
 import '../../ui/motion/pressable.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/glass_tokens.dart';
 import '../../ui/theme/motion_settings.dart';
+import '../history_ai/agent_history_screen.dart';
 
 class AssistantTab extends StatefulWidget {
   const AssistantTab({super.key});
@@ -148,8 +151,59 @@ class _AssistantHeader extends StatelessWidget {
                 ],
               ),
             ),
+            _HeaderIconButton(
+              icon: Icons.fact_check_outlined,
+              tooltip: AppStrings.agentLogTooltip,
+              onTap: () => pushHealthak(() => const AgentHistoryScreen()),
+            ),
+            const SizedBox(width: 6),
+            _HeaderIconButton(
+              icon: Icons.history_rounded,
+              tooltip: AppStrings.assistantHistoryTooltip,
+              onTap: () => _SessionListSheet.show(context),
+            ),
+            const SizedBox(width: 6),
+            _HeaderIconButton(
+              icon: Icons.add_comment_outlined,
+              tooltip: AppStrings.assistantNewChat,
+              onTap: () => Get.find<ChatOrchestrator>().startNewSession(),
+            ),
+            const SizedBox(width: 10),
             const _ModelChip(),
           ],
+        ),
+      );
+}
+
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _HeaderIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: tooltip,
+        child: Pressable(
+          onTap: onTap,
+          haptic: true,
+          pressedScale: .92,
+          child: Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .06),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: .12)),
+            ),
+            child: Icon(icon, size: 16, color: AppPalette.muted),
+          ),
         ),
       );
 }
@@ -232,6 +286,122 @@ class _ModelChipState extends State<_ModelChip> {
         ),
       ),
     );
+  }
+}
+
+/// The conversation-thread switcher opened from the header's history icon.
+/// Titles are AI-generated from each thread's first message (falling back to
+/// a plain truncation) once its first exchange completes.
+class _SessionListSheet extends StatelessWidget {
+  const _SessionListSheet();
+
+  static Future<void> show(BuildContext context) => GlassSheet.show<void>(
+        context,
+        builder: (context) => const GlassSheet(
+          title: AppStrings.assistantHistoryTitle,
+          expand: true,
+          child: _SessionListSheet(),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final orchestrator = Get.find<ChatOrchestrator>();
+    return Obx(() {
+      final sessions = orchestrator.sessions.toList(growable: false);
+      final activeId = orchestrator.currentSessionId.value;
+      if (sessions.isEmpty) {
+        return const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              AppStrings.assistantHistoryEmpty,
+              style: TextStyle(color: AppPalette.muted),
+            ),
+          ),
+        );
+      }
+      return ListView.separated(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 24),
+        itemCount: sessions.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final session = sessions[index];
+          final active = session.id == activeId;
+          return Pressable(
+            onTap: () {
+              orchestrator.openSession(session.id);
+              Navigator.of(context).pop();
+            },
+            pressedScale: .98,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: active
+                    ? AppPalette.emerald.withValues(alpha: .12)
+                    : Colors.white.withValues(alpha: .045),
+                borderRadius: BorderRadius.circular(14),
+                border: active
+                    ? Border.all(color: AppPalette.emerald.withValues(alpha: .35))
+                    : null,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (session.title?.isNotEmpty ?? false)
+                              ? session.title!
+                              : AppStrings.assistantHistoryUntitled,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: active ? AppPalette.emerald : AppPalette.text,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _relativeTime(session.updatedAt),
+                          style: const TextStyle(
+                            color: AppPalette.muted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Pressable(
+                    onTap: () => orchestrator.deleteSession(session.id),
+                    pressedScale: .9,
+                    child: Tooltip(
+                      message: AppStrings.assistantHistoryDeleteTooltip,
+                      child: Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: AppPalette.muted.withValues(alpha: .7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    });
+  }
+
+  static String _relativeTime(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} د';
+    if (diff.inHours < 24) return 'منذ ${diff.inHours} س';
+    if (diff.inDays < 7) return 'منذ ${diff.inDays} يوم';
+    return '${time.year}/${time.month}/${time.day}';
   }
 }
 

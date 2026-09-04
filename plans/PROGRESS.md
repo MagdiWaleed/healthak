@@ -6,8 +6,10 @@ open). **Step 2 implementation COMPLETE** — the full personal loop (catalog, m
 nesting, my meals, today, history, profile) is built, wired, and the legacy codebase it replaces
 is deleted. Not yet committed to git; not yet walked by hand on a device/emulator.
 
-**Step 5 AI Agent — Phase 5A and 5B complete and live-verified (2026-09-04),
-Phase 5C/5D not started, voice split into `plans/voice_agent_deferred.md`:**
+**Step 5 AI Agent — Phase 5A, 5B, and 5C complete and live-verified
+(2026-09-04); plus a chat-session/history mechanism not in the original plan
+(also live-verified); Phase 5D (`isPremium` gating, coaching tools) not
+started; voice split into `plans/voice_agent_deferred.md`:**
 
 **Phase 5A (original entry below, still accurate):** Added the fifth shell destination «المساعد» and a full Arabic RTL read-only
 chat surface: asymmetric agent-pulse identity, first-use privacy disclosure, suggestions,
@@ -261,6 +263,124 @@ to start a fresh conversation -- worth doing before concluding a fix didn't work
 Verification: `flutter analyze` clean; **161 tests pass** (+3 over the web-search
 entry above: the personal-food-by-id regression test, and two
 `buildKnownCatalogContext` tests -- populated and empty).
+
+**Chat history / multi-session mechanism (2026-09-04), a boss request not in
+the original Step 5 plan:** the assistant used to be one continuous rolling
+conversation, grouped by local day, 7-day retention. The boss asked for
+distinct, switchable chat threads with an AI-generated title from each
+thread's first message -- the ChatGPT-sidebar pattern -- not to be confused
+with Phase 5C's `04_action_history.md` (a *write-action* audit log, still
+unbuilt; this is conversation threads).
+
+- `lib/service/agent/chat_session.dart`: `ChatSession` (id, title, createdAt,
+  updatedAt).
+- `agent_conversation_store.dart` rewritten around sessions instead of days:
+  `listSessions`/`loadMessages`/`saveMessages`/`upsertSession`/`deleteSession`.
+  Retention is now a **60-session cap**, oldest pruned by `updatedAt`, replacing
+  the old 7-day window (a thread can span many days now, so a day-based window
+  no longer made sense as the retention unit). Still device-only, still never
+  written to Firestore -- same privacy line as before, just a different bucket.
+- `lib/service/agent/chat_title_generator.dart`: one-shot, non-streaming call to
+  `/v1/chat/completions` (`grok-3-mini`, ~20 tokens) asking only for a 2-5 word
+  Arabic title -- deliberately outside `ChatOrchestrator`'s main persona/tool
+  context, its own small request. Falls back to a plain 40-character truncation
+  of the first message if unset, offline, or the call fails; never blocks
+  sending or shows an error of its own.
+- `ChatOrchestrator` gained `sessions` (`RxList<ChatSession>`) and
+  `currentSessionId`, plus `startNewSession()` / `openSession(id)` /
+  `deleteSession(id)`. A session is created lazily on first send (nothing
+  persists for an empty, never-sent thread); title generation fires once,
+  fire-and-forget, right after a session's first exchange completes.
+- `assistant_tab.dart` header gained two icon buttons (history, new chat) and
+  a `_SessionListSheet` (via the shared `GlassSheet`) listing threads
+  newest-first with relative time and a delete action; the active thread is
+  highlighted.
+
+Verification: `flutter analyze` clean; **172 tests pass** (+11: the
+conversation-store suite rewritten for the session API including a 60-session
+prune test and a legacy-row-decode test; six new orchestrator tests covering
+fallback titling, AI titling, `startNewSession`, `openSession`, `deleteSession`,
+and that a fresh `ChatOrchestrator` instance reopens the most recently active
+session). Live-walked on `emulator-5554`: sent "what is my daily protein
+goal" → AI title came back as «هدف البروتين اليومي» (accurate, concise,
+in MSA despite the English question); `startNewSession` → empty state →
+second question got its own title «اقتراح وجبة خفيفة غنية بالألياف»; history
+sheet listed both, newest first, correct relative times; tapped the older one
+→ its exact messages restored; **force-killed and cold-relaunched the app** →
+reopened the most-recently-active thread automatically; deleted a thread →
+gone from the list immediately.
+
+**Phase 5C — «سجل المساعد» action audit log (2026-09-04), per
+`04_action_history.md`:** the write-action audit trail, distinct from the chat-session
+history above (that's threads; this is every executed write, cross-session).
+
+- `lib/service/agent/agent_action_log.dart` (new): `AgentActionLogEntry`
+  {id, timestamp, kind, humanSummary, inverseChain, undoneAt} and
+  `SharedPrefsAgentActionLog` -- device-only, **30-day retention**, v1, per the
+  plan. `AgentActionCategory` (add/edit/remove/swap) derives from
+  `ProposalKind` for the filter chips; never stored separately.
+- **The hard part: undo has to survive an app restart, where no live
+  `Proposal` object exists in memory anymore.** `AgentToolRegistry` gained
+  `serializeProposalForLog`/`deserializeProposalForLog`. Scoped down from "make
+  every `Proposal` JSON-round-trippable" (a large undertaking touching
+  `FoodItem`/`MealDefinition`/etc.) to what's actually needed: **only a
+  proposal's *inverse* chain is ever persisted**, and every inverse `confirm()`
+  produces is one of exactly two shapes -- a `DayEntry` snapshot
+  (`removeEntry`/`restoreEntry`) or a bare meal id (`deleteMeal`). Hand-rolled
+  plain-Dart `DayEntry` JSON (reusing `FrozenItem`'s existing
+  `toJson`/`fromJson`) inside the registry file, where the otherwise-private
+  execArgs types already live -- no domain-layer changes, no Firestore
+  `Timestamp` dependency.
+- `AgentToolRegistry.undo()` now returns **every** inverse step's own receipt
+  (was: only the last). Matters because "an undo is itself a logged action" per
+  the plan -- each step gets its own audit row, and swap's inverse is two real
+  writes.
+- `ChatOrchestrator` gained `AgentActionLog? actionLog`; `confirmProposal` and
+  `undoReceipt` both call a new `_recordAction` after every real write,
+  best-effort (a logging failure never blocks the chat turn that produced it).
+- `lib/page/history_ai/` (new): `AgentHistoryController` (plain object, not
+  `Get.put` -- same pattern as `MealEditorController` and friends, `onInit()`
+  called manually from the screen's `initState`) and `AgentHistoryScreen`,
+  pushed via the existing `pushHealthak` helper (no named-route entry needed).
+  Reverse-chronological, day-sectioned (اليوم/أمس/date) `GlassCard` rows, tool
+  icon in a category-colored ring chip, per-row تراجع that **deserializes the
+  persisted inverse and confirms it through the same registry path** -- proving
+  undo works even when the `Proposal` that made it was built in a different
+  session. Filter chips (الكل/إضافة/تعديل/حذف/استبدال), empty state, struck-through
+  «تم التراجع» once undone. Entry point: a third header icon in the assistant
+  tab (fact-check icon), alongside the chat-history and new-chat icons added
+  earlier today.
+- `AgentToolRegistry` and the new `AgentActionLog` are now registered as their
+  own `Get.lazyPut` bindings in `HomeBinding` (previously the registry was
+  built inline inside `ChatOrchestrator`'s closure) so `lib/page/history_ai/`
+  can `Get.find` the exact same instances the live chat writes through.
+- **Deviation, recorded per the plan's own instruction:** empty-state and
+  section-header copy was written in Modern Standard Arabic rather than the
+  spec file's literal colloquial example text (`"لسه مفيش أكشنات"`, `"أمبارح"`),
+  to match this repo's already-locked Step 5 language decision (MSA-only for
+  all assistant-authored text, decided earlier the same day). The *content* and
+  layout match `04_action_history.md` exactly; only the register of the Arabic
+  differs from the spec's example phrasing.
+
+Verification: `flutter analyze` clean; **179 tests pass** (+7: `agent_action_log_test.dart`
+covers record/list ordering, `markUndone`, 30-day pruning, and the category
+mapping; two new registry tests prove a serialize→JSON-encode→JSON-decode→deserialize
+round trip still undoes correctly, and that a forward-only kind serializes to
+`null`; one orchestrator test confirms `confirmProposal` writes a log entry and
+`undoReceipt` both marks it undone and logs the undo as its own entry).
+
+**Live-verified on `emulator-5554`, the critical path being the screen-level
+undo (not the in-chat receipt chip):** logged "دولما" (200g, lunch) through
+chat → confirmed → opened «سجل المساعد» → the entry appeared under «اليوم»
+with a تراجع link and a green «+» category chip → filtered to «إضافة», entry
+still showed → **tapped تراجع from the history screen itself** → the row
+flipped to struck-through «تم التراجع» → switching the filter to «الكل»
+revealed a **second, brand-new row** — «حذفت دولما من يومك» — proving the undo
+was logged as its own action, exactly per the "undo is itself a logged action"
+rule → confirmed on the Today tab that the entry was actually gone from the
+real day log. This is the one path that could not be exercised by the
+in-session `_ReceiptCard` chip alone, since that chip only ever undoes a
+`Proposal` still sitting in memory from the same session.
 
 **Voice split out of Step 5 (2026-09-04):** the boss asked to skip voice for now and
 pull it into its own plan rather than leave it as Step 5's final phase. `05_voice.md`

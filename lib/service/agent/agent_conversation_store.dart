@@ -3,104 +3,123 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'agent_models.dart';
+import 'chat_session.dart';
 
 abstract interface class AgentConversationStore {
-  Future<List<ChatMessage>> loadRecent();
-  Future<void> save(List<ChatMessage> messages);
+  /// Newest-first.
+  Future<List<ChatSession>> listSessions();
+  Future<List<ChatMessage>> loadMessages(String sessionId);
+  Future<void> saveMessages(String sessionId, List<ChatMessage> messages);
+  Future<void> upsertSession(ChatSession session);
+  Future<void> deleteSession(String sessionId);
 }
 
-/// Device-only assistant history. No conversation content is written to
-/// Firestore; completed messages are grouped by local day and retained for
-/// seven days.
+/// Device-only assistant history, one row per conversation thread. No
+/// conversation content is written to Firestore. At most [_maxSessions]
+/// threads are kept locally -- saving one beyond that prunes the oldest by
+/// `updatedAt`, deleting its message row too.
 class SharedPrefsAgentConversationStore implements AgentConversationStore {
-  static const _key = 'assistant.conversations.v1';
-  static const _retentionDays = 7;
+  static const _indexKey = 'assistant.sessions.v1';
+  static const _messagesPrefix = 'assistant.session.';
+  static const _maxSessions = 60;
 
   final SharedPreferences? _preferences;
-  final DateTime Function() _now;
 
-  SharedPrefsAgentConversationStore({
-    SharedPreferences? preferences,
-    DateTime Function()? now,
-  })  : _preferences = preferences,
-        _now = now ?? DateTime.now;
+  SharedPrefsAgentConversationStore({SharedPreferences? preferences})
+      : _preferences = preferences;
 
   Future<SharedPreferences> get _prefs async =>
       _preferences ?? await SharedPreferences.getInstance();
 
   @override
-  Future<List<ChatMessage>> loadRecent() async {
+  Future<List<ChatSession>> listSessions() async {
     final prefs = await _prefs;
-    final days = _decode(prefs.getString(_key));
-    final kept = _prune(days);
-    if (kept.length != days.length) await _write(prefs, kept);
-
-    final messages = <ChatMessage>[];
-    for (final rows in kept.values) {
-      for (final row in rows) {
-        final message = _messageFromJson(row);
-        if (message != null) messages.add(message);
-      }
-    }
-    messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-    return messages;
+    final sessions = _decodeIndex(prefs.getString(_indexKey));
+    sessions.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return sessions;
   }
 
   @override
-  Future<void> save(List<ChatMessage> messages) async {
+  Future<List<ChatMessage>> loadMessages(String sessionId) async {
     final prefs = await _prefs;
-    final days = _prune(_decode(prefs.getString(_key)));
-    final today = _dateKey(_now());
-    days[today] = [
+    final raw = prefs.getString('$_messagesPrefix$sessionId');
+    if (raw == null) return const [];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      final messages = <ChatMessage>[];
+      for (final row in decoded) {
+        final message = _messageFromJson((row as Map).cast<String, dynamic>());
+        if (message != null) messages.add(message);
+      }
+      messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      return messages;
+    } on Object {
+      return const [];
+    }
+  }
+
+  @override
+  Future<void> saveMessages(String sessionId, List<ChatMessage> messages) async {
+    final prefs = await _prefs;
+    final rows = [
       for (final message in messages)
-        if (_dateKey(message.createdAt) == today &&
-            message.status != ChatMessageStatus.streaming &&
-            // A pending card cannot be confirmed after a restart -- it
-            // would render non-functional, so it never persists in the
-            // first place. Resolved ones (confirmed/cancelled) are plain
-            // history and persist normally.
+        if (message.status != ChatMessageStatus.streaming &&
+            // A pending card cannot be confirmed after a restart -- it would
+            // render non-functional, so it never persists in the first
+            // place. Resolved ones (confirmed/cancelled) are plain history.
             !(message.kind == ChatMessageKind.proposal &&
                 message.status == ChatMessageStatus.pendingConfirm))
           _messageToJson(message),
     ];
-    await _write(prefs, days);
+    await prefs.setString('$_messagesPrefix$sessionId', jsonEncode(rows));
   }
 
-  Map<String, List<Map<String, dynamic>>> _prune(
-    Map<String, List<Map<String, dynamic>>> days,
-  ) {
-    final now = _now();
-    final today = DateTime(now.year, now.month, now.day);
-    final oldest = today.subtract(const Duration(days: _retentionDays - 1));
-    return {
-      for (final entry in days.entries)
-        if (_parseDateKey(entry.key) case final date?
-            when !date.isBefore(oldest) && !date.isAfter(today))
-          entry.key: entry.value,
-    };
+  @override
+  Future<void> upsertSession(ChatSession session) async {
+    final prefs = await _prefs;
+    var sessions = _decodeIndex(prefs.getString(_indexKey))
+      ..removeWhere((existing) => existing.id == session.id)
+      ..add(session)
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+    if (sessions.length > _maxSessions) {
+      final overflow = sessions.sublist(_maxSessions);
+      sessions = sessions.sublist(0, _maxSessions);
+      for (final dropped in overflow) {
+        await prefs.remove('$_messagesPrefix${dropped.id}');
+      }
+    }
+
+    await prefs.setString(
+      _indexKey,
+      jsonEncode([for (final s in sessions) s.toJson()]),
+    );
   }
 
-  static Map<String, List<Map<String, dynamic>>> _decode(String? raw) {
-    if (raw == null) return {};
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    final prefs = await _prefs;
+    final sessions = _decodeIndex(prefs.getString(_indexKey))
+      ..removeWhere((s) => s.id == sessionId);
+    await prefs.setString(
+      _indexKey,
+      jsonEncode([for (final s in sessions) s.toJson()]),
+    );
+    await prefs.remove('$_messagesPrefix$sessionId');
+  }
+
+  static List<ChatSession> _decodeIndex(String? raw) {
+    if (raw == null) return [];
     try {
-      final decoded = (jsonDecode(raw) as Map).cast<String, dynamic>();
-      return {
-        for (final entry in decoded.entries)
-          entry.key: [
-            for (final row in entry.value as List<dynamic>)
-              (row as Map).cast<String, dynamic>(),
-          ],
-      };
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return [
+        for (final row in decoded)
+          ChatSession.fromJson((row as Map).cast<String, dynamic>()),
+      ];
     } on Object {
-      return {};
+      return [];
     }
   }
-
-  static Future<void> _write(
-    SharedPreferences prefs,
-    Map<String, List<Map<String, dynamic>>> days,
-  ) =>
-      prefs.setString(_key, jsonEncode(days));
 
   static Map<String, dynamic> _messageToJson(ChatMessage message) => {
         'id': message.id,
@@ -133,11 +152,4 @@ class SharedPrefsAgentConversationStore implements AgentConversationStore {
       createdAt: createdAt,
     );
   }
-
-  static DateTime? _parseDateKey(String value) => DateTime.tryParse(value);
-
-  static String _dateKey(DateTime value) =>
-      '${value.year.toString().padLeft(4, '0')}-'
-      '${value.month.toString().padLeft(2, '0')}-'
-      '${value.day.toString().padLeft(2, '0')}';
 }

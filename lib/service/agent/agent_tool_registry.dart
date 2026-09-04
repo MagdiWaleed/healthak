@@ -307,19 +307,120 @@ class AgentToolRegistry {
   }
 
   /// Undoing a receipt is just confirming its inverse chain, in order.
-  /// Returns the receipt of the *last* inverse step (the one whose own
-  /// inverse would redo the original action) -- callers only need to know it
-  /// succeeded, not chase every intermediate receipt.
-  Future<AgentReceipt> undo(AgentReceipt receipt) async {
+  /// Returns every step's own receipt (swap's inverse is two real writes,
+  /// everything else is one) -- Phase 5C's audit log records each one as its
+  /// own entry, since "an undo is itself a logged action" per the plan.
+  Future<List<AgentReceipt>> undo(AgentReceipt receipt) async {
     if (!receipt.isUndoable) {
       throw StateError('Receipt ${receipt.id} has nothing to undo');
     }
-    AgentReceipt? last;
+    final steps = <AgentReceipt>[];
     for (final step in receipt.inverse) {
-      last = await confirm(step);
+      steps.add(await confirm(step));
     }
-    return last!;
+    return steps;
   }
+
+  // ---------------------------------------------------------------------
+  // Audit-log (de)serialization -- Phase 5C, `lib/page/history_ai/`.
+  //
+  // Only ever called on a proposal's *inverse* chain, never the forward
+  // action a user actually asked for -- so only the two shapes `confirm`
+  // ever produces as an inverse need to round-trip through JSON: an entry
+  // snapshot (`removeEntry`/`restoreEntry`) and a bare meal id
+  // (`deleteMeal`). This is what lets a "تراجع" tap in the persisted audit
+  // screen replay a write from a *previous* app session, where no live
+  // `Proposal` object exists in memory -- unlike the inline chat receipt
+  // chip, which just holds on to the one it already built.
+  // ---------------------------------------------------------------------
+
+  /// Returns `null` for a kind that never appears as an inverse (every
+  /// forward-only kind) -- callers skip those when building a log entry's
+  /// inverse chain.
+  Map<String, dynamic>? serializeProposalForLog(Proposal proposal) {
+    switch (proposal.kind) {
+      case ProposalKind.removeEntry:
+      case ProposalKind.restoreEntry:
+        final a = proposal.execArgs as _EntrySnapshotArgs;
+        return {
+          'kind': proposal.kind.name,
+          'dateKey': a.dateKey,
+          'entry': _entryToJson(a.entry),
+        };
+      case ProposalKind.deleteMeal:
+        final a = proposal.execArgs as _DeleteMealArgs;
+        return {'kind': proposal.kind.name, 'mealId': a.mealId};
+      case ProposalKind.logFood:
+      case ProposalKind.logMeal:
+      case ProposalKind.swapMeal:
+      case ProposalKind.updateGrams:
+      case ProposalKind.createMeal:
+      case ProposalKind.logCustomComponent:
+        return null;
+    }
+  }
+
+  /// The inverse of [serializeProposalForLog]. Returns `null` on any
+  /// malformed or unrecognized row rather than throwing -- a corrupt log
+  /// row should just render non-undoable, never crash the history screen.
+  Proposal? deserializeProposalForLog(Map<String, dynamic> json) {
+    try {
+      final kind = ProposalKind.values
+          .firstWhere((k) => k.name == json['kind'], orElse: () => throw 0);
+      switch (kind) {
+        case ProposalKind.removeEntry:
+        case ProposalKind.restoreEntry:
+          final entry = _entryFromJson(
+              (json['entry'] as Map).cast<String, dynamic>());
+          final dateKey = json['dateKey'] as String;
+          return kind == ProposalKind.removeEntry
+              ? _removeEntryProposal(entry, dateKey)
+              : _restoreEntryProposal(entry, dateKey);
+        case ProposalKind.deleteMeal:
+          return _deleteMealProposal(json['mealId'] as String);
+        default:
+          return null;
+      }
+    } on Object {
+      return null;
+    }
+  }
+
+  static Map<String, dynamic> _entryToJson(DayEntry entry) => {
+        'entryId': entry.entryId,
+        'origin': entry.origin.name,
+        'scheduleItemId': entry.scheduleItemId,
+        'sourceMealId': entry.sourceMealId,
+        'name': entry.name,
+        'slot': entry.slot.name,
+        'order': entry.order,
+        'eaten': entry.eaten,
+        'eatenAt': entry.eatenAt?.toIso8601String(),
+        'items': entry.items.map((item) => item.toJson()).toList(),
+      };
+
+  static DayEntry _entryFromJson(Map<String, dynamic> json) => DayEntry(
+        entryId: json['entryId'] as String,
+        origin: DayEntryOrigin.values.firstWhere(
+          (o) => o.name == json['origin'],
+          orElse: () => DayEntryOrigin.oneShot,
+        ),
+        scheduleItemId: json['scheduleItemId'] as String?,
+        sourceMealId: json['sourceMealId'] as String?,
+        name: json['name'] as String? ?? '',
+        slot: MealSlot.values.firstWhere(
+          (s) => s.name == json['slot'],
+          orElse: () => MealSlot.snack,
+        ),
+        order: (json['order'] as num?)?.toInt() ?? 0,
+        eaten: json['eaten'] as bool? ?? false,
+        eatenAt: json['eatenAt'] != null
+            ? DateTime.tryParse(json['eatenAt'] as String)
+            : null,
+        items: (json['items'] as List)
+            .map((item) => FrozenItem.fromJson((item as Map).cast<String, dynamic>()))
+            .toList(),
+      );
 
   AgentReceipt _receipt(
     Proposal proposal,
