@@ -1,6 +1,21 @@
-enum ChatMessageKind { user, assistant, working, notice }
+import 'agent_proposal.dart';
 
-enum ChatMessageStatus { complete, streaming, error }
+enum ChatMessageKind { user, assistant, working, notice, proposal, receipt }
+
+enum ChatMessageStatus {
+  complete,
+  streaming,
+  error,
+
+  /// A [ChatMessageKind.proposal] card awaiting تأكيد/إلغاء.
+  pendingConfirm,
+
+  /// The user tapped إلغاء, or a newer proposal superseded this one.
+  cancelled,
+
+  /// A [ChatMessageKind.receipt] the user has undone.
+  undone,
+}
 
 class ChatMessage {
   final String id;
@@ -10,6 +25,16 @@ class ChatMessage {
   final String? toolName;
   final DateTime createdAt;
 
+  /// Set only for [ChatMessageKind.proposal]. Never persisted -- a pending
+  /// card cannot be confirmed after the process restarts, so it is dropped
+  /// on restore rather than shown non-functional.
+  final Proposal? proposal;
+
+  /// Set only for [ChatMessageKind.receipt]. Not persisted either; a
+  /// restored receipt still shows its summary text, just without a working
+  /// undo chip.
+  final AgentReceipt? receipt;
+
   const ChatMessage({
     required this.id,
     required this.kind,
@@ -17,6 +42,8 @@ class ChatMessage {
     required this.createdAt,
     this.status = ChatMessageStatus.complete,
     this.toolName,
+    this.proposal,
+    this.receipt,
   });
 
   ChatMessage copyWith({
@@ -30,6 +57,8 @@ class ChatMessage {
         text: text ?? this.text,
         toolName: toolName,
         createdAt: createdAt,
+        proposal: proposal,
+        receipt: receipt,
       );
 }
 

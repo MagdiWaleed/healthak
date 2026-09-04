@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import 'agent_conversation_store.dart';
 import 'agent_models.dart';
+import 'agent_proposal.dart';
 import 'agent_tool_registry.dart';
 import 'ai_client.dart';
 
@@ -68,6 +69,17 @@ class ChatOrchestrator extends GetxController {
       var callsUsed = 0;
       var toolsEnabled = true;
       final model = _resolveModel?.call();
+      // Precalled once per user message (not per tool-call round trip
+      // within it) -- fresh enough to reflect anything confirmed in an
+      // earlier turn, without re-fetching on every loop iteration. Never
+      // blocks the turn: a failure here just means no precall this time,
+      // the model still has search_foods/get_meals as before.
+      String? knownCatalog;
+      try {
+        knownCatalog = await _tools.buildKnownCatalogContext();
+      } on Object {
+        knownCatalog = null;
+      }
       while (true) {
         final assistantId = _uuid.v4();
         messages.add(ChatMessage(
@@ -85,6 +97,7 @@ class ChatOrchestrator extends GetxController {
           messages: List.unmodifiable(_apiMessages),
           tools: toolsEnabled ? _tools.definitions : const [],
           model: model,
+          knownCatalog: knownCatalog,
         )) {
           switch (chunk) {
             case AgentTextDelta(:final text):
@@ -152,6 +165,7 @@ class ChatOrchestrator extends GetxController {
           ],
         });
 
+        var proposedThisBatch = false;
         for (final call in calls) {
           final workingId = _uuid.v4();
           messages.add(ChatMessage(
@@ -180,7 +194,27 @@ class ChatOrchestrator extends GetxController {
             'tool_call_id': call.id,
             'content': jsonEncode(result.data),
           });
+
+          final proposal = result.proposal;
+          if (proposal != null) {
+            proposedThisBatch = true;
+            _supersedePendingProposals();
+            messages.add(ChatMessage(
+              id: _uuid.v4(),
+              kind: ChatMessageKind.proposal,
+              status: ChatMessageStatus.pendingConfirm,
+              text: proposal.titleAr,
+              proposal: proposal,
+              createdAt: DateTime.now(),
+            ));
+          }
         }
+
+        // One in-flight proposal at a time: once this batch produced one,
+        // let the model say one short line and stop -- it must not chain
+        // straight into a second proposal before the user has acted on the
+        // first.
+        if (proposedThisBatch) toolsEnabled = false;
       }
     } on AgentException catch (error) {
       lastFailure.value = error.kind;
@@ -212,6 +246,87 @@ class ChatOrchestrator extends GetxController {
     } finally {
       sending.value = false;
       await _saveConversation();
+    }
+  }
+
+  /// Executes a pending proposal's write and turns its card into a receipt
+  /// with an undo chip. No-ops if the card was already resolved (double-tap
+  /// guard) or the message id is gone.
+  Future<void> confirmProposal(String proposalMessageId) async {
+    final index =
+        messages.indexWhere((message) => message.id == proposalMessageId);
+    if (index == -1) return;
+    final message = messages[index];
+    final proposal = message.proposal;
+    if (proposal == null || message.status != ChatMessageStatus.pendingConfirm) {
+      return;
+    }
+    messages[index] = message.copyWith(status: ChatMessageStatus.complete);
+    try {
+      final receipt = await _tools.confirm(proposal);
+      messages.add(ChatMessage(
+        id: _uuid.v4(),
+        kind: ChatMessageKind.receipt,
+        text: receipt.summaryAr,
+        receipt: receipt,
+        createdAt: DateTime.now(),
+      ));
+      _apiMessages.add({
+        'role': 'system',
+        'content': 'نُفّذ الاقتراح: ${receipt.summaryAr}',
+      });
+    } catch (error) {
+      messages[index] = message.copyWith(
+        status: ChatMessageStatus.error,
+        text: error is AgentProposalStaleException
+            ? AgentProposalStaleException.messageAr
+            : 'تعذّر تنفيذ الاقتراح. حاول مرة أخرى.',
+      );
+    }
+    await _saveConversation();
+  }
+
+  /// Dismisses a pending proposal without writing anything.
+  Future<void> cancelProposal(String proposalMessageId) async {
+    final index =
+        messages.indexWhere((message) => message.id == proposalMessageId);
+    if (index == -1) return;
+    final message = messages[index];
+    if (message.status != ChatMessageStatus.pendingConfirm) return;
+    messages[index] = message.copyWith(status: ChatMessageStatus.cancelled);
+    await _saveConversation();
+  }
+
+  /// Reverses a confirmed action. The 10-minute window is enforced by the
+  /// undo chip's own visibility (`_ReceiptCard` in the assistant tab), not
+  /// here -- the registry itself has no notion of a deadline.
+  Future<void> undoReceipt(String receiptMessageId) async {
+    final index =
+        messages.indexWhere((message) => message.id == receiptMessageId);
+    if (index == -1) return;
+    final message = messages[index];
+    final receipt = message.receipt;
+    if (receipt == null || message.status == ChatMessageStatus.undone) return;
+    try {
+      await _tools.undo(receipt);
+      messages[index] = message.copyWith(
+        status: ChatMessageStatus.undone,
+        text: message.text,
+      );
+    } catch (_) {
+      // Leave the receipt as-is; the chip stays tappable so the user can
+      // retry rather than losing the affordance on one transient failure.
+    }
+    await _saveConversation();
+  }
+
+  void _supersedePendingProposals() {
+    for (var i = 0; i < messages.length; i++) {
+      final message = messages[i];
+      if (message.kind == ChatMessageKind.proposal &&
+          message.status == ChatMessageStatus.pendingConfirm) {
+        messages[i] = message.copyWith(status: ChatMessageStatus.cancelled);
+      }
     }
   }
 
@@ -280,6 +395,15 @@ class ChatOrchestrator extends GetxController {
         'get_meals' => 'أفتح مكتبة وجباتك…',
         'search_foods' => 'أبحث في المكوّنات المسجّلة…',
         'get_remaining_targets' => 'أحسب المتبقي من هدفك…',
+        'search_food_online' => 'أبحث في الإنترنت…',
+        'propose_log_food' ||
+        'propose_log_meal' ||
+        'propose_swap_meal' ||
+        'propose_update_grams' ||
+        'propose_remove_entry' ||
+        'propose_create_meal' ||
+        'propose_log_custom_component' =>
+          'أجهّز اقتراحًا…',
         _ => 'أراجع بياناتك…',
       };
 
@@ -290,6 +414,15 @@ class ChatOrchestrator extends GetxController {
         'get_meals' => 'راجعت مكتبة وجباتك',
         'search_foods' => 'وجدت نتائج من الكتالوج',
         'get_remaining_targets' => 'حسبت المتبقي اليوم',
+        'search_food_online' => 'وجدت نتائج من الإنترنت',
+        'propose_log_food' ||
+        'propose_log_meal' ||
+        'propose_swap_meal' ||
+        'propose_update_grams' ||
+        'propose_remove_entry' ||
+        'propose_create_meal' ||
+        'propose_log_custom_component' =>
+          'الاقتراح جاهز، بانتظار تأكيدك',
         _ => 'اكتملت قراءة البيانات',
       };
 }

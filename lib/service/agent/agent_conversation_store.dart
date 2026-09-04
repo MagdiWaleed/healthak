@@ -54,7 +54,13 @@ class SharedPrefsAgentConversationStore implements AgentConversationStore {
     days[today] = [
       for (final message in messages)
         if (_dateKey(message.createdAt) == today &&
-            message.status != ChatMessageStatus.streaming)
+            message.status != ChatMessageStatus.streaming &&
+            // A pending card cannot be confirmed after a restart -- it
+            // would render non-functional, so it never persists in the
+            // first place. Resolved ones (confirmed/cancelled) are plain
+            // history and persist normally.
+            !(message.kind == ChatMessageKind.proposal &&
+                message.status == ChatMessageStatus.pendingConfirm))
           _messageToJson(message),
     ];
     await _write(prefs, days);

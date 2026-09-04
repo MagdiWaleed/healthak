@@ -33,6 +33,10 @@ abstract interface class AiClient {
     required List<Map<String, dynamic>> messages,
     required List<AgentToolDefinition> tools,
     String? model,
+    /// Precalled personal-food/meal ids (see
+    /// `AgentToolRegistry.buildKnownCatalogContext`). Sent as extra system
+    /// context on every turn, never stored in [messages] history.
+    String? knownCatalog,
   });
 }
 
@@ -86,6 +90,7 @@ class XaiProxyClient implements AiClient {
     required List<Map<String, dynamic>> messages,
     required List<AgentToolDefinition> tools,
     String? model,
+    String? knownCatalog,
   }) async* {
     final user = _auth.currentUser;
     if (user == null) {
@@ -112,6 +117,8 @@ class XaiProxyClient implements AiClient {
         ..body = jsonEncode({
           'turnId': turnId,
           if (model != null) 'model': model,
+          if (knownCatalog != null && knownCatalog.isNotEmpty)
+            'knownCatalog': knownCatalog,
           'messages': messages,
           'tools': [for (final tool in tools) tool.toJson()],
         });
@@ -211,6 +218,7 @@ class XaiDirectClient implements AiClient {
     required List<Map<String, dynamic>> messages,
     required List<AgentToolDefinition> tools,
     String? model,
+    String? knownCatalog,
   }) async* {
     final resolved = AgentModels.byId(model);
     final body = <String, dynamic>{
@@ -219,11 +227,18 @@ class XaiDirectClient implements AiClient {
         'reasoning_effort': resolved.reasoningEffort,
       'messages': [
         {'role': 'system', 'content': kAgentSystemPrompt},
+        if (knownCatalog != null && knownCatalog.isNotEmpty)
+          {'role': 'system', 'content': knownCatalog},
         ...messages,
       ],
       if (tools.isNotEmpty) 'tools': [for (final tool in tools) tool.toJson()],
       if (tools.isNotEmpty) 'tool_choice': 'auto',
       'parallel_tool_calls': true,
+      // NOTE: xAI's Live Search (a `search_parameters` field here) is
+      // deprecated -- confirmed live, it 410s the *entire* request, not just
+      // the search. Web search is a separate one-shot call on a different
+      // endpoint; see web_food_search_client.dart and the
+      // `search_food_online` tool. Do not add `search_parameters` back here.
       'stream': true,
       'stream_options': {'include_usage': true},
       'max_tokens': _kMaxResponseTokens,

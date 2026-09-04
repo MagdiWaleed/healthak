@@ -47,6 +47,12 @@ abstract final class AppStrings {
   static const assistantOffline = 'يحتاج المساعد إلى اتصال بالإنترنت';
   static const assistantRetry = 'حاول مجددًا';
   static const assistantModelPickerTooltip = 'اختر نموذج المساعد';
+  static const assistantConfirm = 'تأكيد';
+  static const assistantCancel = 'إلغاء';
+  static const assistantUndo = 'تراجع';
+  static const assistantCancelled = 'أُلغي الاقتراح';
+  static const assistantUndone = 'تم التراجع';
+  static const assistantEstimatedBadge = 'تقديري';
   static const comingNext = 'سيكتمل هذا القسم في الخطوة التالية';
   static const retry = 'إعادة المحاولة';
   static const newDay = 'يوم جديد';

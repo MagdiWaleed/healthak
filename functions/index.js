@@ -49,14 +49,41 @@ const readTools = [
       ["query"],
   ),
   tool("get_remaining_targets", "Calculate kcal and macro grams remaining today."),
+  tool(
+      "search_food_online",
+      "Search the real internet for a food's macros per 100g, only after " +
+      "search_foods found no catalog match. Grounded web sources, never " +
+      "catalog truth -- always say so and mention the source.",
+      {
+        query: {type: "string", minLength: 2, maxLength: 80},
+      },
+      ["query"],
+  ),
 ];
 
+// Paired with `lib/service/agent/agent_prompt.dart` (`kAgentSystemPrompt`).
+// Keep the two byte-identical. NOTE: this proxy's `readTools` below still
+// only lists the six Phase 5A read tools -- the seven Phase 5B propose_*
+// tools were never ported here, because the proxy path is currently unused
+// (the app calls xAI directly; see PROGRESS.md "direct-provider path").
+// Porting them is required before the proxy can be the active path again.
 const systemPrompt = `أنت «المساعد» داخل تطبيق صحتك، مساعد تغذية عربي ودود ودقيق.
 استخدم العربية الفصحى المعاصرة حصرًا. افهم اللهجات العامية إن استخدمها المستخدم، لكن أجب دائمًا بالفصحى الواضحة والمختصرة ولا تستخدم لهجة محلية.
 استخدم الأدوات لأي معلومة تخص أرقام المستخدم أو طعامه أو وجباته. لا تخمّن أي رقم.
 السعرات والعناصر الغذائية الكبرى لا تأتي إلا من نتائج الأدوات، واذكر بوضوح عندما لا تتوفر بيانات.
+إن سأل المستخدم عن قيم غذائية لمكوّن غير موجود، استخدم search_foods أولًا. إن لم تجد نتيجة،
+استخدم search_food_online للبحث عن القيم الغذائية لكل ١٠٠ جم (حوّل من كل كيلوجرام بقسمة العدد
+على ١٠ عند الحاجة). اذكر دائمًا أن هذه القيم من الإنترنت وليست من كتالوج التطبيق، واذكر المصدر
+باختصار. إن أراد المستخدم تسجيلها في يومه، استخدم propose_log_custom_component بهذه القيم --
+تُحفظ كمكوّن شخصي تقديري «تقديري»، لا كحقيقة كتالوج.
 لا تشخّص أمراضًا ولا تستخدم لغة لوم أو تخويف أو تشجيع لاضطراب الأكل.
-هذه المرحلة للقراءة فقط: لا تدّع أنك أضفت أو حذفت أو غيّرت شيئًا.
+أي تعديل على يوم المستخدم (تسجيل، حذف، تغيير وزن، استبدال، حفظ وجبة) يتم فقط عبر أدوات
+propose_*، التي تعرض بطاقة تأكيد للمستخدم ولا تكتب شيئًا بنفسها. لا تدّع أبدًا أنك أضفت أو
+حذفت أو غيّرت شيئًا -- فقط اقترح، ثم انتظر ضغط المستخدم على «تأكيد». ممنوع كتابة جملة مثل
+«اقترحت كذا» أو «هعمل كذا» إلا بعد استدعاء أداة propose_* فعليًا في نفس الرد -- لا يوجد اقتراح
+حقيقي بدون استدعاء الأداة، ووصفه دون استدعائها كذب صريح على المستخدم. إن كنت غير متأكد من نتيجة
+بحث سابقة، أعد استدعاء الأداة المناسبة الآن بدل الاعتماد على ردّ سابق في المحادثة. بعد استدعاء
+أداة اقتراح قل جملة قصيرة واحدة تصف الاقتراح ولا تستدعِ أداة اقتراح أخرى في نفس الرد.
 اجعل الإجابة عملية: قدّم الخلاصة أولًا، ثم أضف تفصيلًا موجزًا عند الحاجة.`;
 
 function tool(name, description, properties = {}, required = []) {
@@ -162,6 +189,12 @@ exports.agentTurn = onRequest(
 
       const {turnId, messages} = request.body || {};
       const requestedModel = request.body?.model;
+      // Precalled personal-food/meal ids from the client -- see
+      // AgentToolRegistry.buildKnownCatalogContext in the Dart client. Plain
+      // text only, capped, never trusted as anything but extra context.
+      const rawKnownCatalog = request.body?.knownCatalog;
+      const knownCatalog = typeof rawKnownCatalog === "string" ?
+        rawKnownCatalog.slice(0, 4000) : null;
       const model = Object.prototype.hasOwnProperty.call(modelAllowlist, requestedModel) ?
         requestedModel : defaultModel;
       const reasoningEffort = modelAllowlist[model];
@@ -206,10 +239,18 @@ exports.agentTurn = onRequest(
           body: JSON.stringify({
             model,
             ...(reasoningEffort ? {reasoning_effort: reasoningEffort} : {}),
-            messages: [{role: "system", content: systemPrompt}, ...messages],
+            messages: [
+              {role: "system", content: systemPrompt},
+              ...(knownCatalog ? [{role: "system", content: knownCatalog}] : []),
+              ...messages,
+            ],
             tools: toolsEnabled ? readTools : undefined,
             tool_choice: toolsEnabled ? "auto" : undefined,
             parallel_tool_calls: true,
+            // NOTE: xAI's Live Search (`search_parameters`) is deprecated and
+            // 410s the *entire* request if present -- do not add it back.
+            // See lib/service/agent/web_food_search_client.dart for the
+            // replacement (a separate one-shot call on /v1/responses).
             stream: true,
             stream_options: {include_usage: true},
             max_tokens: 800,

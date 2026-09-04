@@ -6,8 +6,10 @@ open). **Step 2 implementation COMPLETE** — the full personal loop (catalog, m
 nesting, my meals, today, history, profile) is built, wired, and the legacy codebase it replaces
 is deleted. Not yet committed to git; not yet walked by hand on a device/emulator.
 
-**Step 5 AI Agent — Phase 5A local implementation complete, deployment gate open
-(2026-09-04):** Added the fifth shell destination «المساعد» and a full Arabic RTL read-only
+**Step 5 AI Agent — Phase 5A and 5B complete and live-verified (2026-09-04),
+Phase 5C/5D not started, voice split into `plans/voice_agent_deferred.md`:**
+
+**Phase 5A (original entry below, still accurate):** Added the fifth shell destination «المساعد» and a full Arabic RTL read-only
 chat surface: asymmetric agent-pulse identity, first-use privacy disclosure, suggestions,
 streaming/typing states, grounded tool-read capsules, composer, and calm quota/offline/error
 cards. Message-list surfaces remain filter-free and the shell FAB is hidden on this tab so it
@@ -74,6 +76,191 @@ real end-to-end model round-trip is still unrun here — needs the boss's rotate
 blocking any embedded key. The boss overrode this for a personal-scale app. `XaiDirectClient`
 works in release with no assert; mitigation is a dedicated xAI key + a hard spend cap the boss
 sets at console.x.ai. Proxy code is kept intact for a later switch.
+
+**Step 5B — write tools + confirmation cards (2026-09-04):** implemented per
+`plans/step5_ai_agent/02_tools.md` and `07_phases.md`, on top of the direct-xAI path
+from the 5A follow-up above.
+
+- `lib/service/agent/agent_proposal.dart` (new): `Proposal` (resolved, validated
+  payload -- never raw model ids/macros), `AgentReceipt` (carries its own undo chain
+  as ready-to-confirm inverse `Proposal`s), `AgentProposalStaleException`.
+- `agent_tools.dart`: the seven `propose_*` tool schemas from `02_tools.md`
+  (`AgentTools.proposeOnly`, `AgentTools.all` = read + propose, 13 total).
+- `agent_data_source.dart`: `AgentDataSource` gained the write surface
+  (`ensureDay`, `upsertDayEntry`, `removeDayEntry`, `getFoodById`,
+  `createPersonalFood`, `getMealById`, `saveMeal`, `deleteMeal`, `uid`).
+- `agent_tool_registry.dart`: one builder per propose tool (resolves real
+  `FoodItem`/`MealDefinition`/`DayEntry` before ever building a card -- an unknown id
+  is refused before a proposal exists, matching the plan's hallucination rails) plus
+  `confirm(Proposal)` and `undo(AgentReceipt)`. `confirm` re-fetches the day and
+  refuses (`AgentProposalStaleException`) if the targeted entry's item count, kcal,
+  or eaten state moved since the proposal was built. `undo` is literally
+  `confirm` on the receipt's own inverse chain -- swap's inverse is two steps
+  (remove the new entry, restore the old one), everything else is one.
+- `chat_orchestrator.dart`: a tool call that produces a `Proposal` is parked as a
+  `ChatMessageKind.proposal` card (`pendingConfirm`); any earlier pending card is
+  superseded (marked cancelled) first, and tools are disabled for the rest of that
+  turn so the model cannot chain a second proposal before the user acts on the
+  first. New `confirmProposal`/`cancelProposal`/`undoReceipt` methods.
+- `assistant_tab.dart`: `_ProposalCard` (تأكيد/إلغاء, kind-specific detail rows --
+  macros, before/after grams, swap delta, «تقديري» badge) and `_ReceiptCard` (a
+  تراجع chip visible for ten minutes post-execution, self-ticking every 20s to hide
+  itself once the window closes). `AgentActionLog`'s full audit screen is Phase 5C;
+  this inline chip is what 5B's exit criteria actually ask for.
+- System prompt (`agent_prompt.dart`, paired copy in `functions/index.js`) updated:
+  propose-only, never claim an action happened, one proposal per reply.
+
+**Deviations from `02_tools.md` / `01_architecture.md`, recorded here as instructed:**
+1. **No `dateKey` argument.** Every propose tool operates on *today* only; the
+   plan's "mirror `editingPast`" rule was dropped rather than plumbed through chat,
+   since nothing in the assistant surface lets a user pick a past day to begin with.
+2. **`propose_create_meal` accepts only flat catalog foods**, no `MealRefEntry`
+   nesting. Letting a model construct a valid nested structure (depth/leaf-count/cycle
+   invariants) was judged more risk than the feature is worth for v1; the meal editor
+   remains the place to nest.
+3. **`propose_log_custom_component`'s undo removes the day entry but keeps the
+   created personal food.** Treated as consistent with the existing component-editor
+   feature (creating a component is already independent of logging it), not a bug.
+4. **The Cloud Functions proxy's tool schema was not extended** to the seven
+   propose tools -- only its system prompt was kept byte-paired. The proxy path is
+   currently unused (direct xAI client is active); porting the schemas is required
+   before the proxy can be the active path again, noted inline in `functions/index.js`.
+5. **No inline "عدّل" (edit) affordance on a proposal card** -- only تأكيد/إلغاء.
+   Editing a pending proposal's grams/slot before confirming was in scope per
+   `02_tools.md` but out of proportion to build this pass; cancelling and asking
+   again is the escape hatch for now.
+
+Verification: `flutter analyze` clean; **153 tests pass** (+9 in
+`agent_tool_registry_test.dart`: every propose tool's happy path, an unknown-id
+rejection, confirm+undo round trips for log/swap/update-grams/create-meal, and the
+staleness refusal). Live-walked end to end on `emulator-5554` with the boss's real
+xAI key: asked in English ("log 150g chicken breast for lunch") since the emulator's
+`adb input text` cannot type Arabic -- the model correctly refused to hallucinate a
+catalog id, called `search_foods`, found no exact match, and asked to clarify rather
+than guess (exactly the hallucination-rail behavior the plan asks for). Retried with
+"log one of my saved meals for lunch": `get_meals` → `propose_log_meal` → a proposal
+card rendered with real macros (619 kcal, 68.1 g protein, 64.3 carb, 10.0 fat) and
+تأكيد/إلغاء → تأكيد wrote it, Today's المأكول panel updated live (protein
+target-line 151→219 g, matching the exact planned delta) → تراجع chip undid it, Today
+reverted to the exact original numbers (151/227/54). Confirmed the write is
+plan-only, not eaten (`DayEntry.eaten` defaults false, ring stayed at 0), matching
+existing quick-add/library-meal behavior.
+
+**Web search for uncatalogued foods (2026-09-04):** the boss asked for "search a
+component's macros over the internet." Tried xAI's Live Search
+(`search_parameters` on `/v1/chat/completions`, what Phase 5D's `06_premium.md`
+assumed) first -- **confirmed live via curl it is deprecated and returns HTTP 410
+for the entire request**, not just the search, regardless of shape. This was
+briefly wired into `ai_client.dart` and would have broken every chat turn; caught
+and reverted before it ever reached the emulator, by curling xAI directly rather
+than trusting the request shape.
+
+The replacement is xAI's newer Agent Tools API, but it only exists on a different
+endpoint (`/v1/responses`, `input` instead of `messages`, structured `output`
+items instead of chat deltas) -- confirmed working via curl including citations.
+Rather than fork the whole streaming client onto that endpoint, added one isolated
+piece: `lib/service/agent/web_food_search_client.dart` makes a single, non-streaming
+`/v1/responses` call with `tools: [{"type": "web_search"}]` only when the new
+`search_food_online` tool actually runs. The main `grok-3-mini` conversation on
+`/v1/chat/completions` is completely untouched by this.
+
+**Confirmed live and undocumented:** a `web_search`-enabled `/v1/responses` call
+silently ignores the requested chat model and always executes on a larger model
+server-side (observed `grok-4.3` regardless of what was requested) -- not user
+selectable, no workaround found. Cost was ~$0.026 for a two-search lookup in
+testing; acceptable since it only fires after `search_foods` finds nothing, not on
+every turn.
+
+`AgentToolRegistry` takes an optional `webSearch: WebFoodSearchClient?` (`null` when
+no direct key -- mirrors `createAiClient()`'s proxy/direct split); `search_food_online`
+joins `AgentTools.readOnly` (now 7 read + 7 propose = 14 tools). System prompt
+(`agent_prompt.dart`, paired `functions/index.js`) updated: `search_foods` first,
+`search_food_online` only if that finds nothing, always say the values are from the
+web and name the source; logging one still goes through the existing
+`propose_log_custom_component` (تقديري) -- no new write path needed. `readTools` in
+the proxy also got the schema (execution is always registry-side regardless of
+proxy/direct, so this is safe even though the proxy itself is unused).
+
+Verification: `flutter analyze` clean; **158 tests pass** (+5:
+`web_food_search_client_test.dart` parses the `/v1/responses` shape into text +
+citations and maps 429→quota; two new registry tests for the unavailable and
+happy paths). Live-walked on `emulator-5554` with the boss's real key: asked for
+dragon fruit's macros ("...search online") -- `search_foods` ran first, found
+nothing, `search_food_online` ran, and the reply was «قيم التنين لكل ١٠٠ غرام من
+الإنترنت: سعرات ٦٨ · بروتين ٠.٧غ · كربوهيدرات ١٦.٢غ · دهون ٠.٢غ (المصدر:
+NutritionAdvance / USDA تقريبية)» -- explicitly labeled as from the internet with
+a named source, exactly the grounding rule in the prompt. Confirmed the main
+`grok-3-mini` chat path is unaffected by the aborted Live Search attempt (older
+410 bubble stayed in scrollback from before the fix; the new turn completed
+clean).
+
+**Phase 5B full-functionality device walk + two real bugs found and fixed
+(2026-09-04):** the boss asked to actually drive every write path end-to-end on
+device: log a web-found component, design a whole meal from it, swap a saved meal
+in, all confirm+undo. Found two genuine bugs along the way (not model flakiness):
+
+1. **`AgentDataSource.getFoodById` only checked the shared `foods` collection.**
+   A personal component created via `search_food_online` →
+   `propose_log_custom_component` (or the existing component-editor feature) has
+   its `food_id` in `users/{uid}/foods`, not `foods` -- so `propose_log_food`,
+   `propose_create_meal`, and swap's new-meal resolution could never use one,
+   even though `search_foods` finds them fine (it already merges both). Fixed:
+   `getFoodById` now falls back to `listPersonal()` when the shared lookup misses.
+   New regression test: `propose_log_food resolves a personal (not just shared)
+   food by id`.
+2. **The model would sometimes narrate "اقترحت كذا" (I proposed X) in plain text
+   without ever calling the `propose_*` tool** -- confirmed by instrumenting the
+   registry with temporary debug logging (removed after) and watching zero tool
+   invocations fire for a turn that still produced acknowledgement text. No data
+   was ever at risk (nothing runs without a real `Proposal`), but it's a broken
+   promise to the user: text claims a card exists when it doesn't. Root cause was
+   partly `grok-3-mini` being cheap/small and partly the system prompt not
+   explicitly forbidding this specific pattern. Tightened `agent_prompt.dart`
+   (paired `functions/index.js`): describing a proposal without having just
+   called its tool in the same reply is now spelled out as lying to the user, and
+   the model is told to re-call a tool rather than trust a stale prior result in
+   conversation history.
+
+**New: precalled personal catalog (2026-09-04).** The boss asked to stop making
+the model search for things it already owns. `AgentToolRegistry.buildKnownCatalogContext()`
+fetches the user's personal components and saved meals (small, owned collections
+-- never the large shared catalog) and formats them as `name (food_id: ...)` /
+`name (meal_id: ...)`. `ChatOrchestrator.send()` fetches this once per user
+message and every `AiClient` implementation injects it as a second system message
+(`knownCatalog` param), never stored in persisted `_apiMessages` history so it
+can't grow the context window turn over turn. `AgentDataSource` gained
+`getPersonalFoods()`. Confirmed live: a `propose_create_meal` request that
+previously needed two `search_foods` round-trips went straight to a valid card
+with zero searches once the ids were precalled.
+
+**Live device verification, this entry, in order:**
+1. `propose_log_custom_component` (dragon fruit macros from `search_food_online`)
+   → card with «تقديري» badge → confirm → personal `FoodItem` created (verified
+   independently in the Components screen with a «خاص بك» badge) → entry appears
+   in Today's planned totals.
+2. `propose_create_meal` naming that personal component + a catalog food → after
+   the `getFoodById` fix, a real card (`٢ مكوّنات، ٤٤٠.٩ سعرة`) → confirm → saved
+   to the meal library → undo → deleted from the library (`ProposalKind.deleteMeal`
+   inverse).
+3. `propose_swap_meal` swapping the snack entry for a saved meal → card showed
+   the macro delta (`515.1+` سعرة, correct sign) → confirm → Today's planned
+   totals updated live (152→219 g protein etc.) → undo → Today reverted to the
+   exact original entry (two-step inverse chain: remove the new entry, restore
+   the old one byte-for-byte).
+4. `propose_remove_entry` used to clean up the test data afterward → confirmed
+   → Today back to its original 151/227/54 baseline.
+
+All four used the real confirm/undo/receipt UI, not mocks. One methodological
+note for whoever continues this: a chat thread that has already seen a tool
+error can get "poisoned" -- the model sometimes keeps citing the stale failure
+in later turns instead of retrying, even after the underlying bug is fixed. Both
+bugs above were only cleanly reproduced after clearing `SharedPreferences` (`adb
+shell run-as com.example.diet_app2 rm shared_prefs/FlutterSharedPreferences.xml`)
+to start a fresh conversation -- worth doing before concluding a fix didn't work.
+
+Verification: `flutter analyze` clean; **161 tests pass** (+3 over the web-search
+entry above: the personal-food-by-id regression test, and two
+`buildKnownCatalogContext` tests -- populated and empty).
 
 **Voice split out of Step 5 (2026-09-04):** the boss asked to skip voice for now and
 pull it into its own plan rather than leave it as Step 5's final phase. `05_voice.md`

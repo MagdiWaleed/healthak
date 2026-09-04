@@ -7,6 +7,7 @@ import '../../service/agent/agent_data_source.dart';
 import '../../service/agent/agent_tool_registry.dart';
 import '../../service/agent/ai_client.dart';
 import '../../service/agent/chat_orchestrator.dart';
+import '../../service/agent/web_food_search_client.dart';
 import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
 
@@ -25,6 +26,7 @@ class HomeBinding extends Bindings {
         resolveModel: () => Get.find<PrefsService>().assistantModelId,
         tools: AgentToolRegistry(
           data: HealthakAgentDataSource(uid: uid),
+          webSearch: createWebFoodSearchClient(),
         ),
       ),
     );

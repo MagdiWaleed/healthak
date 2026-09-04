@@ -1,6 +1,7 @@
 import 'package:diet_app2/domain/day/day_log.dart';
 import 'package:diet_app2/domain/food/food_item.dart';
 import 'package:diet_app2/domain/meal/meal_definition.dart';
+import 'package:diet_app2/domain/nutrition/energy.dart';
 import 'package:diet_app2/domain/profile/user_profile.dart';
 import 'package:diet_app2/service/agent/agent_data_source.dart';
 import 'package:diet_app2/service/agent/agent_models.dart';
@@ -81,6 +82,7 @@ class _ToolThenAnswerClient implements AiClient {
     required List<Map<String, dynamic>> messages,
     required List<AgentToolDefinition> tools,
     String? model,
+    String? knownCatalog,
   }) async* {
     lastModel = model;
     calls++;
@@ -108,6 +110,7 @@ class _QuotaClient implements AiClient {
     required List<Map<String, dynamic>> messages,
     required List<AgentToolDefinition> tools,
     String? model,
+    String? knownCatalog,
   }) async* {
     throw const AgentException(
       AgentFailureKind.quota,
@@ -118,7 +121,13 @@ class _QuotaClient implements AiClient {
 
 class _EmptyData implements AgentDataSource {
   @override
+  String get uid => 'user-1';
+
+  @override
   Future<DayLog?> getDay(DateTime date) async => null;
+
+  @override
+  Future<DayLog?> getDayByKey(String dateKey) async => null;
 
   @override
   Future<List<DayLog>> getHistory(DateTime start, DateTime end) async =>
@@ -132,4 +141,33 @@ class _EmptyData implements AgentDataSource {
 
   @override
   Future<List<FoodItem>> searchFoods(String query) async => const [];
+
+  @override
+  Future<List<FoodItem>> getPersonalFoods() async => const [];
+
+  @override
+  Future<DayLog> ensureDay(DateTime date, NutritionTargets targets) async =>
+      DayLog.empty(date, targets);
+
+  @override
+  Future<void> upsertDayEntry(String dateKey, DayEntry entry) async {}
+
+  @override
+  Future<void> removeDayEntry(String dateKey, String entryId) async {}
+
+  @override
+  Future<FoodItem?> getFoodById(String id) async => null;
+
+  @override
+  Future<FoodItem> createPersonalFood(FoodItem draft) async =>
+      draft.withId('food-created');
+
+  @override
+  Future<MealDefinition?> getMealById(String id) async => null;
+
+  @override
+  Future<MealDefinition> saveMeal(MealDefinition draft) async => draft;
+
+  @override
+  Future<void> deleteMeal(String id) async {}
 }

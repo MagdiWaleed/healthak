@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/agent/agent_model_catalog.dart';
 import '../../service/agent/agent_models.dart';
+import '../../service/agent/agent_proposal.dart';
 import '../../service/agent/chat_orchestrator.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
@@ -450,6 +451,12 @@ class _MessageCard extends StatelessWidget {
     if (message.kind == ChatMessageKind.working) {
       return _ToolReadCard(message: message);
     }
+    if (message.kind == ChatMessageKind.proposal) {
+      return _ProposalCard(message: message);
+    }
+    if (message.kind == ChatMessageKind.receipt) {
+      return _ReceiptCard(message: message);
+    }
     final isUser = message.kind == ChatMessageKind.user;
     final isError = message.status == ChatMessageStatus.error;
     return Align(
@@ -580,6 +587,329 @@ class _MarkdownBody extends StatelessWidget {
           ),
         ),
         blockSpacing: 8,
+      ),
+    );
+  }
+}
+
+/// A pending write's confirmation card. تأكيد executes it through the
+/// registry; إلغاء dismisses it with nothing written. Once resolved
+/// (confirmed elsewhere producing a receipt, cancelled, or superseded by a
+/// newer proposal) it renders as a flat, buttonless summary instead.
+class _ProposalCard extends StatelessWidget {
+  final ChatMessage message;
+  const _ProposalCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final proposal = message.proposal;
+    if (proposal == null) return const SizedBox.shrink();
+    final pending = message.status == ChatMessageStatus.pendingConfirm;
+
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * .82,
+        ),
+        child: GlassCard(
+          elevation: GlassElevation.panel,
+          highlighted: pending,
+          tint: pending ? AppPalette.violet : null,
+          padding: const EdgeInsets.all(13),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 16,
+                    color: pending ? AppPalette.violet : AppPalette.muted,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      proposal.titleAr,
+                      style: TextStyle(
+                        color: pending ? AppPalette.text : AppPalette.muted,
+                        fontWeight: FontWeight.w700,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              ..._ProposalDetails.rowsFor(proposal),
+              if (pending) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ProposalButton(
+                        label: AppStrings.assistantConfirm,
+                        filled: true,
+                        onTap: () => Get.find<ChatOrchestrator>()
+                            .confirmProposal(message.id),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ProposalButton(
+                        label: AppStrings.assistantCancel,
+                        filled: false,
+                        onTap: () => Get.find<ChatOrchestrator>()
+                            .cancelProposal(message.id),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else if (message.status == ChatMessageStatus.cancelled) ...[
+                const SizedBox(height: 6),
+                const Text(
+                  AppStrings.assistantCancelled,
+                  style: TextStyle(color: AppPalette.muted, fontSize: 11),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProposalButton extends StatelessWidget {
+  final String label;
+  final bool filled;
+  final VoidCallback onTap;
+
+  const _ProposalButton({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+        onTap: onTap,
+        haptic: true,
+        pressedScale: .96,
+        child: Container(
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: filled ? AppPalette.accentGradient : null,
+            color: filled ? null : Colors.white.withValues(alpha: .06),
+            borderRadius: BorderRadius.circular(12),
+            border: filled
+                ? null
+                : Border.all(color: Colors.white.withValues(alpha: .15)),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: filled ? AppPalette.ink : AppPalette.muted,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      );
+}
+
+/// Renders the kind-specific detail rows inside a proposal card from
+/// [Proposal.card] -- macros, before/after, deltas, the «تقديري» badge.
+abstract final class _ProposalDetails {
+  static List<Widget> rowsFor(Proposal proposal) {
+    final card = proposal.card;
+    final rows = <Widget>[];
+
+    switch (proposal.kind) {
+      case ProposalKind.swapMeal:
+        rows.add(_line('${card['old_name']} ← ${card['new_name']}'));
+        final delta = (card['delta'] as Map?)?.cast<String, num>();
+        if (delta != null) rows.add(_deltaLine(delta));
+      case ProposalKind.updateGrams:
+        rows.add(_line(
+          '${_fmt(card['old_grams'])} جم ← ${_fmt(card['new_grams'])} جم',
+        ));
+      case ProposalKind.removeEntry:
+        rows.add(_line('${_fmt(card['kcal'])} سعرة'));
+      case ProposalKind.createMeal:
+        rows.add(_line('${card['component_count']} مكوّنات'));
+        final macros = (card['macros'] as Map?)?.cast<String, num>();
+        if (macros != null) rows.add(_macrosLine(macros));
+      case ProposalKind.logFood:
+      case ProposalKind.logMeal:
+      case ProposalKind.logCustomComponent:
+        final macros = (card['macros'] as Map?)?.cast<String, num>();
+        if (macros != null) rows.add(_macrosLine(macros));
+        if (card['estimated'] == true) rows.add(_estimatedBadge());
+      case ProposalKind.restoreEntry:
+      case ProposalKind.deleteMeal:
+        break;
+    }
+    return rows;
+  }
+
+  static Widget _line(String text) => Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text(
+          text,
+          style: const TextStyle(color: AppPalette.muted, fontSize: 12.5),
+        ),
+      );
+
+  static Widget _macrosLine(Map<String, num> macros) => Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text(
+          '${_fmt(macros['kcal'])} سعرة · بروتين ${_fmt(macros['protein_g'])} · '
+          'كارب ${_fmt(macros['carbs_g'])} · دهون ${_fmt(macros['fat_g'])}',
+          style: const TextStyle(color: AppPalette.muted, fontSize: 12.5),
+        ),
+      );
+
+  static Widget _deltaLine(Map<String, num> delta) {
+    final kcal = delta['kcal'] ?? 0;
+    final sign = kcal > 0 ? '+' : '';
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        '$sign${_fmt(kcal)} سعرة',
+        style: TextStyle(
+          color: kcal > 0 ? AppPalette.amber : AppPalette.emerald,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  static Widget _estimatedBadge() => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppPalette.amber.withValues(alpha: .14),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppPalette.amber.withValues(alpha: .35)),
+          ),
+          child: const Text(
+            AppStrings.assistantEstimatedBadge,
+            style: TextStyle(
+              color: AppPalette.amber,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+
+  static String _fmt(Object? value) {
+    if (value is! num) return '0';
+    return value == value.roundToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(1);
+  }
+}
+
+/// A confirmed action's summary, with a تراجع chip active for ten minutes
+/// after execution. `AgentActionLog`'s full audit screen is Phase 5C; this
+/// is the inline undo the plan asks Phase 5B to ship on its own.
+class _ReceiptCard extends StatefulWidget {
+  final ChatMessage message;
+  const _ReceiptCard({required this.message});
+
+  @override
+  State<_ReceiptCard> createState() => _ReceiptCardState();
+}
+
+class _ReceiptCardState extends State<_ReceiptCard> {
+  static const _undoWindow = Duration(minutes: 10);
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    final receipt = widget.message.receipt;
+    if (receipt != null) {
+      _ticker = Timer.periodic(const Duration(seconds: 20), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final receipt = widget.message.receipt;
+    final undone = widget.message.status == ChatMessageStatus.undone;
+    final withinWindow = receipt != null &&
+        DateTime.now().difference(receipt.executedAt) < _undoWindow;
+    final canUndo = receipt != null &&
+        receipt.isUndoable &&
+        !undone &&
+        withinWindow;
+
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * .78,
+        ),
+        child: GlassCard(
+          elevation: GlassElevation.flush,
+          tint: AppPalette.emerald,
+          padding: const EdgeInsets.all(11),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.check_circle_rounded,
+                color: AppPalette.emerald,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  undone
+                      ? '${widget.message.text} — ${AppStrings.assistantUndone}'
+                      : widget.message.text,
+                  style: TextStyle(
+                    color: undone ? AppPalette.muted : AppPalette.text,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    decoration:
+                        undone ? TextDecoration.lineThrough : TextDecoration.none,
+                  ),
+                ),
+              ),
+              if (canUndo)
+                Pressable(
+                  onTap: () => Get.find<ChatOrchestrator>()
+                      .undoReceipt(widget.message.id),
+                  pressedScale: .94,
+                  child: const Padding(
+                    padding: EdgeInsets.only(right: 4),
+                    child: Text(
+                      AppStrings.assistantUndo,
+                      style: TextStyle(
+                        color: AppPalette.violet,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
