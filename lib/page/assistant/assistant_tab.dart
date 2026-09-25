@@ -13,6 +13,7 @@ import '../../service/agent/chat_orchestrator.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/glass/glass_card.dart';
+import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/glass/glass_sheet.dart';
 import '../../ui/motion/navigation.dart';
 import '../../ui/motion/pressable.dart';
@@ -35,11 +36,13 @@ class _AssistantTabState extends State<AssistantTab> {
   final scroll = ScrollController();
   Worker? _messageWorker;
   late bool disclosureAccepted;
+  late bool headerTourSeen;
 
   @override
   void initState() {
     super.initState();
     disclosureAccepted = prefs.assistantDisclosureAccepted;
+    headerTourSeen = prefs.assistantHeaderTourSeen;
     _messageWorker = ever(orchestrator.messages, (_) => _scrollToEnd());
   }
 
@@ -70,6 +73,11 @@ class _AssistantTabState extends State<AssistantTab> {
     if (mounted) setState(() => disclosureAccepted = true);
   }
 
+  Future<void> _dismissHeaderTour() async {
+    if (mounted) setState(() => headerTourSeen = true);
+    await prefs.dismissAssistantHeaderTour();
+  }
+
   Future<void> _send([String? suggestion]) async {
     final text = (suggestion ?? composer.text).trim();
     if (text.isEmpty || orchestrator.sending.value) return;
@@ -78,50 +86,66 @@ class _AssistantTabState extends State<AssistantTab> {
     await orchestrator.send(text);
   }
 
+  // Pushed as its own page now (no longer a bottom-nav tab), so it owns its
+  // full-screen chrome the same way `MealEditorScreen`/`FoodDetailScreen` do
+  // -- and the composer no longer needs to clear a shared nav bar/FAB
+  // underneath it, just the device's own bottom safe area.
   @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          const _AssistantHeader(),
-          Expanded(
-            child: Obx(() {
-              final messages = orchestrator.messages.toList(growable: false);
-              if (messages.isEmpty) {
-                return _EmptyConversation(active: orchestrator.sending.value);
-              }
-              return ListView.builder(
-                controller: scroll,
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-                itemCount: messages.length,
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _MessageCard(
-                    message: messages[index],
-                    failure: index == messages.length - 1
-                        ? orchestrator.lastFailure.value
-                        : null,
-                    onRetry: orchestrator.retryLast,
-                  ),
+  Widget build(BuildContext context) => GlassScaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              const _AssistantHeader(),
+              if (disclosureAccepted && !headerTourSeen)
+                _HeaderTourBanner(onDismiss: _dismissHeaderTour),
+              Expanded(
+                child: Obx(() {
+                  final messages =
+                      orchestrator.messages.toList(growable: false);
+                  if (messages.isEmpty) {
+                    return _EmptyConversation(
+                        active: orchestrator.sending.value);
+                  }
+                  return ListView.builder(
+                    controller: scroll,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      // Each bubble arrives with a short fade-lift; recycling
+                      // replays are harmless because the entrance is 260ms and
+                      // settle-based, not a looping animation.
+                      child: _BubbleEntrance(
+                        child: _MessageCard(
+                          message: messages[index],
+                          failure: index == messages.length - 1
+                              ? orchestrator.lastFailure.value
+                              : null,
+                          onRetry: orchestrator.retryLast,
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              if (!disclosureAccepted)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                  child: _DisclosureCard(onAccept: _acceptDisclosure),
+                )
+              else ...[
+                _SuggestionRail(onSelected: _send),
+                _Composer(
+                  controller: composer,
+                  sending: orchestrator.sending,
+                  onSend: _send,
                 ),
-              );
-            }),
+              ],
+            ],
           ),
-          if (!disclosureAccepted)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-              child: _DisclosureCard(onAccept: _acceptDisclosure),
-            )
-          else ...[
-            _SuggestionRail(onSelected: _send),
-            _Composer(
-              controller: composer,
-              sending: orchestrator.sending,
-              onSend: _send,
-            ),
-          ],
-          const SizedBox(height: 98),
-        ],
+        ),
       );
 }
 
@@ -134,15 +158,39 @@ class _AssistantHeader extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            _HeaderIconButton(
+              // Static glyph, not auto-mirrored like Flutter's built-in
+              // AppBar back button -- right-pointing is the correct RTL
+              // reading here (see the same note elsewhere in this repo).
+              icon: Icons.arrow_forward_rounded,
+              tooltip: AppStrings.back,
+              onTap: () => Navigator.of(context).maybePop(),
+            ),
+            const SizedBox(width: 10),
             const _AgentPulse(size: 50, compact: true),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    AppStrings.assistant,
-                    style: Theme.of(context).textTheme.headlineMedium,
+                  // The assistant is the app's most premium surface, so its
+                  // wordmark gets the celebration-gradient treatment the rest
+                  // of the typography reserves for goal moments.
+                  ShaderMask(
+                    blendMode: BlendMode.srcIn,
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [AppPalette.mint, AppPalette.emerald],
+                      begin: AlignmentDirectional.topStart,
+                      end: AlignmentDirectional.bottomEnd,
+                    ).createShader(bounds),
+                    child: Text(
+                      AppStrings.assistant,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineMedium
+                          ?.copyWith(
+                              fontWeight: FontWeight.w900, letterSpacing: -.5),
+                    ),
                   ),
                   const Text(
                     AppStrings.assistantPrivacyNote,
@@ -205,6 +253,83 @@ class _HeaderIconButton extends StatelessWidget {
             child: Icon(icon, size: 16, color: AppPalette.muted),
           ),
         ),
+      );
+}
+
+/// A one-time, self-collapsing banner pointing at the three header icons --
+/// shown once because they landed after the assistant tab already shipped,
+/// so nothing else in the UI introduces them to a returning user.
+class _HeaderTourBanner extends StatefulWidget {
+  final VoidCallback onDismiss;
+  const _HeaderTourBanner({required this.onDismiss});
+
+  @override
+  State<_HeaderTourBanner> createState() => _HeaderTourBannerState();
+}
+
+class _HeaderTourBannerState extends State<_HeaderTourBanner> {
+  bool _dismissing = false;
+
+  @override
+  Widget build(BuildContext context) => AnimatedSize(
+        duration:
+            MotionSettings.duration(context, const Duration(milliseconds: 220)),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.topCenter,
+        child: _dismissing
+            ? const SizedBox(width: double.infinity)
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: AppPalette.violet.withValues(alpha: .10),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppPalette.violet.withValues(alpha: .28),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.arrow_upward_rounded,
+                        size: 14,
+                        color: AppPalette.violet,
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          AppStrings.assistantHeaderTourMessage,
+                          style: TextStyle(
+                            color: AppPalette.text,
+                            fontSize: 11.5,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      Pressable(
+                        onTap: () => setState(() {
+                          _dismissing = true;
+                          widget.onDismiss();
+                        }),
+                        pressedScale: .92,
+                        child: const Padding(
+                          padding: EdgeInsets.only(right: 4, left: 2),
+                          child: Text(
+                            AppStrings.assistantHeaderTourDismiss,
+                            style: TextStyle(
+                              color: AppPalette.violet,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
       );
 }
 
@@ -342,7 +467,8 @@ class _SessionListSheet extends StatelessWidget {
                     : Colors.white.withValues(alpha: .045),
                 borderRadius: BorderRadius.circular(14),
                 border: active
-                    ? Border.all(color: AppPalette.emerald.withValues(alpha: .35))
+                    ? Border.all(
+                        color: AppPalette.emerald.withValues(alpha: .35))
                     : null,
               ),
               child: Row(
@@ -358,7 +484,8 @@ class _SessionListSheet extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: active ? AppPalette.emerald : AppPalette.text,
+                            color:
+                                active ? AppPalette.emerald : AppPalette.text,
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
                           ),
@@ -418,10 +545,21 @@ class _EmptyConversation extends StatelessWidget {
             children: [
               _AgentPulse(active: active),
               const SizedBox(height: 24),
-              Text(
-                AppStrings.assistantHeadline,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineMedium,
+              ShaderMask(
+                blendMode: BlendMode.srcIn,
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [AppPalette.text, AppPalette.mint],
+                  begin: AlignmentDirectional.topStart,
+                  end: AlignmentDirectional.bottomEnd,
+                ).createShader(bounds),
+                child: Text(
+                  AppStrings.assistantHeadline,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -488,46 +626,80 @@ class _SuggestionRail extends StatelessWidget {
   final Future<void> Function(String text) onSelected;
   const _SuggestionRail({required this.onSelected});
 
-  static const suggestions = [
-    AppStrings.assistantSuggestionRemaining,
-    AppStrings.assistantSuggestionToday,
-    AppStrings.assistantSuggestionProtein,
-    AppStrings.assistantSuggestionWeek,
-  ];
+  /// Swaps one or two chips for the meal that actually matters right now --
+  /// a "اقترح فطورًا" at 9pm reads as the assistant not knowing what time it
+  /// is. The universal ones (remaining/today) stay in every slot since
+  /// they're useful regardless of the hour.
+  static List<String> suggestionsFor(DateTime now) {
+    final hour = now.hour;
+    if (hour < 11) {
+      return const [
+        AppStrings.assistantSuggestionBreakfast,
+        AppStrings.assistantSuggestionRemaining,
+        AppStrings.assistantSuggestionProtein,
+        AppStrings.assistantSuggestionToday,
+      ];
+    }
+    if (hour < 16) {
+      return const [
+        AppStrings.assistantSuggestionLunch,
+        AppStrings.assistantSuggestionRemaining,
+        AppStrings.assistantSuggestionToday,
+        AppStrings.assistantSuggestionWeek,
+      ];
+    }
+    if (hour < 21) {
+      return const [
+        AppStrings.assistantSuggestionDinner,
+        AppStrings.assistantSuggestionToday,
+        AppStrings.assistantSuggestionRemaining,
+        AppStrings.assistantSuggestionProtein,
+      ];
+    }
+    return const [
+      AppStrings.assistantSuggestionToday,
+      AppStrings.assistantSuggestionGoal,
+      AppStrings.assistantSuggestionWeek,
+      AppStrings.assistantSuggestionRemaining,
+    ];
+  }
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 42,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          itemCount: suggestions.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) => Pressable(
-            haptic: true,
-            onTap: () => onSelected(suggestions[index]),
-            pressedScale: .96,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .055),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: .15),
-                ),
+  Widget build(BuildContext context) {
+    final suggestions = suggestionsFor(DateTime.now());
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        itemCount: suggestions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) => Pressable(
+          haptic: true,
+          onTap: () => onSelected(suggestions[index]),
+          pressedScale: .96,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .055),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: .15),
               ),
-              child: Text(
-                suggestions[index],
-                style: const TextStyle(
-                  color: AppPalette.muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+            ),
+            child: Text(
+              suggestions[index],
+              style: const TextStyle(
+                color: AppPalette.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _Composer extends StatelessWidget {
@@ -579,18 +751,37 @@ class _Composer extends StatelessWidget {
                       height: 42,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient:
-                            sending.value ? null : AppPalette.accentGradient,
+                        gradient: sending.value
+                            ? null
+                            : const LinearGradient(
+                                colors: [AppPalette.emerald, AppPalette.mint],
+                                begin: Alignment.topRight,
+                                end: Alignment.bottomLeft,
+                              ),
                         color: sending.value
                             ? Colors.white.withValues(alpha: .08)
                             : null,
+                        // The idle button emits the accent glow (L3 language);
+                        // while the agent works the glow goes violet -- the
+                        // same "thinking" color the pulse and typing dots use.
+                        boxShadow: [
+                          BoxShadow(
+                            color: (sending.value
+                                    ? AppPalette.violet
+                                    : AppPalette.emerald)
+                                .withValues(alpha: .30),
+                            blurRadius: 18,
+                            spreadRadius: -4,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
                       child: sending.value
                           ? const Padding(
                               padding: EdgeInsets.all(12),
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppPalette.emerald,
+                                color: AppPalette.violet,
                               ),
                             )
                           : const Icon(
@@ -601,6 +792,55 @@ class _Composer extends StatelessWidget {
                   )),
             ],
           ),
+        ),
+      );
+}
+
+class _BubbleEntrance extends StatefulWidget {
+  final Widget child;
+  const _BubbleEntrance({required this.child});
+
+  @override
+  State<_BubbleEntrance> createState() => _BubbleEntranceState();
+}
+
+class _BubbleEntranceState extends State<_BubbleEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+  );
+  late final Animation<double> eased =
+      CurvedAnimation(parent: controller, curve: Curves.easeOutCubic);
+
+  @override
+  void initState() {
+    super.initState();
+    // Reduced-motion users get the final state on the first frame; everyone
+    // else gets the fade-lift.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MotionSettings.enabled(context)) {
+        controller.forward();
+      } else {
+        controller.value = 1;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+        opacity: eased,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, .04), end: Offset.zero)
+              .animate(eased),
+          child: widget.child,
         ),
       );
 }
@@ -782,69 +1022,156 @@ class _ProposalCard extends StatelessWidget {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.sizeOf(context).width * .82,
         ),
-        child: GlassCard(
-          elevation: GlassElevation.panel,
-          highlighted: pending,
-          tint: pending ? AppPalette.violet : null,
-          padding: const EdgeInsets.all(13),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 16,
-                    color: pending ? AppPalette.violet : AppPalette.muted,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      proposal.titleAr,
-                      style: TextStyle(
-                        color: pending ? AppPalette.text : AppPalette.muted,
-                        fontWeight: FontWeight.w700,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              ..._ProposalDetails.rowsFor(proposal),
-              if (pending) ...[
-                const SizedBox(height: 12),
+        // The decision point of the whole agent journey: while a proposal
+        // waits, the card breathes a violet glow so "the app is asking you
+        // something" reads from across the room. Resolved proposals render
+        // flat. `BoxShadow` only -- no blur filter, budget untouched.
+        child: _BreathingGlow(
+          active: pending,
+          color: AppPalette.violet,
+          borderRadius: 22,
+          child: GlassCard(
+            elevation: GlassElevation.panel,
+            highlighted: pending,
+            tint: pending ? AppPalette.violet : null,
+            padding: const EdgeInsets.all(13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _ProposalButton(
-                        label: AppStrings.assistantConfirm,
-                        filled: true,
-                        onTap: () => Get.find<ChatOrchestrator>()
-                            .confirmProposal(message.id),
-                      ),
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 16,
+                      color: pending ? AppPalette.violet : AppPalette.muted,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: _ProposalButton(
-                        label: AppStrings.assistantCancel,
-                        filled: false,
-                        onTap: () => Get.find<ChatOrchestrator>()
-                            .cancelProposal(message.id),
+                      child: Text(
+                        proposal.titleAr,
+                        style: TextStyle(
+                          color: pending ? AppPalette.text : AppPalette.muted,
+                          fontWeight: FontWeight.w700,
+                          height: 1.5,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ] else if (message.status == ChatMessageStatus.cancelled) ...[
-                const SizedBox(height: 6),
-                const Text(
-                  AppStrings.assistantCancelled,
-                  style: TextStyle(color: AppPalette.muted, fontSize: 11),
-                ),
+                ..._ProposalDetails.rowsFor(proposal),
+                if (pending) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ProposalButton(
+                          label: AppStrings.assistantConfirm,
+                          filled: true,
+                          onTap: () => Get.find<ChatOrchestrator>()
+                              .confirmProposal(message.id),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _ProposalButton(
+                          label: AppStrings.assistantCancel,
+                          filled: false,
+                          onTap: () => Get.find<ChatOrchestrator>()
+                              .cancelProposal(message.id),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (message.status == ChatMessageStatus.cancelled) ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    AppStrings.assistantCancelled,
+                    style: TextStyle(color: AppPalette.muted, fontSize: 11),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A slow breathing glow around its child while [active] -- the "waiting on
+/// you" state for proposal cards. One controller, boxShadow only, gated by
+/// `MotionSettings`; reduced-motion renders the child flat.
+class _BreathingGlow extends StatefulWidget {
+  final bool active;
+  final Color color;
+  final double borderRadius;
+  final Widget child;
+
+  const _BreathingGlow({
+    required this.active,
+    required this.color,
+    required this.borderRadius,
+    required this.child,
+  });
+
+  @override
+  State<_BreathingGlow> createState() => _BreathingGlowState();
+}
+
+class _BreathingGlowState extends State<_BreathingGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2000),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(covariant _BreathingGlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active != oldWidget.active) _sync();
+  }
+
+  void _sync() {
+    if (widget.active && MotionSettings.enabled(context)) {
+      controller.repeat(reverse: true);
+    } else {
+      controller.stop();
+      controller.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.active) return widget.child;
+    return AnimatedBuilder(
+      animation: controller,
+      child: widget.child,
+      builder: (context, child) => DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  widget.color.withValues(alpha: .16 + controller.value * .18),
+              blurRadius: 22,
+              spreadRadius: -4,
+            ),
+          ],
+        ),
+        child: child,
       ),
     );
   }
@@ -898,7 +1225,7 @@ abstract final class _ProposalDetails {
 
     switch (proposal.kind) {
       case ProposalKind.swapMeal:
-        rows.add(_line('${card['old_name']} ← ${card['new_name']}'));
+        rows.add(_line('${card['old_name']} â† ${card['new_name']}'));
         final delta = (card['delta'] as Map?)?.cast<String, num>();
         if (delta != null) rows.add(_deltaLine(delta));
       case ProposalKind.updateGrams:
@@ -1000,15 +1327,24 @@ class _ReceiptCardState extends State<_ReceiptCard> {
   static const _undoWindow = Duration(minutes: 10);
   Timer? _ticker;
 
+  // The "it's done" exhale: a single emerald bloom behind the card that
+  // fades out over its first 600ms on screen. Not looping -- a receipt is a
+  // settled fact, it should glow once and then sit quiet.
+  double _bloom = 1;
+
   @override
   void initState() {
     super.initState();
-    final receipt = widget.message.receipt;
-    if (receipt != null) {
-      _ticker = Timer.periodic(const Duration(seconds: 20), (_) {
-        if (mounted) setState(() {});
+    if (widget.message.receipt != null) _scheduleTick();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !MotionSettings.enabled(context)) {
+        if (mounted) setState(() => _bloom = 0);
+        return;
+      }
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) setState(() => _bloom = 0);
       });
-    }
+    });
   }
 
   @override
@@ -1017,16 +1353,47 @@ class _ReceiptCardState extends State<_ReceiptCard> {
     super.dispose();
   }
 
+  /// Ticks every 20s for most of the window (no visible change that often
+  /// anyway), then drops to every second in the final minute so the "تراجع"
+  /// label can count down instead of just vanishing without warning.
+  void _scheduleTick() {
+    final receipt = widget.message.receipt;
+    if (receipt == null) return;
+    final remaining =
+        _undoWindow - DateTime.now().difference(receipt.executedAt);
+    if (remaining <= Duration.zero) {
+      if (mounted) setState(() {});
+      return;
+    }
+    final interval = remaining <= const Duration(minutes: 1)
+        ? const Duration(seconds: 1)
+        : const Duration(seconds: 20);
+    _ticker = Timer(interval, () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleTick();
+    });
+  }
+
+  static String _formatRemaining(Duration d) {
+    final totalSeconds = d.inSeconds.clamp(0, 599);
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final receipt = widget.message.receipt;
     final undone = widget.message.status == ChatMessageStatus.undone;
-    final withinWindow = receipt != null &&
-        DateTime.now().difference(receipt.executedAt) < _undoWindow;
-    final canUndo = receipt != null &&
-        receipt.isUndoable &&
-        !undone &&
-        withinWindow;
+    final remaining = receipt == null
+        ? Duration.zero
+        : _undoWindow - DateTime.now().difference(receipt.executedAt);
+    final withinWindow = remaining > Duration.zero;
+    final canUndo =
+        receipt != null && receipt.isUndoable && !undone && withinWindow;
+    final justExpired =
+        receipt != null && receipt.isUndoable && !undone && !withinWindow;
 
     return Align(
       alignment: AlignmentDirectional.centerEnd,
@@ -1034,50 +1401,79 @@ class _ReceiptCardState extends State<_ReceiptCard> {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.sizeOf(context).width * .78,
         ),
-        child: GlassCard(
-          elevation: GlassElevation.flush,
-          tint: AppPalette.emerald,
-          padding: const EdgeInsets.all(11),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.check_circle_rounded,
-                color: AppPalette.emerald,
-                size: 16,
+        child: AnimatedContainer(
+          duration: MotionSettings.duration(
+              context, const Duration(milliseconds: 600)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppPalette.emerald.withValues(alpha: .30 * _bloom),
+                blurRadius: 24,
+                spreadRadius: -6,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  undone
-                      ? '${widget.message.text} — ${AppStrings.assistantUndone}'
-                      : widget.message.text,
-                  style: TextStyle(
-                    color: undone ? AppPalette.muted : AppPalette.text,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    decoration:
-                        undone ? TextDecoration.lineThrough : TextDecoration.none,
-                  ),
+            ],
+          ),
+          child: GlassCard(
+            elevation: GlassElevation.flush,
+            tint: AppPalette.emerald,
+            padding: const EdgeInsets.all(11),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppPalette.emerald,
+                  size: 16,
                 ),
-              ),
-              if (canUndo)
-                Pressable(
-                  onTap: () => Get.find<ChatOrchestrator>()
-                      .undoReceipt(widget.message.id),
-                  pressedScale: .94,
-                  child: const Padding(
-                    padding: EdgeInsets.only(right: 4),
-                    child: Text(
-                      AppStrings.assistantUndo,
-                      style: TextStyle(
-                        color: AppPalette.violet,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    undone
+                        ? '${widget.message.text} — ${AppStrings.assistantUndone}'
+                        : widget.message.text,
+                    style: TextStyle(
+                      color: undone ? AppPalette.muted : AppPalette.text,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      decoration: undone
+                          ? TextDecoration.lineThrough
+                          : TextDecoration.none,
                     ),
                   ),
                 ),
-            ],
+                if (canUndo)
+                  Pressable(
+                    onTap: () => Get.find<ChatOrchestrator>()
+                        .undoReceipt(widget.message.id),
+                    pressedScale: .94,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Text(
+                        remaining <= const Duration(minutes: 1)
+                            ? '${AppStrings.assistantUndo} · ${_formatRemaining(remaining)}'
+                            : AppStrings.assistantUndo,
+                        style: const TextStyle(
+                          color: AppPalette.violet,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )
+                else if (justExpired)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 4),
+                    child: Text(
+                      AppStrings.assistantUndoExpired,
+                      style: TextStyle(
+                        color: AppPalette.muted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1375,7 +1771,8 @@ class _AgentPulsePainter extends CustomPainter {
     // At rest: a closed, static ring (a logo). While working: an open arc
     // chasing a dot around the ring (a spinner) — the two must read
     // differently, or an idle icon looks like a stuck loading spinner.
-    canvas.drawArc(rect, start, active ? math.pi * 1.18 : math.pi * 2, false, sweep);
+    canvas.drawArc(
+        rect, start, active ? math.pi * 1.18 : math.pi * 2, false, sweep);
 
     final inner = Paint()
       ..style = PaintingStyle.stroke

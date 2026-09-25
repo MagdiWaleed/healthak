@@ -1,6 +1,84 @@
 # PROGRESS — handoff
 
 **Last updated:** 2026-09-04
+
+## ✅ Assistant moved off the bottom nav, onto its own pushed page (2026-09-04)
+
+Boss's request: the assistant shouldn't be a fifth bottom-nav destination any more, textfield
+should sit flush at the screen bottom (no shared nav bar/FAB to clear underneath it), and the
+entry point should live on the Today tab and fade out while its content is scrolling.
+
+**Done, live-verified on `emulator-5554`:**
+- `lib/page/home/home_shell.dart` — `AssistantTab` import and `IndexedStack` entry removed;
+  `_destinations` back to 4 (today/myMeals/market/account); FAB unconditional (was
+  `index == 3 ? null : …`, a leftover from when index 3 didn't want it).
+- `lib/page/assistant/assistant_tab.dart` — body wrapped in its own `GlassScaffold` (it owns
+  full-screen chrome now, the same way `MealEditorScreen` does, instead of sitting inside the
+  shell's shared one); the old `SizedBox(height: 98)` that cleared the shared nav bar is gone —
+  the composer now clears only the device's own bottom safe area, so it sits flush at the
+  bottom. `_AssistantHeader` gained a leading back button
+  (`Icons.arrow_forward_rounded` — a static glyph, not auto-mirrored like the built-in
+  `AppBar` back icon, so right-pointing is the correct RTL reading; confirmed on device it
+  renders correctly and pops the route).
+- `lib/page/today/today_tab.dart` — new `_AssistantEntryButton` (top-left, `Positioned` +
+  `SafeArea`), `pushHealthak(() => const AssistantTab())` on tap. Scroll-aware: build wrapped in
+  `NotificationListener<ScrollNotification>` tracking `_scrolling`, debounced 150ms on
+  `ScrollEndNotification` (an un-debounced flip made short scrolls flicker), driving
+  `AnimatedOpacity` + `IgnorePointer` on the button.
+- `lib/l10n/app_strings.dart` — `AppStrings.back = 'رجوع'`.
+
+**Device walk:** tapped the new button from Today → pushed Assistant page opened with the prior
+conversation intact, composer flush at the bottom; back button returned cleanly to Today; swiped
+the day list and captured a mid-scroll frame showing the button faded/non-interactive, then a
+post-settle frame showing it back at full opacity. Bottom nav confirmed at 4 destinations.
+`flutter analyze` (repo-wide) and `flutter test` (179/179) clean after the change.
+
+**Not yet done:** the inline proposal-edit feature (grams/slot nudge on a pending card without
+cancel-and-reask) — the second half of the boss's "polish then edit" choice, not started.
+
+**Bug found and fixed same day: "ChatOrchestrator" not found on the assistant screen
+(2026-09-04).** The boss hit a full-screen GetX error opening the assistant after the above
+restructuring. Not reliably reproducible through cold-start-then-tap, background/resume, or a
+process kill-and-resume cycle, but the mechanism is clear: `pushHealthak` (`lib/ui/motion/navigation.dart`)
+pushes a bare `GetPageRoute` through `Navigator.push` rather than `Get.to()`, which bypasses
+GetX's own route bookkeeping — its default SmartManagement can then dispose Home's `lazyPut`
+dependencies (`AgentToolRegistry`, `AgentActionLog`, `ChatOrchestrator`) the moment a route lands
+on top of Home, even though Home never left the stack. Fix: all three now register with
+`fenix: true` in `lib/app/bindings/home_binding.dart` — if GetX disposes one, the next `Get.find`
+rebuilds it from the same builder instead of throwing; safe since all three reload their state
+from SharedPreferences on construction anyway. Verified with a 5x push/pop stress cycle on
+`emulator-5554` (open assistant → back → repeat) with no crash; `flutter analyze` and
+`flutter test` (179/179) clean after.
+
+---
+
+## ✅ Agent UI/UX enhancement pass — COMPLETE (2026-09-04)
+
+All four journey surfaces now carry the Living Glass language. `flutter analyze` 0 issues,
+`flutter test` 179/179 after the final piece. Remaining: a device walk of
+disclosure → first message → proposal → confirm → receipt → action log, and the standing
+real-device raster-p95 gate.
+
+**Done:**
+- `lib/page/today/today_tab.dart` — "Layered Today" (separate entry below).
+- `lib/page/assistant/assistant_tab.dart`:
+  - `_AssistantHeader` — gradient wordmark (mint→emerald, w900, −.5 tracking).
+  - `_Composer` — send button L3 emerald glow; violet glow + spinner while `sending`.
+  - `_BubbleEntrance` — 260ms fade-lift on every bubble, `MotionSettings`-gated.
+  - `_EmptyConversation` — gradient headline.
+  - `_ProposalCard` — pending proposals now breathe a violet glow via new private
+    `_BreathingGlow` (2s repeating boxShadow alpha .16→.34, settles flat on resolve,
+    `MotionSettings`-gated, no blur filter).
+  - `_ReceiptCard` — one-shot emerald bloom (boxShadow .30→0 over 600ms, once).
+- `lib/page/history_ai/agent_history_screen.dart` — magic `SizedBox(height: 88)` replaced
+  with measured `padding.top + kToolbarHeight + sm`; log rows now `StaggeredEntry`.
+
+**Note for future editors:** `assistant_tab.dart` uses **LF line endings** — the editor
+tool's CRLF-anchored matching failed on it twice; edits landed via exact-LF text or
+script. Match LF when editing this file.
+
+---
+
 **Current position:** Step 0 COMPLETE. Step 1 implementation COMPLETE (one real-device gate still
 open). **Step 2 implementation COMPLETE** — the full personal loop (catalog, meal editor with
 nesting, my meals, today, history, profile) is built, wired, and the legacy codebase it replaces
@@ -11,11 +89,11 @@ is deleted. Not yet committed to git; not yet walked by hand on a device/emulato
 (also live-verified); Phase 5D (`isPremium` gating, coaching tools) not
 started; voice split into `plans/voice_agent_deferred.md`:**
 
-**Phase 5A (original entry below, still accurate):** Added the fifth shell destination «المساعد» and a full Arabic RTL read-only
-chat surface: asymmetric agent-pulse identity, first-use privacy disclosure, suggestions,
-streaming/typing states, grounded tool-read capsules, composer, and calm quota/offline/error
-cards. Message-list surfaces remain filter-free and the shell FAB is hidden on this tab so it
-does not compete with the composer. Conversation history stays in SharedPreferences only, is
+**Phase 5A (original entry below, mostly accurate — superseded by the nav-restructuring entry
+above: «المساعد» is no longer a shell destination, it's pushed from a Today-tab button):** Added
+a full Arabic RTL read-only chat surface: asymmetric agent-pulse identity, first-use privacy
+disclosure, suggestions, streaming/typing states, grounded tool-read capsules, composer, and calm
+quota/offline/error cards. Message-list surfaces remain filter-free. Conversation history stays in SharedPreferences only, is
 grouped by local day, and prunes after seven days; it is never written to Firestore.
 
 The client now has `XaiProxyClient`, `ChatOrchestrator`, and the six planned read tools over the

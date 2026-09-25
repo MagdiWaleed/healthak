@@ -11,6 +11,7 @@ import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/motion/pressable.dart';
+import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/glass_tokens.dart';
@@ -53,7 +54,13 @@ class _AgentHistoryScreenState extends State<AgentHistoryScreen> {
           final filtered = controller.filtered;
           return Column(
             children: [
-              const SizedBox(height: 88),
+              // The GlassScaffold's AppBar is floating, so the filter row must
+              // clear both the status bar and the bar itself -- measured, not
+              // the magic 88 this used to be.
+              SizedBox(
+                  height: MediaQuery.paddingOf(context).top +
+                      kToolbarHeight +
+                      AppSpacing.sm),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 child: _FilterRow(controller: controller),
@@ -118,7 +125,8 @@ class _EntryList extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(4, AppSpacing.md, 4, AppSpacing.xs),
+              padding:
+                  const EdgeInsets.fromLTRB(4, AppSpacing.md, 4, AppSpacing.xs),
               child: Text(
                 section.label,
                 style: const TextStyle(
@@ -131,11 +139,14 @@ class _EntryList extends StatelessWidget {
             for (final entry in section.entries)
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                child: Obx(() => _EntryRow(
-                      entry: entry,
-                      busy: controller.undoingId.value == entry.id,
-                      onUndo: () => controller.undo(entry.id),
-                    )),
+                child: StaggeredEntry(
+                  index: index,
+                  child: Obx(() => _EntryRow(
+                        entry: entry,
+                        busy: controller.undoingId.value == entry.id,
+                        onUndo: () => controller.undo(entry.id),
+                      )),
+                ),
               ),
           ],
         );
@@ -212,7 +223,8 @@ class _EntryRow extends StatelessWidget {
                   Text(
                     entry.humanSummary,
                     style: TextStyle(
-                      color: entry.isUndone ? AppPalette.muted : AppPalette.text,
+                      color:
+                          entry.isUndone ? AppPalette.muted : AppPalette.text,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       height: 1.5,
@@ -224,7 +236,8 @@ class _EntryRow extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     _relativeTime(entry.timestamp),
-                    style: const TextStyle(color: AppPalette.muted, fontSize: 11),
+                    style:
+                        const TextStyle(color: AppPalette.muted, fontSize: 11),
                   ),
                 ],
               ),

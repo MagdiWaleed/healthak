@@ -33,3 +33,25 @@ Chat feature calls xAI directly from the Flutter client — no Cloud Functions d
 Default model is `grok-3-mini` (cheapest). Change via the model chip in the assistant tab header, or override the default with `XAI_MODEL` in `ai_secrets.json`.
 
 Never paste the raw key into chat, commits, or logs.
+
+## Build APK and install on your phone
+
+`adb` is not on PATH by default:
+```bash
+export PATH="$PATH:$HOME/AppData/Local/Android/sdk/platform-tools"
+```
+
+Build (always with the key, or the assistant has no API key at runtime) and install:
+```bash
+flutter build apk --release --dart-define-from-file=ai_secrets.json
+adb devices
+adb -s <device-id> install -r build/app/outputs/flutter-apk/app-release.apk
+```
+
+`<device-id>` is whatever `adb devices` lists (e.g. your phone's serial). Skip `-s <device-id>`
+only if exactly one device/emulator is connected.
+
+VS Code's `Ctrl+Shift+B` → "flutter: Build APK" task does **not** pass `--dart-define-from-file`
+by itself — it only builds, and without the key. Run the command above instead, or add
+`"args": ["--dart-define-from-file=ai_secrets.json"]` to a `.vscode/launch.json` config so `F5`
+carries it automatically.

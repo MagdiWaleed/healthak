@@ -66,6 +66,15 @@ class PrefsService extends GetxService implements ProfileCache {
   Future<void> acceptAssistantDisclosure() =>
       _prefs.setBool('assistantDisclosureAccepted', true);
 
+  /// One-time banner pointing out the history/sessions/new-chat header icons
+  /// -- added after the assistant tab already shipped, so nothing else
+  /// introduces them to an existing user.
+  bool get assistantHeaderTourSeen =>
+      _prefs.getBool('assistantHeaderTourSeen') ?? false;
+
+  Future<void> dismissAssistantHeaderTour() =>
+      _prefs.setBool('assistantHeaderTourSeen', true);
+
   /// The xAI model id the user picked for the assistant. Falls back to the
   /// build-time `--dart-define=XAI_MODEL`, then to the cheapest model.
   String get assistantModelId =>

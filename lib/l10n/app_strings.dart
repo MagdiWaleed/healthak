@@ -30,6 +30,7 @@ abstract final class AppStrings {
   static const market = 'السوق';
   static const account = 'حسابي';
   static const assistant = 'المساعد';
+  static const back = 'رجوع';
   static const assistantHeadline = 'أفهم يومك من بياناتك، ولا أخمّن';
   static const assistantEmpty =
       'اسألني عن طعامك وأهدافك. تعتمد إجابتي على بياناتك الصحية الفعلية.';
@@ -43,6 +44,10 @@ abstract final class AppStrings {
   static const assistantSuggestionToday = 'ماذا أكلت اليوم؟';
   static const assistantSuggestionProtein = 'اقترح وجبة بروتين من مكتبتي';
   static const assistantSuggestionWeek = 'كيف كان أسبوعي؟';
+  static const assistantSuggestionBreakfast = 'اقترح فطورًا صحيًا';
+  static const assistantSuggestionLunch = 'اقترح غداءً متوازنًا';
+  static const assistantSuggestionDinner = 'اقترح عشاءً خفيفًا';
+  static const assistantSuggestionGoal = 'هل أنا قريب من هدفي اليوم؟';
   static const assistantQuota = 'بلغت الحد اليومي — يمكنك المتابعة غدًا';
   static const assistantOffline = 'يحتاج المساعد إلى اتصال بالإنترنت';
   static const assistantRetry = 'حاول مجددًا';
@@ -52,6 +57,7 @@ abstract final class AppStrings {
   static const assistantUndo = 'تراجع';
   static const assistantCancelled = 'أُلغي الاقتراح';
   static const assistantUndone = 'تم التراجع';
+  static const assistantUndoExpired = 'انتهت مهلة التراجع';
   static const assistantEstimatedBadge = 'تقديري';
   static const assistantNewChat = 'محادثة جديدة';
   static const assistantHistoryTooltip = 'سجل المحادثات';
@@ -59,6 +65,9 @@ abstract final class AppStrings {
   static const assistantHistoryEmpty = 'لا توجد محادثات سابقة بعد';
   static const assistantHistoryUntitled = 'محادثة بلا عنوان';
   static const assistantHistoryDeleteTooltip = 'حذف المحادثة';
+  static const assistantHeaderTourMessage =
+      'جديد بالأعلى: سجل الإجراءات، سجل المحادثات، ومحادثة جديدة.';
+  static const assistantHeaderTourDismiss = 'فهمت';
 
   // «سجل المساعد» -- the write-action audit trail (Phase 5C), distinct from
   // the chat-session history above.

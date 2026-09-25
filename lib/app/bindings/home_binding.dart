@@ -24,13 +24,24 @@ class HomeBinding extends Bindings {
     // Registered on their own (not built inline inside ChatOrchestrator's
     // closure) so `lib/page/history_ai/` can `Get.find` the same instances
     // -- the audit log has to see exactly the writes the live chat made.
+    //
+    // `fenix: true`: the assistant page is reached via `pushHealthak`, which
+    // pushes a bare `GetPageRoute` through `Navigator.push` rather than
+    // `Get.to()`. That bypasses GetX's own route bookkeeping, and its default
+    // SmartManagement was intermittently disposing these the moment that
+    // route landed on top of Home -- even though Home never left the stack --
+    // producing a "ChatOrchestrator not found" crash on the assistant screen.
+    // `fenix` rebuilds from the same builder on the next `Get.find` instead
+    // of throwing; safe here since all three reload their state from
+    // SharedPreferences on construction anyway.
     Get.lazyPut(
       () => AgentToolRegistry(
         data: HealthakAgentDataSource(uid: uid),
         webSearch: createWebFoodSearchClient(),
       ),
+      fenix: true,
     );
-    Get.lazyPut<AgentActionLog>(SharedPrefsAgentActionLog.new);
+    Get.lazyPut<AgentActionLog>(SharedPrefsAgentActionLog.new, fenix: true);
     Get.lazyPut(
       () => ChatOrchestrator(
         client: createAiClient(),
@@ -40,6 +51,7 @@ class HomeBinding extends Bindings {
         resolveModel: () => Get.find<PrefsService>().assistantModelId,
         tools: Get.find<AgentToolRegistry>(),
       ),
+      fenix: true,
     );
   }
 }

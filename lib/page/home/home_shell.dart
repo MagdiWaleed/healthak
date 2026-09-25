@@ -14,7 +14,6 @@ import '../../ui/motion/navigation.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/glass_tokens.dart';
-import '../assistant/assistant_tab.dart';
 import '../meal_editor/meal_editor_screen.dart';
 import '../my_meals/my_meals_tab.dart';
 import '../today/quick_add_sheet.dart';
@@ -55,15 +54,14 @@ abstract final class HomeShellKeys {
 class HomeShell extends GetView<HomeController> {
   const HomeShell({super.key});
 
+  // The assistant used to be a fifth destination here; it's now reached from
+  // a button on the Today tab instead (see `_AssistantEntryButton`), pushed
+  // as its own page rather than living in this IndexedStack -- back to the
+  // original four-destination layout the nav bar's Row was designed for.
   static const _destinations = [
     (Icons.today_rounded, Icons.today_outlined, AppStrings.today),
     (Icons.restaurant_menu, Icons.restaurant_menu, AppStrings.myMeals),
     (Icons.storefront_rounded, Icons.storefront_outlined, AppStrings.market),
-    (
-      Icons.auto_awesome_rounded,
-      Icons.auto_awesome_outlined,
-      AppStrings.assistant
-    ),
     (Icons.person_rounded, Icons.person_outline, AppStrings.account),
   ];
 
@@ -91,7 +89,6 @@ class HomeShell extends GetView<HomeController> {
             const MyMealsTab(),
             const _Placeholder(
                 title: AppStrings.market, icon: Icons.storefront_outlined),
-            const AssistantTab(),
             _AccountTab(
               onGallery: () => Get.toNamed(AppRoutes.gallery),
               onSignOut: () async {
@@ -124,11 +121,9 @@ class HomeShell extends GetView<HomeController> {
             ),
           ),
         ),
-        floatingActionButton: index == 3
-            ? null
-            : _QuickAddFab(
-                onPressed: () => _onFabPressed(context, index),
-              ),
+        floatingActionButton: _QuickAddFab(
+          onPressed: () => _onFabPressed(context, index),
+        ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       );
     });

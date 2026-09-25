@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/day/day_log.dart';
+import '../../l10n/app_strings.dart';
 import '../../ui/components/calorie_ring.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
@@ -15,11 +16,14 @@ import '../../ui/motion/stacking_card.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/motion/celebration.dart';
 import '../../ui/motion/eat_toggle/eat_check.dart';
+import '../../ui/motion/pressable.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/glass_tokens.dart';
 import '../../ui/theme/mood_palette.dart';
 import '../../ui/theme/motion_settings.dart';
+import '../../ui/motion/navigation.dart';
+import '../assistant/assistant_tab.dart';
 import '../home/home_controller.dart';
 import 'edit_entry_sheet.dart';
 import 'quick_add_sheet.dart';
@@ -53,6 +57,13 @@ class _TodayTabState extends State<TodayTab> {
   final _rowReplayGuard = <Object>{};
   String? _guardForDateKey;
 
+  // Fades the assistant-entry button while the day's content is in motion,
+  // so it doesn't sit on top of a fast-scrolling list. `ScrollEndNotification`
+  // fires the instant a fling settles, which reads as a flicker on a short
+  // scroll -- debounce the "stopped" edge only.
+  bool _scrolling = false;
+  Timer? _scrollIdleTimer;
+
   @override
   void initState() {
     super.initState();
@@ -71,30 +82,60 @@ class _TodayTabState extends State<TodayTab> {
   @override
   void dispose() {
     _tabWorker?.dispose();
+    _scrollIdleTimer?.cancel();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) => Obx(() {
-        // `_dayView` is invoked synchronously inside this closure, so every
-        // `.value` it reads still registers as a dependency of *this* Obx.
-        final child = _dayView(context);
-        return AnimatedSwitcher(
-          duration: MotionSettings.duration(
-              context, const Duration(milliseconds: 240)),
-          switchInCurve: Curves.easeOutCubic,
-          switchOutCurve: Curves.easeInCubic,
-          // The default layout builder centres the outgoing child and sizes
-          // the stack to the incoming one, which collapses a full-height
-          // scroll view to nothing mid-transition. Both days are full-bleed
-          // here, so they simply overlap.
-          layoutBuilder: (current, previous) => Stack(
-            fit: StackFit.expand,
-            children: [...previous, if (current != null) current],
-          ),
-          child: child,
-        );
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollStartNotification) {
+      _scrollIdleTimer?.cancel();
+      if (!_scrolling) setState(() => _scrolling = true);
+    } else if (notification is ScrollEndNotification) {
+      _scrollIdleTimer?.cancel();
+      _scrollIdleTimer = Timer(const Duration(milliseconds: 150), () {
+        if (mounted) setState(() => _scrolling = false);
       });
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        children: [
+          NotificationListener<ScrollNotification>(
+            onNotification: _handleScrollNotification,
+            child: Obx(() {
+              // `_dayView` is invoked synchronously inside this closure, so
+              // every `.value` it reads still registers as a dependency of
+              // *this* Obx.
+              final child = _dayView(context);
+              return AnimatedSwitcher(
+                duration: MotionSettings.duration(
+                    context, const Duration(milliseconds: 240)),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                // The default layout builder centres the outgoing child and
+                // sizes the stack to the incoming one, which collapses a
+                // full-height scroll view to nothing mid-transition. Both
+                // days are full-bleed here, so they simply overlap.
+                layoutBuilder: (current, previous) => Stack(
+                  fit: StackFit.expand,
+                  children: [...previous, if (current != null) current],
+                ),
+                child: child,
+              );
+            }),
+          ),
+          Positioned(
+            top: 8,
+            left: 8,
+            child: SafeArea(
+              bottom: false,
+              child: _AssistantEntryButton(faded: _scrolling),
+            ),
+          ),
+        ],
+      );
 
   /// One day's screen, keyed by which day it is. The key is what turns a
   /// date change into a cross-fade while an eat-toggle on the *same* day
@@ -632,6 +673,44 @@ class _TodayRingHeaderDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.arrivalTrigger != arrivalTrigger ||
       oldDelegate.controller.selectedDate.value !=
           controller.selectedDate.value;
+}
+
+/// Entry point to the assistant, now that it's a pushed page rather than a
+/// bottom-nav tab. Fades and stops accepting taps while the day's list is
+/// being scrolled, so it never sits in the way of a fling.
+class _AssistantEntryButton extends StatelessWidget {
+  final bool faded;
+  const _AssistantEntryButton({required this.faded});
+
+  @override
+  Widget build(BuildContext context) => AnimatedOpacity(
+        duration: const Duration(milliseconds: 160),
+        opacity: faded ? .25 : 1,
+        child: IgnorePointer(
+          ignoring: faded,
+          child: Tooltip(
+            message: AppStrings.assistant,
+            child: Pressable(
+              onTap: () => pushHealthak(() => const AssistantTab()),
+              haptic: true,
+              pressedScale: .92,
+              child: Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .08),
+                  shape: BoxShape.circle,
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: .14)),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded,
+                    size: 19, color: AppPalette.emerald),
+              ),
+            ),
+          ),
+        ),
+      );
 }
 
 class _Greeting extends StatelessWidget {
