@@ -34,6 +34,13 @@ abstract final class AppStrings {
   static const dayNotEditable =
       'لم يعد هذا اليوم متاحًا للتعديل. ارجع واختر اليوم مجددًا.';
   static const entryAdded = 'أُضيف الطبق إلى يومك';
+  static const quickFoodPortionTitle = 'حدّد كمية المكوّن';
+  static const portionGrams = 'الكمية بالجرام';
+  static const invalidPortion = 'أدخل كمية أكبر من صفر.';
+  static const quickFoodAdded = 'أُضيف المكوّن إلى يومك';
+  static const quickFoodSaveFailed =
+      'تعذّرت إضافة المكوّن. الكمية ما زالت هنا، حاول مرة أخرى.';
+  static String portionCalories(int kcal) => '$kcal سعرة لهذه الكمية';
   static const noDayChange = 'عُد لليوم لإضافة طعامك';
   static String calculatedKcal(int kcal) => '$kcal سعرة (محسوبة تلقائيًا)';
   static const weekdayShort = ['إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت', 'أحد'];

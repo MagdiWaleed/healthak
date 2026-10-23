@@ -12,6 +12,7 @@ import '../../ui/theme/app_spacing.dart';
 import '../foods/food_picker_sheet.dart';
 import '../meal_editor/meal_editor_screen.dart';
 import 'manual_entry_sheet.dart';
+import 'quick_food_portion_sheet.dart';
 import 'today_controller.dart';
 
 /// The Today FAB's menu: [أضف وجبة من مكتبتي / أضف مكوّناً سريعاً /
@@ -31,7 +32,9 @@ class QuickAddSheet {
           onQuickFood: () async {
             Navigator.of(sheetContext).pop();
             final food = await FoodPickerSheet.show(context);
-            if (food != null) await controller.quickAddFood(food);
+            if (food != null && context.mounted) {
+              await QuickFoodPortionSheet.show(context, controller, food);
+            }
           },
           onManualEntry: () {
             Navigator.of(sheetContext).pop();

@@ -1,5 +1,28 @@
 # PROGRESS — handoff
 
+## CLI emulator journey and quick-food confirmation (2026-10-24)
+
+Installed the new debug APK on headless Pixel_4 (`emulator-5554`) and walked
+Today, historical Friday, My Meals/library, schedule, market, account, manual
+entry, food picker, portion review, and the assistant entry. The market is
+still a placeholder. The assistant opened with the existing conversation;
+no AI request was sent in this pass.
+
+Found that selecting a catalog food logged 100 g immediately. Added a portion
+review sheet with editable grams, optional meal slot, live kcal preview,
+positive-number validation, loading/error states, and no write on selection or
+cancel. On the emulator, verified the sheet above the keyboard, zero-gram
+disabled save, 150 g preview and lunch selection. Saved temporary Kabsa at
+100 g, confirmed its Today card, then deleted it. Both Oct 23 and Oct 24
+showed their original meals and 0 consumed after cleanup. A brief return to
+Android Home occurred around deletion; logcat had no fatal exception and the
+delete persisted after relaunch, so the cause was not established.
+
+Verification: `flutter analyze --no-pub` clean, all **203 tests pass**, debug
+APK builds and installs. CLI screenshots/XML are gitignored under
+`output/emulator-ux/`, including `portion-review.png`, `food-saved-list.png`,
+`cleanup-confirmed.png`, `my-meals-tab.png`, and `assistant-screen.png`.
+
 ## UI reference, food imagery, and CLI emulator verification (2026-10-23)
 
 Continuing `cline-UI` after the first mockup was called out as the visual target.
@@ -1838,6 +1861,7 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 |---|---|---|
 | Living Glass default with repeated arrival/scroll effects | Light opaque surfaces, compact Today and stable labelled controls | User explicitly requested implementing the reviewed new UI on cline-UI (2026-10-23). Domain, storage and confirmation semantics preserved; voice remains separate. |
 | UI refresh used slot icons while real food media was absent | Bundle generated dish and catalog photos with exact name/ingredient matching, retain icon for unknown foods | User explicitly requested original food images matching the first mockup. Local assets keep the current frozen-day and Firestore schemas intact. |
+| Catalog quick-add selected a food and immediately logged 100 g | Add an editable portion and meal-slot review before creating the day entry | CLI emulator walk exposed an accidental-log path; user requested improving the journey after testing. |
 | `tool/migrate_foods.dart` | `tool/migrate_foods.js` (Node + `firebase-admin`) | The Admin SDK bypasses security rules, so `foods` stays client-read-only and no weakened ruleset ever gets deployed. A Dart script would have needed a Flutter runtime *and* a temporary permissive rule. |
 | Generate `asset/image/noise.png` | Deferred to Step 1 as `lib/ui/background/grain_texture.dart` | Procedural generation — a seeded `Random` painted once into a `ui.Image` and tiled via `ImageShader`. No binary asset in git, tunable at runtime, one-time cost. |
 | TFLite caller "stubbed out" | Replaced with a working proportional-scale solver | ~15 lines, and strictly better than the broken model. Kept the legacy screen functional until Step 2 deleted it (now moot — the screen is deleted). |
