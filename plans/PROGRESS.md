@@ -1,5 +1,20 @@
 # PROGRESS — handoff
 
+## Repository review and UI/voice recommendation (2026-10-23)
+
+Review only; application behavior unchanged. Findings and next-step recommendations:
+`output/review/review-2026-10-23.md`; generated UI concept:
+`output/review/healthak-ui-concept.png`. Source review identified non-atomic assistant
+replacement/freshness checks, proxy tool parity gaps, and a marketplace delete-rule issue
+requiring emulator verification. Proposed a calmer Today screen and short-command voice
+input reusing the existing orchestrator; neither proposal is implemented.
+
+Current verification: `flutter test` 188 pass / 2 fail (fixed-date action-log fixtures
+expire under the current clock); `flutter analyze` one info at
+`agent_tool_registry.dart:860` (missing braces). No live UI/device/provider QA this turn.
+The older implementation entries below remain historical; AGENTS.md/CLAUDE.md and parts
+of this handoff need a separate current-state consolidation.
+
 **Last updated:** 2026-09-04
 
 ## ✅ Assistant moved off the bottom nav, onto its own pushed page (2026-09-04)
