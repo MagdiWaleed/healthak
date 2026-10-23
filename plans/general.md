@@ -20,7 +20,7 @@ is blocked on user credentials, and what to do next.
 | `step3.md` | Marketplace | not started |
 | `step4.md` | Polish: motion, settings, RTL sweep, performance, a11y | not started |
 | `sideplan1_guest_mode.md` | Read-only first-launch guest preview | initial preview complete |
-| `step5.md` | AI assistant — **TBD, not yet specified** | blocked on spec |
+| `step5_ai_agent/` | AI agent: chat, diet tools, coaching, search, voice, premium | specified |
 
 ---
 
@@ -833,9 +833,9 @@ space-and-parenthesis filename in the asset manifest.
 
 ## 13. AI assistant — TBD
 
-An AI assistant is planned, but **its behaviour and scope have not been drafted yet**. Nothing
-in Steps 0–4 depends on it, and no code should be written for it until it is specified. See
-`step5.md` for the open questions.
+An AI agent is **specified** — see `step5_ai_agent/` (chat, diet tools, coaching, search,
+voice, premium). Nothing in Steps 0–4 depends on it. The one decision still open before
+Phase 5A: where the API key lives (see the folder's README).
 
 Two things are worth noting now so the design doesn't have to be unpicked later:
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,6 +12,7 @@ import '../../domain/meal/meal_definition.dart';
 import '../../domain/meal/meal_entry.dart';
 import '../../domain/meal/meal_math.dart';
 import '../../domain/meal/meal_solver_bridge.dart';
+import '../../domain/nutrition/energy.dart';
 import '../../domain/nutrition/macros.dart';
 import '../../domain/nutrition/portion_solver.dart';
 import '../../domain/schedule/schedule_item.dart';
@@ -51,6 +54,8 @@ class MealEditorController extends GetxController {
   final loading = true.obs;
   final saving = false.obs;
   final error = RxnString();
+  final _todayDay = Rxn<DayLog>();
+  StreamSubscription<DayLog?>? _todaySubscription;
 
   /// Set once a meal is loaded for editing; null while composing a new one.
   final String? _editingId;
@@ -82,6 +87,44 @@ class MealEditorController extends GetxController {
   bool get isNew => _editingId == null;
   bool get isEmpty => entries.isEmpty;
   bool get canUndo => _undo != null;
+
+  /// The current daily target is a comparison aid while composing a meal; the
+  /// draft itself remains a reusable recipe and never stores this value.
+  NutritionTargets? get dailyTargets => _session.profile.value?.targets;
+
+  /// True when the meal being edited already has at least one frozen
+  /// occurrence in today's log or schedule-materialised entries. Only then is
+  /// "today after this edit" a real number rather than a hypothetical.
+  bool get editedMealIsOnToday {
+    if (_editingId == null) return false;
+    final day = _todayDay.value;
+    if (day == null) return false;
+    return day.entries.any((e) => e.sourceMealId == _editingId);
+  }
+
+  /// Whether the header should project this draft onto today's planned total.
+  /// A brand-new meal is assumed bound for today; an edit only counts if the
+  /// meal is actually on today. Editing a library meal that is not on today
+  /// must not fabricate a day total that adding it never produced.
+  bool get projectsOntoToday => isNew || editedMealIsOnToday;
+
+  /// The whole planned day after applying this draft.
+  ///
+  /// While editing a meal that is already present today, its frozen entry is
+  /// removed from the comparison before the draft is added. Otherwise the
+  /// same meal is counted twice and every editor page reports a different,
+  /// inflated remainder. Multiple occurrences are replaced one-for-one.
+  ///
+  /// Returns [totals] (the draft alone) when there is no day projection to
+  /// make -- an unmaterialised today, or editing a meal not on today.
+  Macros get totalsAfterApplyingDraft {
+    final day = _todayDay.value;
+    if (day == null || !projectsOntoToday) return totals;
+    return day.plannedTotalsAfterDraft(
+      replacingMealId: _editingId,
+      draftTotals: totals,
+    );
+  }
 
   MealResolver get _resolver => MealResolver(_otherMeals.values);
 
@@ -118,7 +161,16 @@ class MealEditorController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _todaySubscription = _days.watch(DateTime.now()).listen((day) {
+      _todayDay.value = day;
+    });
     _load();
+  }
+
+  @override
+  void onClose() {
+    _todaySubscription?.cancel();
+    super.onClose();
   }
 
   Future<void> _load() async {
@@ -319,6 +371,18 @@ class MealEditorController extends GetxController {
         name: name.value.trim(),
         entries: entries,
       ));
+      if (_editingId != null) {
+        final flat = flattenMeal(
+          saved,
+          MealResolver([..._otherMeals.values, saved]),
+        );
+        await _days.refreshMealOccurrences(
+          dateKey: DayLog.keyFor(DateTime.now()),
+          sourceMealId: saved.id,
+          name: saved.name,
+          items: [for (final item in flat) FrozenItem.fromFlat(item)],
+        );
+      }
       return saved;
     } catch (e) {
       error.value = e.toString();
@@ -340,7 +404,8 @@ class MealEditorController extends GetxController {
 
     final now = DateTime.now();
     final day = await _days.ensureDay(date: now, targets: profile.targets);
-    final flat = flattenMeal(saved, MealResolver([..._otherMeals.values, saved]));
+    final flat =
+        flattenMeal(saved, MealResolver([..._otherMeals.values, saved]));
 
     await _days.upsertEntry(
       day.dateKey,
@@ -373,7 +438,8 @@ class MealEditorController extends GetxController {
   /// preserving their slot, order, and days. Called only when the user
   /// explicitly opts in via the "تحديث الجدول أيضاً؟" prompt.
   Future<void> refreshLinkedSchedule(List<ScheduleItem> items) async {
-    final saved = _draftMeal().copyWith(name: name.value.trim(), entries: entries);
+    final saved =
+        _draftMeal().copyWith(name: name.value.trim(), entries: entries);
     final flat =
         flattenMeal(saved, MealResolver([..._otherMeals.values, saved]));
     final snapshot = [for (final f in flat) FrozenItem.fromFlat(f)];
@@ -394,7 +460,8 @@ class MealEditorController extends GetxController {
     final saved = await save();
     if (saved == null) return false;
 
-    final flat = flattenMeal(saved, MealResolver([..._otherMeals.values, saved]));
+    final flat =
+        flattenMeal(saved, MealResolver([..._otherMeals.values, saved]));
     final now = DateTime.now();
     await _schedule.save(ScheduleItem(
       id: _uuid.v4(),

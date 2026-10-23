@@ -1,12 +1,17 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/nutrition/energy.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/glass_button.dart';
+import '../../ui/components/energy_breakdown_card.dart';
 import '../../ui/components/glass_field.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
+import '../../ui/theme/app_colors.dart';
+import '../../ui/theme/motion_settings.dart';
 import 'onboarding_controller.dart';
 
 class OnboardingScreen extends GetView<OnboardingController> {
@@ -24,6 +29,10 @@ class OnboardingScreen extends GetView<OnboardingController> {
                       : AppStrings.guestHeadline,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
+                const SizedBox(height: 14),
+                _OnboardingArc(
+                  progress: controller.collectingProfile.value ? .66 : .33,
+                ),
                 const SizedBox(height: 20),
                 GlassCard(
                   child: controller.collectingProfile.value
@@ -38,6 +47,75 @@ class OnboardingScreen extends GetView<OnboardingController> {
               ],
             )),
       );
+}
+
+/// The first appearance of the ring vocabulary. Authentication and profile
+/// completion are the two durable stages in the current onboarding flow, so
+/// this fills between them without inventing a third persisted state.
+class _OnboardingArc extends StatelessWidget {
+  final double progress;
+  const _OnboardingArc({required this.progress});
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(end: progress),
+        duration: MotionSettings.duration(
+          context,
+          const Duration(milliseconds: 420),
+        ),
+        curve: Curves.easeOutCubic,
+        builder: (_, value, __) => Center(
+          child: RepaintBoundary(
+            child: CustomPaint(
+              size: const Size.square(58),
+              painter: _OnboardingArcPainter(value),
+              child: const Center(
+                child: Icon(Icons.auto_graph_rounded,
+                    size: 20, color: AppPalette.mint),
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class _OnboardingArcPainter extends CustomPainter {
+  final double progress;
+  const _OnboardingArcPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const start = -math.pi / 2;
+    final stroke = size.width * .075;
+    final arc = (Offset.zero & size).deflate(stroke);
+    canvas.drawArc(
+      arc,
+      0,
+      math.pi * 2,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = Colors.white.withValues(alpha: .12),
+    );
+    canvas.drawArc(
+      arc,
+      start,
+      math.pi * 2 * progress,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = stroke
+        ..shader = const SweepGradient(
+          colors: [AppPalette.emerald, AppPalette.mint, AppPalette.emerald],
+        ).createShader(arc),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _OnboardingArcPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class _AuthForm extends StatelessWidget {
@@ -170,34 +248,23 @@ class _ProfileForm extends StatelessWidget {
         const SizedBox(height: 16),
         Obx(() {
           final targets = controller.previewTargets.value;
+          final year = int.tryParse(controller.birthYear.text);
+          final height = double.tryParse(controller.height.text);
+          final weight = double.tryParse(controller.weight.text);
           return AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
             child: targets == null
                 ? const SizedBox.shrink()
-                : Container(
+                : EnergyBreakdownCard.preview(
                     key: ValueKey(targets.kcal.round()),
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(children: [
-                      const Text('هدفك اليومي المحسوب'),
-                      Text(
-                        '${targets.kcal.round()} سعرة',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      Text(
-                        'بروتين ${targets.macros.protein.round()} ج  •  '
-                        'كربوهيدرات ${targets.macros.carbs.round()} ج  •  '
-                        'دهون ${targets.macros.fat.round()} ج',
-                        textAlign: TextAlign.center,
-                      ),
-                    ]),
+                    weightKg: weight!,
+                    heightCm: height!,
+                    ageYears: DateTime.now().year - year!,
+                    sex: controller.sex.value,
+                    activity: controller.activity.value,
+                    goal: controller.goal.value,
+                    weeklyRateKg: controller.weeklyRate.value,
+                    targets: targets,
                   ),
           );
         }),

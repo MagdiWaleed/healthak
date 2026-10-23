@@ -30,17 +30,34 @@ class DayRepository {
   Future<List<DayLog>> getRange(DateTime start, DateTime end) async {
     final snapshot = await _refs
         .days(uid)
-        .where(FieldPath.documentId, isGreaterThanOrEqualTo: DayLog.keyFor(start))
+        .where(FieldPath.documentId,
+            isGreaterThanOrEqualTo: DayLog.keyFor(start))
         .where(FieldPath.documentId, isLessThanOrEqualTo: DayLog.keyFor(end))
         .get();
     return snapshot.docs.map((document) => document.data()).toList();
   }
+
+  /// Live version of [getRange]: one listener over a bounded id range, so a
+  /// day document appearing (today being materialized, a past day being
+  /// corrected) updates the caller without a re-query.
+  Stream<List<DayLog>> watchRange(DateTime start, DateTime end) => _refs
+      .days(uid)
+      .where(FieldPath.documentId, isGreaterThanOrEqualTo: DayLog.keyFor(start))
+      .where(FieldPath.documentId, isLessThanOrEqualTo: DayLog.keyFor(end))
+      .snapshots()
+      .map((snapshot) =>
+          snapshot.docs.map((document) => document.data()).toList());
 
   Stream<DayLog?> watch(DateTime date) => _refs
       .days(uid)
       .doc(DayLog.keyFor(date))
       .snapshots()
       .map((snapshot) => snapshot.data());
+
+  /// One cache-aware read used by callers that need a bounded snapshot rather
+  /// than a live subscription, such as the read-only assistant tools.
+  Future<DayLog?> get(DateTime date) async =>
+      (await _refs.days(uid).doc(DayLog.keyFor(date)).get()).data();
 
   Future<DayLog> ensureDay({
     required DateTime date,
@@ -54,18 +71,50 @@ class DayRepository {
     return _refs.firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(ref);
       final current = snapshot.data();
+      // Equality, not `>=`. This is a content fingerprint, not a counter --
+      // it has no ordering, so "greater or equal" was never a meaningful test
+      // of freshness: roughly half the time a *stale* stored value compared
+      // greater than a current one and materialization was skipped, and the
+      // other half an *unchanged* schedule compared lower and the day was
+      // needlessly rebuilt.
+      //
+      // A profile-only target change must not re-materialize scheduled rows.
+      // Activity level changes the target, not the day's meals. Rebuilding
+      // those rows here can replace their snapshots, reorder the main tab,
+      // and disturb in-flight card animations even though the schedule is
+      // unchanged. Keep the exact entry list and refresh only today's target.
       if (current != null &&
-          current.materializedFromScheduleVersion >= scheduleVersion) {
-        return current;
+          current.materializedFromScheduleVersion == scheduleVersion) {
+        if (current.targets == targets) return current;
+        final refreshed = current.copyWith(targets: targets);
+        transaction.set(ref, refreshed);
+        return refreshed;
       }
 
       var day = current ?? DayLog.empty(date, targets);
+      // What the user has already ticked off has to survive a
+      // re-materialization. Rebuilding a scheduled row from its schedule item
+      // produces a fresh entry with `eaten: false` and a new uuid, so without
+      // this, any genuine schedule edit -- adding tomorrow's lunch, reordering
+      // -- would silently un-tick everything eaten so far today.
+      //
+      // This does not weaken the daily reset: a new day has no document, so
+      // there is nothing here to carry over and every entry still starts
+      // false, with no reset code to get wrong.
+      final previous = {
+        for (final entry in day.entries)
+          if (entry.origin == DayEntryOrigin.scheduled &&
+              entry.scheduleItemId != null)
+            entry.scheduleItemId!: entry,
+      };
       final retained = day.entries
           .where((entry) => entry.origin != DayEntryOrigin.scheduled);
       day = day.copyWith(
+        targets: targets,
         entries: [
           ...retained,
-          for (final item in scheduled) _fromSchedule(item),
+          for (final item in scheduled)
+            _fromSchedule(item, previous: previous[item.id]),
         ],
         materializedFromScheduleVersion: scheduleVersion,
       );
@@ -82,6 +131,28 @@ class DayRepository {
       final day = (await transaction.get(ref)).data();
       if (day == null) throw StateError('Day $dateKey does not exist');
       transaction.set(ref, day.withEntry(entry));
+    });
+  }
+
+  /// Replaces every current-day occurrence sourced from one explicitly saved
+  /// meal. The transaction preserves entry ids, ordering, and eaten state and
+  /// cannot overwrite a concurrent eat toggle with a stale controller copy.
+  Future<void> refreshMealOccurrences({
+    required String dateKey,
+    required String sourceMealId,
+    required String name,
+    required List<FrozenItem> items,
+  }) async {
+    final ref = _refs.days(uid).doc(dateKey);
+    await _refs.firestore.runTransaction((transaction) async {
+      final day = (await transaction.get(ref)).data();
+      if (day == null) return;
+      final refreshed = day.refreshMealOccurrences(
+        sourceMealId: sourceMealId,
+        name: name,
+        items: items,
+      );
+      if (!identical(refreshed, day)) transaction.set(ref, refreshed);
     });
   }
 
@@ -106,14 +177,22 @@ class DayRepository {
     });
   }
 
-  DayEntry _fromSchedule(ScheduleItem item) => DayEntry(
-        entryId: _uuid.v4(),
+  /// Builds today's row for a scheduled item, carrying over [previous]'s
+  /// identity and eaten state when this day already had a row for it.
+  ///
+  /// Reusing the entryId matters as much as the flag: entries are addressed by
+  /// localId everywhere (list keys, an in-flight eat toggle, a `Dismissible`),
+  /// so minting a new one mid-session would repoint all of them.
+  DayEntry _fromSchedule(ScheduleItem item, {DayEntry? previous}) => DayEntry(
+        entryId: previous?.entryId ?? _uuid.v4(),
         origin: DayEntryOrigin.scheduled,
         scheduleItemId: item.id,
         sourceMealId: item.mealId,
         name: item.name,
         slot: item.slot,
         order: item.order,
+        eaten: previous?.eaten ?? false,
+        eatenAt: previous?.eatenAt,
         items: item.snapshot,
       );
 }

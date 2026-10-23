@@ -195,4 +195,4 @@ it without asking.**
   stale one is worse than none.
 - Record any deviation from the approved plan in the "Deviations" table there, with the reason.
 - Features the user has mentioned but not specified get a stub file listing the open questions —
-  see `plans/step5.md` (the AI assistant). Do not write code for an unspecified feature.
+  see `plans/step5_ai_agent/`. Do not write code for an unspecified feature.

@@ -4,6 +4,43 @@ import 'package:diet_app2/domain/profile/user_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('same user snapshots with changed fields are distinct', () {
+    final now = DateTime(2026, 8, 29);
+    final original = UserProfile(
+      uid: 'u1',
+      displayName: 'Magdi',
+      email: 'm@example.com',
+      sex: Sex.male,
+      birthYear: 1995,
+      heightCm: 178,
+      weightKg: 80,
+      activityLevel: ActivityLevel.light,
+      goal: Goal.cut,
+      weeklyRateKg: .5,
+      targets: NutritionTargets.compute(
+        weightKg: 80,
+        heightCm: 178,
+        ageYears: 31,
+        sex: Sex.male,
+        activity: ActivityLevel.light,
+        goal: Goal.cut,
+        weeklyRateKg: .5,
+      ),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final changed = original.copyWith(
+      activityLevel: ActivityLevel.moderate,
+      updatedAt: now.add(const Duration(minutes: 1)),
+    );
+
+    // GetX uses equality to suppress duplicate Rx emissions. Equality by uid
+    // made every Firestore update for an existing user disappear, leaving
+    // Today with stale activity and target data after a profile save.
+    expect(changed, isNot(equals(original)));
+  });
+
   test('profile survives the cache mapper with settings and targets', () {
     final now = DateTime(2026, 8, 28);
     final original = UserProfile(

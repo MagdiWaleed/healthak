@@ -47,7 +47,11 @@ Future<void> main() async {
 
   runApp(const HealthakApp());
   WidgetsBinding.instance.addPostFrameCallback((_) {
-    unawaited(performance.sample().then(settings.applyDetectedQuality));
+    // Let the first real screen settle before measuring frame times --
+    // sampling the launch frames themselves misreads every device as slow.
+    Future<void>.delayed(const Duration(seconds: 3), () {
+      unawaited(performance.sample().then(settings.applyDetectedQuality));
+    });
   });
 }
 

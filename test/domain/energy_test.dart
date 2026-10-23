@@ -26,19 +26,43 @@ void main() {
       expect(bmr, closeTo(1320.25, 0.01));
     });
 
-    test('preferNotToSay sits exactly between male and female', () {
+    test('male and female differ by exactly the Mifflin-St Jeor constants', () {
       const args = (w: 70.0, h: 172.0, a: 28);
       final male = bmrMifflinStJeor(
           weightKg: args.w, heightCm: args.h, ageYears: args.a, sex: Sex.male);
       final female = bmrMifflinStJeor(
-          weightKg: args.w, heightCm: args.h, ageYears: args.a, sex: Sex.female);
-      final neutral = bmrMifflinStJeor(
-        weightKg: args.w,
-        heightCm: args.h,
-        ageYears: args.a,
-        sex: Sex.preferNotToSay,
+          weightKg: args.w,
+          heightCm: args.h,
+          ageYears: args.a,
+          sex: Sex.female);
+      expect(male - female, closeTo(166, 0.01));
+    });
+
+    test('daily delta and weekly rate are exact inverses', () {
+      expect(dailyDeltaForWeeklyRate(0.5), closeTo(550, 0.01));
+      expect(weeklyRateForDailyDelta(550), closeTo(0.5, 0.0001));
+      expect(weeklyRateForDailyDelta(dailyDeltaForWeeklyRate(0.73)),
+          closeTo(0.73, 0.0001));
+    });
+
+    test('effectiveWeeklyRateKg reports the clamped rate, not the asked one',
+        () {
+      // A very small, very light person asking for a 1 kg/week cut: the
+      // energy floor stops the target well above maintenance - 1100.
+      final bmr = bmrMifflinStJeor(
+          weightKg: 45, heightCm: 150, ageYears: 25, sex: Sex.female);
+      const activity = ActivityLevel.sedentary;
+      final target = dailyTarget(
+        bmr: bmr,
+        activity: activity,
+        goal: Goal.cut,
+        weeklyRateKg: 1,
+        sex: Sex.female,
       );
-      expect(neutral, closeTo((male + female) / 2, 0.01));
+      final effective = effectiveWeeklyRateKg(
+          bmr: bmr, activity: activity, targetKcal: target);
+      expect(effective, lessThan(1));
+      expect(effective, greaterThanOrEqualTo(0));
     });
 
     test('uses height, weight and age -- all three change the result', () {

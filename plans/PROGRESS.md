@@ -1,13 +1,1016 @@
 # PROGRESS — handoff
 
-**Last updated:** 2026-08-28
+## Repository review and UI/voice recommendation (2026-10-23)
+
+Review only; application behavior unchanged. Findings and next-step recommendations:
+`output/review/review-2026-10-23.md`; generated UI concept:
+`output/review/healthak-ui-concept.png`. Source review identified non-atomic assistant
+replacement/freshness checks, proxy tool parity gaps, and a marketplace delete-rule issue
+requiring emulator verification. Proposed a calmer Today screen and short-command voice
+input reusing the existing orchestrator; neither proposal is implemented.
+
+Current verification: `flutter test` 188 pass / 2 fail (fixed-date action-log fixtures
+expire under the current clock); `flutter analyze` one info at
+`agent_tool_registry.dart:860` (missing braces). No live UI/device/provider QA this turn.
+The older implementation entries below remain historical; AGENTS.md/CLAUDE.md and parts
+of this handoff need a separate current-state consolidation.
+
+**Last updated:** 2026-09-04
+
+## ✅ Assistant moved off the bottom nav, onto its own pushed page (2026-09-04)
+
+Boss's request: the assistant shouldn't be a fifth bottom-nav destination any more, textfield
+should sit flush at the screen bottom (no shared nav bar/FAB to clear underneath it), and the
+entry point should live on the Today tab and fade out while its content is scrolling.
+
+**Done, live-verified on `emulator-5554`:**
+- `lib/page/home/home_shell.dart` — `AssistantTab` import and `IndexedStack` entry removed;
+  `_destinations` back to 4 (today/myMeals/market/account); FAB unconditional (was
+  `index == 3 ? null : …`, a leftover from when index 3 didn't want it).
+- `lib/page/assistant/assistant_tab.dart` — body wrapped in its own `GlassScaffold` (it owns
+  full-screen chrome now, the same way `MealEditorScreen` does, instead of sitting inside the
+  shell's shared one); the old `SizedBox(height: 98)` that cleared the shared nav bar is gone —
+  the composer now clears only the device's own bottom safe area, so it sits flush at the
+  bottom. `_AssistantHeader` gained a leading back button
+  (`Icons.arrow_forward_rounded` — a static glyph, not auto-mirrored like the built-in
+  `AppBar` back icon, so right-pointing is the correct RTL reading; confirmed on device it
+  renders correctly and pops the route).
+- `lib/page/today/today_tab.dart` — new `_AssistantEntryButton` (top-left, `Positioned` +
+  `SafeArea`), `pushHealthak(() => const AssistantTab())` on tap. Scroll-aware: build wrapped in
+  `NotificationListener<ScrollNotification>` tracking `_scrolling`, debounced 150ms on
+  `ScrollEndNotification` (an un-debounced flip made short scrolls flicker), driving
+  `AnimatedOpacity` + `IgnorePointer` on the button.
+- `lib/l10n/app_strings.dart` — `AppStrings.back = 'رجوع'`.
+
+**Device walk:** tapped the new button from Today → pushed Assistant page opened with the prior
+conversation intact, composer flush at the bottom; back button returned cleanly to Today; swiped
+the day list and captured a mid-scroll frame showing the button faded/non-interactive, then a
+post-settle frame showing it back at full opacity. Bottom nav confirmed at 4 destinations.
+`flutter analyze` (repo-wide) and `flutter test` (179/179) clean after the change.
+
+**Not yet done:** the inline proposal-edit feature (grams/slot nudge on a pending card without
+cancel-and-reask) — the second half of the boss's "polish then edit" choice, not started.
+
+**Bug found and fixed same day: "ChatOrchestrator" not found on the assistant screen
+(2026-09-04).** The boss hit a full-screen GetX error opening the assistant after the above
+restructuring. Not reliably reproducible through cold-start-then-tap, background/resume, or a
+process kill-and-resume cycle, but the mechanism is clear: `pushHealthak` (`lib/ui/motion/navigation.dart`)
+pushes a bare `GetPageRoute` through `Navigator.push` rather than `Get.to()`, which bypasses
+GetX's own route bookkeeping — its default SmartManagement can then dispose Home's `lazyPut`
+dependencies (`AgentToolRegistry`, `AgentActionLog`, `ChatOrchestrator`) the moment a route lands
+on top of Home, even though Home never left the stack. Fix: all three now register with
+`fenix: true` in `lib/app/bindings/home_binding.dart` — if GetX disposes one, the next `Get.find`
+rebuilds it from the same builder instead of throwing; safe since all three reload their state
+from SharedPreferences on construction anyway. Verified with a 5x push/pop stress cycle on
+`emulator-5554` (open assistant → back → repeat) with no crash; `flutter analyze` and
+`flutter test` (179/179) clean after.
+
+---
+
+## ✅ Agent UI/UX enhancement pass — COMPLETE (2026-09-04)
+
+All four journey surfaces now carry the Living Glass language. `flutter analyze` 0 issues,
+`flutter test` 179/179 after the final piece. Remaining: a device walk of
+disclosure → first message → proposal → confirm → receipt → action log, and the standing
+real-device raster-p95 gate.
+
+**Done:**
+- `lib/page/today/today_tab.dart` — "Layered Today" (separate entry below).
+- `lib/page/assistant/assistant_tab.dart`:
+  - `_AssistantHeader` — gradient wordmark (mint→emerald, w900, −.5 tracking).
+  - `_Composer` — send button L3 emerald glow; violet glow + spinner while `sending`.
+  - `_BubbleEntrance` — 260ms fade-lift on every bubble, `MotionSettings`-gated.
+  - `_EmptyConversation` — gradient headline.
+  - `_ProposalCard` — pending proposals now breathe a violet glow via new private
+    `_BreathingGlow` (2s repeating boxShadow alpha .16→.34, settles flat on resolve,
+    `MotionSettings`-gated, no blur filter).
+  - `_ReceiptCard` — one-shot emerald bloom (boxShadow .30→0 over 600ms, once).
+- `lib/page/history_ai/agent_history_screen.dart` — magic `SizedBox(height: 88)` replaced
+  with measured `padding.top + kToolbarHeight + sm`; log rows now `StaggeredEntry`.
+
+**Note for future editors:** `assistant_tab.dart` uses **LF line endings** — the editor
+tool's CRLF-anchored matching failed on it twice; edits landed via exact-LF text or
+script. Match LF when editing this file.
+
+---
+
 **Current position:** Step 0 COMPLETE. Step 1 implementation COMPLETE (one real-device gate still
 open). **Step 2 implementation COMPLETE** — the full personal loop (catalog, meal editor with
 nesting, my meals, today, history, profile) is built, wired, and the legacy codebase it replaces
 is deleted. Not yet committed to git; not yet walked by hand on a device/emulator.
 
+**Step 5 AI Agent — Phase 5A, 5B, and 5C complete and live-verified
+(2026-09-04); plus a chat-session/history mechanism not in the original plan
+(also live-verified); Phase 5D (`isPremium` gating, coaching tools) not
+started; voice split into `plans/voice_agent_deferred.md`:**
+
+**Phase 5A (original entry below, mostly accurate — superseded by the nav-restructuring entry
+above: «المساعد» is no longer a shell destination, it's pushed from a Today-tab button):** Added
+a full Arabic RTL read-only chat surface: asymmetric agent-pulse identity, first-use privacy
+disclosure, suggestions, streaming/typing states, grounded tool-read capsules, composer, and calm
+quota/offline/error cards. Message-list surfaces remain filter-free. Conversation history stays in SharedPreferences only, is
+grouped by local day, and prunes after seven days; it is never written to Firestore.
+
+The client now has `XaiProxyClient`, `ChatOrchestrator`, and the six planned read tools over the
+real repositories (`get_today`, `get_history_range`, `get_profile`, `get_meals`, `search_foods`,
+`get_remaining_targets`). Correct meal totals are recomputed with `macrosOfMeal`, never trusted
+from `totalsCache`; profile email is excluded. Tool calls are capped, the restored model context
+is bounded, and actual upstream cost is read from xAI's usage ticks when returned.
+
+`functions/agentTurn` is implemented as an authenticated Node 20 Firebase v2 HTTPS proxy with
+server-owned tool schemas, a server-only `agentUsage` daily quota, streamed normalized SSE,
+`reasoning_effort: none`, and an 800-token response cap. Per the boss's Grok request, Phase 5A
+uses the stable low-cost `grok-4.3` model instead of the plan's Gemini Flash default. The API key
+was intentionally **not** written anywhere because the supplied key appeared in chat and must be
+rotated first. Nothing has been deployed and no Blaze/billing change was made. Remaining exit
+gate: rotate the key, set Firebase secret `XAI_API_KEY`, deploy the function, then live-check the
+two specified grounded Arabic questions plus forced quota/offline paths. Actual model spend is
+therefore not measured yet.
+
+Local verification: `flutter analyze` clean after the final pass; all 139 tests pass, including
+all six read tools, cache-vs-derived meal totals, streamed tool orchestration, quota handling,
+and seven-day local retention; `npm run check` passes; debug APK builds. Emulator visual QA at
+1080×2280 confirmed the new tab's RTL hierarchy, disclosure layout, model badge, pulse motif,
+five-destination nav, FAB-free composer clearance, and focused keyboard state. No Flutter error
+appeared in the runtime log. `npm audit --omit=dev` still reports the upstream Firebase Admin
+dependency chain's seven moderate `uuid <11.1.1` advisories; npm offers only a forced breaking
+downgrade to `firebase-admin@10.3.0`, so no unsafe automatic rewrite was applied.
+
+**Step 5A — direct-provider path added (2026-09-04):** the boss asked to skip the proxy and
+call xAI straight from Dart, use the cheapest Grok model, and make the model switchable. The
+404 the boss hit was simply that the proxy was never deployed (Cloud Functions API is still
+disabled on `diet-app-a908a`; `firebase functions:list` → `SERVICE_DISABLED`). Rather than
+gate on a Blaze upgrade, `ai_client.dart` now ships two `AiClient`s:
+
+- `XaiProxyClient` — unchanged, the eventual production path.
+- `XaiDirectClient` — POSTs straight to `https://api.x.ai/v1/chat/completions`, prepends the
+  shared `kAgentSystemPrompt` (`lib/service/agent/agent_prompt.dart`, byte-paired with the
+  proxy's copy), parses raw xAI SSE (text deltas, indexed `tool_calls` accumulation, usage
+  ticks). `createAiClient()` picks it whenever `--dart-define=XAI_API_KEY` is non-empty, else
+  falls back to the proxy. The key is embedded in the binary and extractable — the xAI account
+  spend cap is the only ceiling. Supply it via `ai_secrets.json` (gitignored, see
+  `ai_secrets.example.json`) + `flutter run --dart-define-from-file=ai_secrets.json`.
+
+**Model picker.** `lib/service/agent/agent_model_catalog.dart` holds the allowlist
+(`grok-3-mini` default/cheapest, `grok-4-fast-non-reasoning`, `grok-4-fast-reasoning`,
+`grok-4`), each carrying the correct `reasoning_effort` (only `grok-3-mini` sends `low`; the
+others must omit the field or xAI 400s — this also fixes the old hardcoded
+`reasoning_effort: "none"` which would have broken those models). The assistant header's static
+"Grok 4.3" badge is now a `PopupMenuButton` writing `assistantModelId` to prefs;
+`ChatOrchestrator` re-reads it each turn via a `resolveModel` callback and passes `model:` to
+the client. `functions/index.js` enforces the same allowlist server-side (`modelAllowlist`), so
+a modified client cannot request an unlisted/more expensive model through the proxy.
+
+Verification: `flutter analyze` clean; **144 tests pass** (+5: `xai_direct_client_test.dart`
+covers SSE parse, model pass-through, 401→unauthorized, 429→quota; `chat_orchestrator_test.dart`
+gains a model-resolver assertion); `node --check functions/index.js` OK; the Functions emulator
+was run locally and the endpoint answered 401/405/JSON-error correctly (no 404, no crash). A
+real end-to-end model round-trip is still unrun here — needs the boss's rotated key.
+
+**Deviation from the plan's key policy:** the plan mandated a proxy with a `kReleaseMode` assert
+blocking any embedded key. The boss overrode this for a personal-scale app. `XaiDirectClient`
+works in release with no assert; mitigation is a dedicated xAI key + a hard spend cap the boss
+sets at console.x.ai. Proxy code is kept intact for a later switch.
+
+**Step 5B — write tools + confirmation cards (2026-09-04):** implemented per
+`plans/step5_ai_agent/02_tools.md` and `07_phases.md`, on top of the direct-xAI path
+from the 5A follow-up above.
+
+- `lib/service/agent/agent_proposal.dart` (new): `Proposal` (resolved, validated
+  payload -- never raw model ids/macros), `AgentReceipt` (carries its own undo chain
+  as ready-to-confirm inverse `Proposal`s), `AgentProposalStaleException`.
+- `agent_tools.dart`: the seven `propose_*` tool schemas from `02_tools.md`
+  (`AgentTools.proposeOnly`, `AgentTools.all` = read + propose, 13 total).
+- `agent_data_source.dart`: `AgentDataSource` gained the write surface
+  (`ensureDay`, `upsertDayEntry`, `removeDayEntry`, `getFoodById`,
+  `createPersonalFood`, `getMealById`, `saveMeal`, `deleteMeal`, `uid`).
+- `agent_tool_registry.dart`: one builder per propose tool (resolves real
+  `FoodItem`/`MealDefinition`/`DayEntry` before ever building a card -- an unknown id
+  is refused before a proposal exists, matching the plan's hallucination rails) plus
+  `confirm(Proposal)` and `undo(AgentReceipt)`. `confirm` re-fetches the day and
+  refuses (`AgentProposalStaleException`) if the targeted entry's item count, kcal,
+  or eaten state moved since the proposal was built. `undo` is literally
+  `confirm` on the receipt's own inverse chain -- swap's inverse is two steps
+  (remove the new entry, restore the old one), everything else is one.
+- `chat_orchestrator.dart`: a tool call that produces a `Proposal` is parked as a
+  `ChatMessageKind.proposal` card (`pendingConfirm`); any earlier pending card is
+  superseded (marked cancelled) first, and tools are disabled for the rest of that
+  turn so the model cannot chain a second proposal before the user acts on the
+  first. New `confirmProposal`/`cancelProposal`/`undoReceipt` methods.
+- `assistant_tab.dart`: `_ProposalCard` (تأكيد/إلغاء, kind-specific detail rows --
+  macros, before/after grams, swap delta, «تقديري» badge) and `_ReceiptCard` (a
+  تراجع chip visible for ten minutes post-execution, self-ticking every 20s to hide
+  itself once the window closes). `AgentActionLog`'s full audit screen is Phase 5C;
+  this inline chip is what 5B's exit criteria actually ask for.
+- System prompt (`agent_prompt.dart`, paired copy in `functions/index.js`) updated:
+  propose-only, never claim an action happened, one proposal per reply.
+
+**Deviations from `02_tools.md` / `01_architecture.md`, recorded here as instructed:**
+1. **No `dateKey` argument.** Every propose tool operates on *today* only; the
+   plan's "mirror `editingPast`" rule was dropped rather than plumbed through chat,
+   since nothing in the assistant surface lets a user pick a past day to begin with.
+2. **`propose_create_meal` accepts only flat catalog foods**, no `MealRefEntry`
+   nesting. Letting a model construct a valid nested structure (depth/leaf-count/cycle
+   invariants) was judged more risk than the feature is worth for v1; the meal editor
+   remains the place to nest.
+3. **`propose_log_custom_component`'s undo removes the day entry but keeps the
+   created personal food.** Treated as consistent with the existing component-editor
+   feature (creating a component is already independent of logging it), not a bug.
+4. **The Cloud Functions proxy's tool schema was not extended** to the seven
+   propose tools -- only its system prompt was kept byte-paired. The proxy path is
+   currently unused (direct xAI client is active); porting the schemas is required
+   before the proxy can be the active path again, noted inline in `functions/index.js`.
+5. **No inline "عدّل" (edit) affordance on a proposal card** -- only تأكيد/إلغاء.
+   Editing a pending proposal's grams/slot before confirming was in scope per
+   `02_tools.md` but out of proportion to build this pass; cancelling and asking
+   again is the escape hatch for now.
+
+Verification: `flutter analyze` clean; **153 tests pass** (+9 in
+`agent_tool_registry_test.dart`: every propose tool's happy path, an unknown-id
+rejection, confirm+undo round trips for log/swap/update-grams/create-meal, and the
+staleness refusal). Live-walked end to end on `emulator-5554` with the boss's real
+xAI key: asked in English ("log 150g chicken breast for lunch") since the emulator's
+`adb input text` cannot type Arabic -- the model correctly refused to hallucinate a
+catalog id, called `search_foods`, found no exact match, and asked to clarify rather
+than guess (exactly the hallucination-rail behavior the plan asks for). Retried with
+"log one of my saved meals for lunch": `get_meals` → `propose_log_meal` → a proposal
+card rendered with real macros (619 kcal, 68.1 g protein, 64.3 carb, 10.0 fat) and
+تأكيد/إلغاء → تأكيد wrote it, Today's المأكول panel updated live (protein
+target-line 151→219 g, matching the exact planned delta) → تراجع chip undid it, Today
+reverted to the exact original numbers (151/227/54). Confirmed the write is
+plan-only, not eaten (`DayEntry.eaten` defaults false, ring stayed at 0), matching
+existing quick-add/library-meal behavior.
+
+**Web search for uncatalogued foods (2026-09-04):** the boss asked for "search a
+component's macros over the internet." Tried xAI's Live Search
+(`search_parameters` on `/v1/chat/completions`, what Phase 5D's `06_premium.md`
+assumed) first -- **confirmed live via curl it is deprecated and returns HTTP 410
+for the entire request**, not just the search, regardless of shape. This was
+briefly wired into `ai_client.dart` and would have broken every chat turn; caught
+and reverted before it ever reached the emulator, by curling xAI directly rather
+than trusting the request shape.
+
+The replacement is xAI's newer Agent Tools API, but it only exists on a different
+endpoint (`/v1/responses`, `input` instead of `messages`, structured `output`
+items instead of chat deltas) -- confirmed working via curl including citations.
+Rather than fork the whole streaming client onto that endpoint, added one isolated
+piece: `lib/service/agent/web_food_search_client.dart` makes a single, non-streaming
+`/v1/responses` call with `tools: [{"type": "web_search"}]` only when the new
+`search_food_online` tool actually runs. The main `grok-3-mini` conversation on
+`/v1/chat/completions` is completely untouched by this.
+
+**Confirmed live and undocumented:** a `web_search`-enabled `/v1/responses` call
+silently ignores the requested chat model and always executes on a larger model
+server-side (observed `grok-4.3` regardless of what was requested) -- not user
+selectable, no workaround found. Cost was ~$0.026 for a two-search lookup in
+testing; acceptable since it only fires after `search_foods` finds nothing, not on
+every turn.
+
+`AgentToolRegistry` takes an optional `webSearch: WebFoodSearchClient?` (`null` when
+no direct key -- mirrors `createAiClient()`'s proxy/direct split); `search_food_online`
+joins `AgentTools.readOnly` (now 7 read + 7 propose = 14 tools). System prompt
+(`agent_prompt.dart`, paired `functions/index.js`) updated: `search_foods` first,
+`search_food_online` only if that finds nothing, always say the values are from the
+web and name the source; logging one still goes through the existing
+`propose_log_custom_component` (تقديري) -- no new write path needed. `readTools` in
+the proxy also got the schema (execution is always registry-side regardless of
+proxy/direct, so this is safe even though the proxy itself is unused).
+
+Verification: `flutter analyze` clean; **158 tests pass** (+5:
+`web_food_search_client_test.dart` parses the `/v1/responses` shape into text +
+citations and maps 429→quota; two new registry tests for the unavailable and
+happy paths). Live-walked on `emulator-5554` with the boss's real key: asked for
+dragon fruit's macros ("...search online") -- `search_foods` ran first, found
+nothing, `search_food_online` ran, and the reply was «قيم التنين لكل ١٠٠ غرام من
+الإنترنت: سعرات ٦٨ · بروتين ٠.٧غ · كربوهيدرات ١٦.٢غ · دهون ٠.٢غ (المصدر:
+NutritionAdvance / USDA تقريبية)» -- explicitly labeled as from the internet with
+a named source, exactly the grounding rule in the prompt. Confirmed the main
+`grok-3-mini` chat path is unaffected by the aborted Live Search attempt (older
+410 bubble stayed in scrollback from before the fix; the new turn completed
+clean).
+
+**Phase 5B full-functionality device walk + two real bugs found and fixed
+(2026-09-04):** the boss asked to actually drive every write path end-to-end on
+device: log a web-found component, design a whole meal from it, swap a saved meal
+in, all confirm+undo. Found two genuine bugs along the way (not model flakiness):
+
+1. **`AgentDataSource.getFoodById` only checked the shared `foods` collection.**
+   A personal component created via `search_food_online` →
+   `propose_log_custom_component` (or the existing component-editor feature) has
+   its `food_id` in `users/{uid}/foods`, not `foods` -- so `propose_log_food`,
+   `propose_create_meal`, and swap's new-meal resolution could never use one,
+   even though `search_foods` finds them fine (it already merges both). Fixed:
+   `getFoodById` now falls back to `listPersonal()` when the shared lookup misses.
+   New regression test: `propose_log_food resolves a personal (not just shared)
+   food by id`.
+2. **The model would sometimes narrate "اقترحت كذا" (I proposed X) in plain text
+   without ever calling the `propose_*` tool** -- confirmed by instrumenting the
+   registry with temporary debug logging (removed after) and watching zero tool
+   invocations fire for a turn that still produced acknowledgement text. No data
+   was ever at risk (nothing runs without a real `Proposal`), but it's a broken
+   promise to the user: text claims a card exists when it doesn't. Root cause was
+   partly `grok-3-mini` being cheap/small and partly the system prompt not
+   explicitly forbidding this specific pattern. Tightened `agent_prompt.dart`
+   (paired `functions/index.js`): describing a proposal without having just
+   called its tool in the same reply is now spelled out as lying to the user, and
+   the model is told to re-call a tool rather than trust a stale prior result in
+   conversation history.
+
+**New: precalled personal catalog (2026-09-04).** The boss asked to stop making
+the model search for things it already owns. `AgentToolRegistry.buildKnownCatalogContext()`
+fetches the user's personal components and saved meals (small, owned collections
+-- never the large shared catalog) and formats them as `name (food_id: ...)` /
+`name (meal_id: ...)`. `ChatOrchestrator.send()` fetches this once per user
+message and every `AiClient` implementation injects it as a second system message
+(`knownCatalog` param), never stored in persisted `_apiMessages` history so it
+can't grow the context window turn over turn. `AgentDataSource` gained
+`getPersonalFoods()`. Confirmed live: a `propose_create_meal` request that
+previously needed two `search_foods` round-trips went straight to a valid card
+with zero searches once the ids were precalled.
+
+**Live device verification, this entry, in order:**
+1. `propose_log_custom_component` (dragon fruit macros from `search_food_online`)
+   → card with «تقديري» badge → confirm → personal `FoodItem` created (verified
+   independently in the Components screen with a «خاص بك» badge) → entry appears
+   in Today's planned totals.
+2. `propose_create_meal` naming that personal component + a catalog food → after
+   the `getFoodById` fix, a real card (`٢ مكوّنات، ٤٤٠.٩ سعرة`) → confirm → saved
+   to the meal library → undo → deleted from the library (`ProposalKind.deleteMeal`
+   inverse).
+3. `propose_swap_meal` swapping the snack entry for a saved meal → card showed
+   the macro delta (`515.1+` سعرة, correct sign) → confirm → Today's planned
+   totals updated live (152→219 g protein etc.) → undo → Today reverted to the
+   exact original entry (two-step inverse chain: remove the new entry, restore
+   the old one byte-for-byte).
+4. `propose_remove_entry` used to clean up the test data afterward → confirmed
+   → Today back to its original 151/227/54 baseline.
+
+All four used the real confirm/undo/receipt UI, not mocks. One methodological
+note for whoever continues this: a chat thread that has already seen a tool
+error can get "poisoned" -- the model sometimes keeps citing the stale failure
+in later turns instead of retrying, even after the underlying bug is fixed. Both
+bugs above were only cleanly reproduced after clearing `SharedPreferences` (`adb
+shell run-as com.example.diet_app2 rm shared_prefs/FlutterSharedPreferences.xml`)
+to start a fresh conversation -- worth doing before concluding a fix didn't work.
+
+Verification: `flutter analyze` clean; **161 tests pass** (+3 over the web-search
+entry above: the personal-food-by-id regression test, and two
+`buildKnownCatalogContext` tests -- populated and empty).
+
+**Chat history / multi-session mechanism (2026-09-04), a boss request not in
+the original Step 5 plan:** the assistant used to be one continuous rolling
+conversation, grouped by local day, 7-day retention. The boss asked for
+distinct, switchable chat threads with an AI-generated title from each
+thread's first message -- the ChatGPT-sidebar pattern -- not to be confused
+with Phase 5C's `04_action_history.md` (a *write-action* audit log, still
+unbuilt; this is conversation threads).
+
+- `lib/service/agent/chat_session.dart`: `ChatSession` (id, title, createdAt,
+  updatedAt).
+- `agent_conversation_store.dart` rewritten around sessions instead of days:
+  `listSessions`/`loadMessages`/`saveMessages`/`upsertSession`/`deleteSession`.
+  Retention is now a **60-session cap**, oldest pruned by `updatedAt`, replacing
+  the old 7-day window (a thread can span many days now, so a day-based window
+  no longer made sense as the retention unit). Still device-only, still never
+  written to Firestore -- same privacy line as before, just a different bucket.
+- `lib/service/agent/chat_title_generator.dart`: one-shot, non-streaming call to
+  `/v1/chat/completions` (`grok-3-mini`, ~20 tokens) asking only for a 2-5 word
+  Arabic title -- deliberately outside `ChatOrchestrator`'s main persona/tool
+  context, its own small request. Falls back to a plain 40-character truncation
+  of the first message if unset, offline, or the call fails; never blocks
+  sending or shows an error of its own.
+- `ChatOrchestrator` gained `sessions` (`RxList<ChatSession>`) and
+  `currentSessionId`, plus `startNewSession()` / `openSession(id)` /
+  `deleteSession(id)`. A session is created lazily on first send (nothing
+  persists for an empty, never-sent thread); title generation fires once,
+  fire-and-forget, right after a session's first exchange completes.
+- `assistant_tab.dart` header gained two icon buttons (history, new chat) and
+  a `_SessionListSheet` (via the shared `GlassSheet`) listing threads
+  newest-first with relative time and a delete action; the active thread is
+  highlighted.
+
+Verification: `flutter analyze` clean; **172 tests pass** (+11: the
+conversation-store suite rewritten for the session API including a 60-session
+prune test and a legacy-row-decode test; six new orchestrator tests covering
+fallback titling, AI titling, `startNewSession`, `openSession`, `deleteSession`,
+and that a fresh `ChatOrchestrator` instance reopens the most recently active
+session). Live-walked on `emulator-5554`: sent "what is my daily protein
+goal" → AI title came back as «هدف البروتين اليومي» (accurate, concise,
+in MSA despite the English question); `startNewSession` → empty state →
+second question got its own title «اقتراح وجبة خفيفة غنية بالألياف»; history
+sheet listed both, newest first, correct relative times; tapped the older one
+→ its exact messages restored; **force-killed and cold-relaunched the app** →
+reopened the most-recently-active thread automatically; deleted a thread →
+gone from the list immediately.
+
+**Phase 5C — «سجل المساعد» action audit log (2026-09-04), per
+`04_action_history.md`:** the write-action audit trail, distinct from the chat-session
+history above (that's threads; this is every executed write, cross-session).
+
+- `lib/service/agent/agent_action_log.dart` (new): `AgentActionLogEntry`
+  {id, timestamp, kind, humanSummary, inverseChain, undoneAt} and
+  `SharedPrefsAgentActionLog` -- device-only, **30-day retention**, v1, per the
+  plan. `AgentActionCategory` (add/edit/remove/swap) derives from
+  `ProposalKind` for the filter chips; never stored separately.
+- **The hard part: undo has to survive an app restart, where no live
+  `Proposal` object exists in memory anymore.** `AgentToolRegistry` gained
+  `serializeProposalForLog`/`deserializeProposalForLog`. Scoped down from "make
+  every `Proposal` JSON-round-trippable" (a large undertaking touching
+  `FoodItem`/`MealDefinition`/etc.) to what's actually needed: **only a
+  proposal's *inverse* chain is ever persisted**, and every inverse `confirm()`
+  produces is one of exactly two shapes -- a `DayEntry` snapshot
+  (`removeEntry`/`restoreEntry`) or a bare meal id (`deleteMeal`). Hand-rolled
+  plain-Dart `DayEntry` JSON (reusing `FrozenItem`'s existing
+  `toJson`/`fromJson`) inside the registry file, where the otherwise-private
+  execArgs types already live -- no domain-layer changes, no Firestore
+  `Timestamp` dependency.
+- `AgentToolRegistry.undo()` now returns **every** inverse step's own receipt
+  (was: only the last). Matters because "an undo is itself a logged action" per
+  the plan -- each step gets its own audit row, and swap's inverse is two real
+  writes.
+- `ChatOrchestrator` gained `AgentActionLog? actionLog`; `confirmProposal` and
+  `undoReceipt` both call a new `_recordAction` after every real write,
+  best-effort (a logging failure never blocks the chat turn that produced it).
+- `lib/page/history_ai/` (new): `AgentHistoryController` (plain object, not
+  `Get.put` -- same pattern as `MealEditorController` and friends, `onInit()`
+  called manually from the screen's `initState`) and `AgentHistoryScreen`,
+  pushed via the existing `pushHealthak` helper (no named-route entry needed).
+  Reverse-chronological, day-sectioned (اليوم/أمس/date) `GlassCard` rows, tool
+  icon in a category-colored ring chip, per-row تراجع that **deserializes the
+  persisted inverse and confirms it through the same registry path** -- proving
+  undo works even when the `Proposal` that made it was built in a different
+  session. Filter chips (الكل/إضافة/تعديل/حذف/استبدال), empty state, struck-through
+  «تم التراجع» once undone. Entry point: a third header icon in the assistant
+  tab (fact-check icon), alongside the chat-history and new-chat icons added
+  earlier today.
+- `AgentToolRegistry` and the new `AgentActionLog` are now registered as their
+  own `Get.lazyPut` bindings in `HomeBinding` (previously the registry was
+  built inline inside `ChatOrchestrator`'s closure) so `lib/page/history_ai/`
+  can `Get.find` the exact same instances the live chat writes through.
+- **Deviation, recorded per the plan's own instruction:** empty-state and
+  section-header copy was written in Modern Standard Arabic rather than the
+  spec file's literal colloquial example text (`"لسه مفيش أكشنات"`, `"أمبارح"`),
+  to match this repo's already-locked Step 5 language decision (MSA-only for
+  all assistant-authored text, decided earlier the same day). The *content* and
+  layout match `04_action_history.md` exactly; only the register of the Arabic
+  differs from the spec's example phrasing.
+
+Verification: `flutter analyze` clean; **179 tests pass** (+7: `agent_action_log_test.dart`
+covers record/list ordering, `markUndone`, 30-day pruning, and the category
+mapping; two new registry tests prove a serialize→JSON-encode→JSON-decode→deserialize
+round trip still undoes correctly, and that a forward-only kind serializes to
+`null`; one orchestrator test confirms `confirmProposal` writes a log entry and
+`undoReceipt` both marks it undone and logs the undo as its own entry).
+
+**Live-verified on `emulator-5554`, the critical path being the screen-level
+undo (not the in-chat receipt chip):** logged "دولما" (200g, lunch) through
+chat → confirmed → opened «سجل المساعد» → the entry appeared under «اليوم»
+with a تراجع link and a green «+» category chip → filtered to «إضافة», entry
+still showed → **tapped تراجع from the history screen itself** → the row
+flipped to struck-through «تم التراجع» → switching the filter to «الكل»
+revealed a **second, brand-new row** — «حذفت دولما من يومك» — proving the undo
+was logged as its own action, exactly per the "undo is itself a logged action"
+rule → confirmed on the Today tab that the entry was actually gone from the
+real day log. This is the one path that could not be exercised by the
+in-session `_ReceiptCard` chip alone, since that chip only ever undoes a
+`Proposal` still sitting in memory from the same session.
+
+**Voice split out of Step 5 (2026-09-04):** the boss asked to skip voice for now and
+pull it into its own plan rather than leave it as Step 5's final phase. `05_voice.md`
+moved verbatim to `plans/voice_agent_deferred.md` (top-level, sibling to `general.md`),
+marked DEFERRED/not scheduled. `07_phases.md`'s "Phase 5V" section replaced with a
+pointer to that file; Step 5's phase set is now 5A–5D only. `README.md`,
+`03_chat_ux.md` cross-references to `05_voice.md`/"Phase 5V" updated to point at the new
+file instead. No code changed — this is a planning-doc reorg so Step 5 can be considered
+complete without waiting on voice's separate dependency-approval gate
+(`speech_to_text`/`flutter_tts`).
+
+**Step 5 language decision (2026-09-04):** all assistant-authored text is Modern Standard
+Arabic. The UI copy, local status/error messages, quota/offline states, and proxy system prompt
+were normalized to neutral MSA. Grok may understand dialectal user input, but it is explicitly
+instructed never to mirror a regional dialect in its answer. The decision is now locked in the
+Step 5 README for phases 5B–5V as well.
+
 **Side Plan 1:** the first-launch guest preview is complete. It is local and read-only; see
 `sideplan1_guest_mode.md`.
+
+**Side Plan 2 (started, Workstream A):** Today now has a filter-free
+`MacroNumbersPanel` directly below the calorie ring. It presents protein, carbs, and fat as
+exact consumed/target grams with the same emerald/amber/violet mapping as the ring, a
+direction-aware `TickerNumber`, and a planned-versus-consumed toggle. `MacroBar` now supports
+the specified faded planned extension and 60ms staggered fills without adding blur or packages.
+The panel fades out with the pinned ring header's existing collapse. Automated validation is
+still pending: the local Flutter/Dart analyzer processes were already occupied and produced no
+completion result during this handoff, so this slice is not yet marked verified.
+
+**Side Plan 2 (Workstream B, implementation complete pending validation):** Added
+`EnergyBreakdownCard`, a presentational BMR → activity-adjusted total burn → goal adjustment
+→ daily-target chain. It uses the existing `bmrMifflinStJeor`, `tdee`, and frozen
+`NutritionTargets` values rather than changing or duplicating nutrition logic; manual targets
+say so plainly. The same card now appears above the profile target diff and replaces the bare
+onboarding target preview, with live ticker values as the inputs change. Full analyzer/test/APK
+validation is still pending alongside Workstream A for the same local analyzer-process reason.
+
+**Side Plan 2 (Workstream C, started):** Added the pure-Dart cost vocabulary in
+`lib/domain/nutrition/cost.dart` with coverage, known-total, missing-price, and explicit-skip
+semantics, plus focused unit tests. The next slice is the local `PriceBook`, then the read-only
+cost aggregation/controller and UI. This does not overlap the current uncommitted today-target
+refresh fix in `DayRepository` / `TodayController`.
+
+Workstream C now also merges frozen day leaves by `foodId` before a caller resolves local
+override/catalog prices, so multiple uses of one food become one price-editable line. `PriceBook`
+persists price overrides, currency, and intentional skips locally with focused tests; no
+Firestore data shape was added.
+
+`CostController` now composes the current frozen day, the active weekly schedule, and the
+30.4-day monthly estimate; catalog prices are read-only fallbacks beneath local overrides.
+The budget screen is finished and wired at `/cost`, reached from the Account list beside
+السجل and تصفح المكوّنات — **not** the fifth shell tab it was first built as. The plan
+(sideplan2 C.3) required confirming the tab count with the boss first, and the nav bar's Row is
+four `Expanded` destinations plus a fixed 64px FAB notch: a fifth leaves ~51dp per destination
+on a 360dp screen and less than the icon pill needs below that, so the documented fallback
+placement was taken instead. Moving it back is one route entry away if the boss wants the tab.
+
+`CostController` was rewritten from the first pass: `refresh` renamed to `reload` (it was
+shadowing `GetxController.refresh`), the `late PriceBook` + `try/catch`-on-`LateInitializationError`
+guard replaced with a plain nullable, catalog prices fetched once with `Future.wait` instead of
+one sequential round trip per component per reload, an epoch guard added (the day stream and the
+period chips can both fire a reload across an `await`, and the later result must win), and an
+error path added — a throw used to leave the spinner up forever. A day with nothing logged yet
+now falls back to the scheduled week scaled to one day rather than reporting that the diet costs
+nothing, and the week composition adds this week's one-shot entries while skipping materialized
+scheduled ones, which the schedule already accounts for. The screen carries the period chips,
+the total hero with its coverage line and estimate caption, staggered priced rows, the «بلا سعر»
+section with its count badge and تخطَّ action, an empty state, and currency editing through
+`GlassSheet`.
+
+A skip is now reversible: `PriceBook.unskip` plus a `CostController.unskip`, and the row's
+action slot flips from تخطَّ to an amber undo once skipped. Previously the only way out of a
+skip was to invent a price, which is exactly what the skip marker exists to avoid.
+
+**Found on device and fixed:** switching period changed the heading instantly (it reads
+`period.value`) but the figures could not change until a schedule read and a day-range read came
+back, so the screen spent that window showing a week's totals under the شهر heading — the same
+class of stale-state bug as the Today tab's day-switch flash. `CostController.renderedPeriod`
+records which period the numbers in `components` were computed for, and `isStale` drives a
+`LinearProgressIndicator` under the chips plus a 35% fade over the whole body, so an outgoing
+period's numbers are never presented as the incoming one's.
+
+**Prices can be entered per kilo, per component.** A market quotes "chicken is 15 a kilo"
+while the catalog and the macros are per 100g, so the page now does that division instead of
+the user. `PriceUnit` (`per100g` / `perKg`, carrying its own `per100Multiplier`) plus
+`pricePer100From` / `priceIn` live in `cost.dart` and are the only place the conversion exists.
+Storage never changes shape: `ComponentCost.pricePer100` and the price book stay per 100g, so
+the unit is presentation only and flipping it cannot move a cost -- there is a test asserting
+exactly that. The unit is stored **per food** in the price book (`units` in the same JSON
+blob), not as one screen-wide setting, because rice comes by the kilo and a spice does not;
+each row carries a tappable `/كجم` chip that cycles it. Default is `perKg`. First built as a
+global toggle and changed on the boss's call.
+
+**Meal editor target guidance:** the live header now compares the planned daily kcal, protein,
+carbs, and fat after applying the current draft against the user's targets. Amounts still needed
+render muted grey; once a metric reaches or exceeds its target, it changes to emerald and states
+the amount above target. For a new meal this is every meal already planned today plus the draft.
+When editing a meal already present today, its frozen occurrence(s) are removed from the preview
+and replaced one-for-one by the draft, preventing double-counting. The editor explicitly labels
+this as a planned total; Today's main ring centre remains consumed-only and its `planned to`
+caption is the matching figure. This is guidance-only and is not persisted into the reusable
+meal definition or used to rewrite a frozen day log.
+Regression coverage: `test/domain/day_log_draft_totals_test.dart` proves new-draft addition,
+single-occurrence replacement, multiple-occurrence replacement, and preservation of entry id /
+eaten state when today's occurrence is refreshed after Save.
+
+**Explicit current-day refresh deviation:** saving an existing meal now re-flattens and replaces
+that meal's occurrence(s) in **today's** log in a Firestore transaction. This was requested after
+device testing showed an edited 256-kcal recipe still had a stale 512-kcal frozen copy in Today,
+making the editor preview 1983 while Today stayed at 2239. Entry ids, slots, order, origin, and
+eaten state are preserved. Past days remain frozen, and linked future schedule snapshots still
+use their existing explicit update prompt.
+
+**Today baseline calories:** the summary below the calorie ring now shows the user's maintenance
+calories (`TDEE = BMR x activity`) as `سعرات الثبات`, rather than exposing raw BMR.
+The adjacent daily target remains the saved goal-adjusted `DayLog.targets.kcal` value.
+
+**Emulator-only runtime crash fixed:** rebuilding Today's sliver list could detach a
+`StackingCard` between its render-object checks and `localToGlobal()`, producing
+`RenderSliverMultiBoxAdaptor.childMainAxisPosition` and a null-check exception. The scroll-stack
+effect now treats that transient frame as zero overshoot; the motion is skipped for one frame
+instead of crashing the screen. Reproduced on Pixel 4 / `emulator-5554` before the fix.
+
+**Global FAB controller crash fixed:** Pixel 4 testing also reproduced
+`"TodayController" not found` from `HomeShell._onFabPressed`. Ownership was split between
+`HomeShell` and `TodayTab`, whose `dispose()` could delete the shared controller. `HomeBinding`
+now owns the controller for the home route; both widgets only resolve it and neither manually
+deletes it.
+
+**Eat-toggle render assertion fixed:** device testing proved the Firestore toggle and consumed
+macro/kcal updates worked, but `_StrikeText` animated its width between `0` and
+`double.infinity`, causing `Cannot interpolate between finite constraints and unbounded
+constraints`. The strike now animates a finite `widthFactor` from 0 to 1. The test toggle was
+returned to its original uneaten state after verification.
+
+**Crash on cancelling the currency sheet, found on device.**
+`'_dependents.isEmpty': is not true` (`InheritedElement.debugDeactivated`), every time the
+sheet was dismissed. `_editCurrency` owned the `TextEditingController` and disposed it as soon
+as `GlassSheet.show`'s future resolved -- but that future completes when the pop *starts*, so
+the controller was torn out from under a `TextField` still mounted for the exit animation.
+Replaced with a `_CurrencySheet` `StatefulWidget` that disposes in its own `dispose`, where the
+ordering cannot be got wrong. Audited every other `TextEditingController` in `lib/page` and
+`lib/ui`: all the rest are owned by a `State` or a GetX controller with a matching dispose, so
+this was the only instance.
+
+**Device verification (emulator-5554):** priced four components with dummy values
+(12 / 8 / 6 / 25 per 100g). يوم 266 ج.م from the day log; أسبوع 1358 from the schedule with the
+«من جدولك الأسبوعي» caption; شهر 5898 = 1358 x 30.4/7 with the estimate caption. Coverage line
+tracked 0→4 of 5 and the «بلا سعر» badge counted down 5→1. Prices survived leaving and
+re-entering the screen (SharedPreferences). Skip and un-skip both round-tripped. Currency editing verified in both directions: cancelling
+is clean, and saving re-labels the hero and every row (ج.م -> SAR). Per-row units verified:
+flipping ترمس to /١٠٠غ re-denominated that field 60 -> 6, left its cost at SAR 48, and left
+every other row and the total untouched.
+
+**Living Glass:** Kimi's Phase 1 foundations are implemented: shared springs, haptics, mood
+tokens, reduced-motion gate, ticker number, and the requested glass/typography/copy tokens.
+They remain deliberately opt-in apart from routing existing haptics and `Pressable` through the
+central systems. `flutter analyze` is clean, `flutter test` has 98 passing tests, and the debug
+APK builds. The emulator eye check and logcat smoke test passed; real-device profile raster data
+remains a separate cross-phase performance gate.
+
+**Living Glass Phase 2:** implemented and emulator-smoke-tested: `ReactiveAurora` lerps the
+existing painter's colors/alpha/vignette/grain only (no new blur); Today publishes hysteretic
+progress mood to the shell; the calorie-ring accent follows it; and `SpecularBorder` uses one
+throttled scroll-angle notifier per `GlassScaffold`. `GlassCard` / `GlassSurface` now consume
+L0-L3 elevation tokens without adding a `BackdropFilter`. Analyzer, all 98 tests, and the debug
+APK pass. The remaining Phase 2 exit gate is baseline-versus-new profile raster p95 on a **real
+mid-range device**; the desktop-mode emulator is not valid evidence for that measurement.
+
+**Living Glass Phase 3:** implemented and verified by analyzer, all 98 tests, and a debug APK
+build. A positive Today check now has the contained check morph, deterministic overlay burst,
+ring ripple, and central tick phrase; undo remains deliberately flat. `TodayController` owns an
+in-memory, per-date edge trigger at 95% of target, so the 24-particle goal celebration and ring
+double-pulse play once per day/session rather than on Firestore echoes or rotation. All new
+painters have `RepaintBoundary` and value-equality repaint checks; no new package or blur was
+added. The Phase 3 real-device rapid-toggle raster stress measurement remains open.
+
+**Today regression fix (2026-08-28):** the Phase 3 rollout exposed two interaction-path issues.
+`selectDate` awaited the schedule-materialization transaction before subscribing to `days/{date}`;
+that made the Today tab look stalled on a slow or unavailable network. It now starts the
+cache-backed day stream first and materializes in the background, guarded against stale date
+selections. The eat-toggle transaction also could not complete offline, so the optimistic tick
+eventually rolled back. The hot path now writes the already-updated `DayLog` with Firestore's
+offline-capable `set`, which queues sync while retaining the visible eaten state. Verified on the
+emulator with Firestore DNS unavailable: the meal remained ticked and the calorie ring stayed at
+152 kcal after five seconds; no Flutter exception was emitted.
+
+**Runtime performance pass (2026-08-29):** three steady-state CPU/GPU costs cut, no behaviour or
+data-model change. `flutter analyze` clean, all 132 tests pass, debug APK builds, walked on
+`emulator-5554` (aurora drift, Today load, scroll/header-collapse, cold relaunch — no exceptions).
+
+1. **Aurora repaint rate.** `AuroraBackground` drove a full-screen 6× radial-gradient overdraw at
+   60fps on every screen via four `AnimationController`s + `Listenable.merge` + `AnimatedBuilder`.
+   Replaced with **one `Ticker`** feeding a `ValueNotifier<int>` that only bumps at `maxFps`
+   (30 high / 20 balanced) — the blobs move well under a pixel per frame so the drift looks
+   identical while every other frame's aurora raster is gone. Per-blob phase is now a computed
+   `0..1..0` triangle off the single shared clock (matches the old `repeat(reverse:true)` shape).
+   `maxFps` threads `ReactiveAurora` → `AuroraBackground`; `GlassScaffold` passes it per tier.
+2. **Aurora drift feel.** Periods slowed 7–13s → 11–20s with slightly wider amplitudes, per the
+   boss's "a bit slower / more satisfying" call. Calmer, still legible in the first seconds of a
+   freshly pushed route.
+3. **Specular border on scroll.** Every scroll notification republished the shared specular angle,
+   repainting every visible `GlassCard` border and invalidating its `RepaintBoundary` raster —
+   at 60fps during the one interaction that must stay smooth. `GlassScaffold._onScroll` now
+   rate-limits scroll-driven publishes to ~17fps (`_scrollPublishGap`), with an immediate publish
+   on gesture start/end or a ≥9° jump so fling ends still land; `_publishSpecularAngle(coarse:)`
+   widens the delta gate to 5° for the scroll path only (arrival glint keeps its 2°). Specular
+   widget tests unchanged and green.
+4. **`حسابي` shift.** The Account tab list and the Profile screen list are short enough not to
+   scroll on many phones, so the glass edge never refracted there. Both now use
+   `AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())` — a downward drag overscrolls
+   and springs back, feeding the specular angle.
+5. **`PerformanceProbe` no longer a permanent one-way downgrade.** It sampled during the jankiest
+   frames the app ever renders (startup) and `applyDetectedQuality` only ever moved toward `low`
+   and persisted — one bad cold start pinned a capable device to reduced quality forever. Now:
+   sample is delayed 3s after first frame, first 20 frames discarded, timeout falls back to `high`
+   (or the p95 of whatever ≥15 frames it saw) instead of `balanced`, and `applyDetectedQuality`
+   is symmetric so the next clean launch self-corrects.
+
+Real-device DevTools raster p95 before/after is still the right verification and is still open —
+the desktop-taskbar emulator is not valid evidence for it.
+
+**Follow-ups (2026-08-29, same session):** analyzer clean, 132 tests pass, debug APK walked on
+`emulator-5554` (Today panel, meal editor header, aurora — no exceptions/overflow).
+
+- **Glass arrival glint** (`GlassScaffold`): duration 650ms → **3250ms** (×5), curve
+  `Cubic(.77,0,.175,1)` → `Curves.easeOut` (near-constant speed, soft stop) at the boss's
+  request. The existing 2° publish gate now naturally thins the sweep to ~30fps at this length,
+  so the slower glint does not cost more per-card border repaints. Three `pump(700)`s in
+  `glass_scaffold_specular_test.dart` → `pump(3400)` to outlast it; assertions unchanged.
+- **`MacroNumbersPanel` (المأكول)**: consumed/planned toggle removed. Each row shows eaten grams
+  as the bold headline and, when today's plan still has more of that macro coming, the planned
+  figure beside it — small, grey, with a faded dot at the same `.38` alpha as the bar's faded
+  planned segment. Header carries a matching «● المخطط» legend only when some macro has a planned
+  extra. Now a `StatelessWidget`.
+- **Meal editor header logic** — reviewed and corrected:
+  - Headline was the projected *day* total, not the meal — and silently meant draft-only vs
+    whole-day depending on whether today was materialised, jumping when the day stream arrived.
+    Headline + pills are now always `controller.totals` (this meal alone), under «إجمالي هذه
+    الوجبة».
+  - Editing a library meal not on today fabricated a day projection (`plannedTotalsAfterDraft`'s
+    `replacedOccurrences == 0 ? 1` fallback added the draft to a day that saving never touches).
+    New `MealEditorController.projectsOntoToday` (`isNew || editedMealIsOnToday`) gates it;
+    `totalsAfterApplyingDraft` returns the draft alone when there is nothing real to project
+    onto. The day section shows only when real, under «اليوم المخطط لو أضفتها اليوم» /
+    «…بعد هذا التعديل».
+  - `_TargetDelta` showed «+0 فوق الهدف» exactly on target — now three-state: «باقي N» /
+    «· على الهدف» / «+N فوق الهدف». (Emerald at-or-over for carbs/fat as well as protein/kcal is
+    unchanged — documented design.)
+
+- **Today arrival fill sweep** (calorie ring + `MacroNumbersPanel`), verified on `emulator-5554`
+  mid-animation (ring at `9`, planned bands and bars swept ahead of the solid fill) and settled:
+  - `TodayController.arrivalPulse` + `replayArrival()`; `_TodayTabState` watches
+    `HomeController.tabIndex` and replays on entering Today (plus once on first mount). Since the
+    tab lives in an `IndexedStack`, becoming visible is not a rebuild — the `ever(tabIndex)`
+    worker is what makes it fire.
+  - `CalorieRing` is now stateful, driven by a 1250ms `AnimationController` on `arrivalTrigger`.
+    Two stages on `Curves.easeOut` (near-linear, decel only at the tail): the **faded planned**
+    band + macro sub-rings sweep out over 0–58%, then the **solid consumed** arc and the counter
+    fill over them from 42–100%. `_RingPainter` takes `consumedFactor` / `plannedFactor`
+    envelopes; both settle at 1. An eat-toggle changes only the value (short `easeOut` tween),
+    never `arrivalTrigger`, so it does not re-sweep.
+  - `MacroBar._MacroFill` rewritten stateful for the same reason — the old `TweenAnimationBuilder`
+    keyed on `animationTrigger` never actually animated on a key remount (a fresh
+    `ImplicitlyAnimatedWidget` does not `forward()` on init). Now a real controller, same
+    two-stage `easeOut` (planned band 0–60%, solid 32–100%), 820ms + per-row stagger.
+
+- **ROOT CAUSE of the Today "refresh" reports: the whole tab body was torn down on every
+  mood change.** `GlassScaffold` gave `ReactiveAurora` `key: ValueKey((effective, widget.mood))`.
+  `ReactiveAurora`'s entire reason to exist is to lerp a `DayMood` change *in place* — but the
+  `mood` in that key meant any progress-driven mood shift destroyed the `ReactiveAurora` element
+  and, with it, its `child`: `SafeArea → IndexedStack → TodayTab → the whole list`. Ticking an
+  entry that moved the ring past a mood threshold thus remounted `_TodayTabState` (confirmed:
+  `initState` fired 3× on startup + once per qualifying toggle), resetting scroll, the row replay
+  guard, and every `StaggeredEntry`. **Fix: drop the key entirely** — `ReactiveAurora.didUpdateWidget`
+  already lerps mood, and `AuroraBackground.didUpdateWidget` already handles every quality-tier
+  prop. Verified on `emulator-5554`: `_TodayTabState.initState` now fires exactly once and
+  survives toggles/adds/mood changes; scroll and row state hold.
+
+  The earlier fixes in this section (Stack keys, PageStorageKey, `_daySig` dedup, the row replay
+  guard) are all still correct and still carry their weight — but this was the big one behind the
+  string of "it refreshes" reports.
+
+- **Macro sub-rings animate in AND glide on value change.** The three thin protein/carbs/fat
+  arcs got a per-ring staggered *arrival* envelope (`_RingPainter._macroStage` off `sweepT`):
+  ring `i` starts a beat after `i-1`, so they cascade rather than snap with the main arc. And
+  `CalorieRing` gained a second controller, `_settle` (520ms easeOut): an eat-toggle changes the
+  kcal *and* every macro, and `didUpdateWidget` now re-anchors `_from*`/`_to*` (kcal, planned
+  kcal, consumed `Macros`, planned `Macros`) and glides all of them — the main arc, the three
+  sub-rings, the grams line, and the «مخطط حتى» caption — to their new figures off that one
+  controller. The painter's dead `consumedFactor`/`plannedFactor` params were removed (the main
+  arc's envelope is now baked into `progress` by the widget).
+- **Adding/toggling an entry re-animated existing rows** — worst on the section nearest the
+  pinned header (breakfast re-slid on every change; dinner, further down, was fine). `StaggeredEntry`
+  replays its slide-in on every mount, and a list rebuild + the pinned header's relayout can
+  remount the top rows. First fix used a post-frame "seen keys" set, which lost the race for the
+  top section. Now `StaggeredEntry` takes `replayKey` + `replayGuard`: it registers its key in
+  the shared set **synchronously in `initState`** (`Set.add` returns false if already present →
+  don't animate), so a remount at any list position renders settled instead of sliding.
+  `_TodayTabState._rowReplayGuard` is the set, cleared on date change. Section-agnostic —
+  covers فطور / غداء / عشاء / سناك the same way.
+
+- **Scroll on Today "refreshing" the ring/panel — three compounding causes, all fixed:**
+  1. **Conditional Stack child.** `_TodayRingHeaderDelegate.build`'s `Stack` has a conditional
+     day-chip child, and Flutter matches keyless `Stack` children by position — so the first
+     scroll pixel (which makes the chip appear) shifted the ring and macro panel one slot, tore
+     down their elements, and their fresh `State` replayed the arrival fill sweep. Every child in
+     that Stack now carries a stable `ValueKey`.
+  2. **`CustomScrollView` had a plain `ValueKey`** (also the fix for the earlier "snaps to top"
+     report) → `PageStorageKey<String>` so the offset survives any rebuild.
+  3. **`DayLog` has no value equality**, so Firestore `snapshots()` handed `TodayController` a
+     fresh instance on every server ack / `hasPendingWrites` flip, each re-emitting `day.value`
+     and rebuilding the whole Today tree — visibly when it landed mid-scroll. `TodayController`
+     now keeps a `_daySig` string signature (dateKey + schedule version + per-entry
+     id/eaten/order/slot/grams) and `_publishDay()` routes every write through it; the watch
+     stream drops an echo whose signature matches. A toggle now emits `day.value` exactly once
+     instead of 3–4 times.
+  Verified on `emulator-5554`: scroll deep, toggle mid-list, scroll again — offset held, ring
+  glided to its new value, no sweep, no exceptions.
+
+- **Two eat-toggle bugs, found on device, fixed:**
+  - **The list snapped back to the top on every tick.** Ticking a row reassigns
+    `TodayController.day.value`, which rebuilds the whole day subtree through the parent `Obx`
+    + `AnimatedSwitcher`. The `CustomScrollView` carried a plain `ValueKey`, so the offset was
+    not parked anywhere and reset. Both branches now use `PageStorageKey<String>('day-…')` —
+    same value-equality so the `AnimatedSwitcher` day-vs-day identity is unchanged, but the
+    scroll offset now survives the rebuild.
+  - **The ring + macro panel replayed their arrival sweep on every tick.** `toggleEaten` bumped
+    `macroPulse`, which fed the panel's trigger, which my new stateful `_MacroFill` /
+    `MacroNumbersPanel` treated as a reason to re-sweep from zero. `macroPulse` is **deleted**;
+    the panel and `MacroBar` now take `arrivalTrigger` (fed only by `arrivalPulse`, i.e. tab
+    entry). A value change on the same page just glides — the bars tween to their new length
+    (360ms `easeOut`), the ring counter tweens, neither restarts. Tab switch still replays the
+    full two-stage sweep. `_TodayRingHeaderDelegate` lost its `macroTrigger` field with it.
+
+**Living Glass Phase 4 (in progress):** the route transition now has fade-through-scale behavior,
+staggered entries resolve their start edge in RTL and add the planned subtle rotation, steppers use
+the shared direction-aware `TickerNumber`, and pull-to-refresh uses the emerald ring language.
+The existing splash already materializes the logo/ring; onboarding now shows the first-filling arc
+across its authentication/profile stages. Today now uses a pinned `SliverPersistentHeader` that
+shrinks the ring from 200px to 96px without a scroll listener or per-frame controller work; the
+meal editor's drag proxy lifts with an L3-style emerald bloom and has central lift/land haptics.
+The populated Today top state was visually checked on the emulator; a long-list collapse walk,
+and a reusable `pushHealthak` helper now routes imperative Food Detail and Meal Editor pushes
+through the same `HealthakTransition` used by named pages.
+
+**Full sheet vocabulary is now done.** Every `showModalBottomSheet` call site rendered its own
+chrome by hand -- `food_picker_sheet.dart` used `GlassSurface` (a real `BackdropFilter`, spending
+one of the app's two-blur budget the moment it opened over a screen that had already spent both),
+the rest used a raw `DecoratedBox(color: AppPalette.surface.withValues(alpha:.97))` with no
+Living Glass motion or haptic integration at all. Added `lib/ui/glass/glass_sheet.dart`: the one
+`GlassSheet` widget every sheet now goes through -- deliberately flat (`GlassElevation.hero`,
+never a blur, for the budget reason above), `SpecularBorder` edge, drag handle, optional title
+row, an `expand: bool` that switches between a list-filling sheet (`Expanded`) and a
+content-sized one (`mainAxisSize: min`), and a `GlassSheet.show<T>()` static that opens through
+`showModalBottomSheet` and fires `HapticPhrase.play(AppHaptics.lift)` on open. Migrated all seven
+call sites: `food_picker_sheet.dart`, `meal_editor/meal_picker_sheet.dart`,
+`meal_editor/balance_sheet.dart`, `meal_editor/schedule_sheet.dart`, `today/edit_entry_sheet.dart`,
+and `today/quick_add_sheet.dart`'s two sheets (`_QuickAddMenu`, `_LibraryMealSheet`). Each kept its
+own keyboard-avoidance (`media.viewInsets.bottom`) and bottom-safe-area padding inside its
+`child`, since those are per-sheet concerns `GlassSheet` doesn't own. `flutter analyze`: no
+issues. `flutter test`: all 98 tests pass. A real-device RTL/reduced-motion walk remains before
+this phase can be called done.
+
+**Bug fix -- Today's add button silently dead after a day rollover:** `TodayController.selectedDate`
+was `DateTime.now().obs`, evaluated once at controller construction and never revisited.
+`isViewingToday` itself re-reads `DateTime.now()` on every call, so once real midnight passed
+while the controller stayed alive (a debug session left running, or any phone that never left the
+Today tab overnight), it correctly started reporting `false` -- but nothing ever moved
+`selectedDate` forward, so the FAB and the empty-day "إضافة الآن" button both silently refused to
+add (My Meals was unaffected: its add button has no date dependency at all). Fixed by having
+`TodayController` mix in `WidgetsBindingObserver` and re-`selectDate(DateTime.now())` whenever the
+app resumes from background, but only while the user was following today (never yanks someone
+back from a day they browsed to on purpose); a companion `ensureCurrentDay()` also runs on every
+FAB tap so a rollover that happens while the app stays foregrounded self-heals immediately rather
+than waiting for a resume event.
+
+**Feature -- manual one-off entry ("أضف عنصراً يدوياً"):** a fourth Quick Add option next to
+library meal / quick food / new meal. `lib/page/today/manual_entry_sheet.dart`: a name field plus
+protein/carbs/fat fields (kcal is a live read-only Atwater-derived preview, never entered directly
+-- kept consistent with "kcal is always derived" elsewhere in the app). Submits through
+`TodayController.logCustomEntry()`, which builds a `FrozenItem` with a synthetic `manual:<uuid>`
+id straight into today's `DayLog` (`DayEntryOrigin.quickAdd`) -- no `FoodItem` is created, no
+`foods` write happens, nothing is publishable. This is the explicit design point: log "sushi with
+kabsa, whatever, here's roughly what was in it" for today only, without it becoming a reusable or
+marketplace-visible component.
+
+**Bug fix -- no way back to today once browsing a populated past day, and past days were
+editable:** the only "العودة لليوم" affordance lived in the *empty*-day branch (no document at
+all for that date); a past day that had a real, populated `DayLog` relied entirely on the user
+noticing today's cell in the week strip, with no explicit control. Fixed at the source: `_Greeting`
+(shared by all three Today branches -- empty, materialized-but-empty, and populated) now renders
+its subtitle as a tappable "استعراض يوم سابق" chip that calls `selectDate(DateTime.now())`
+whenever the viewed day isn't today, so every branch gets the same way back, not just the one that
+already had it. Separately, a browsed-to past day's entries were fully interactive -- swipe to
+delete, long-press to edit grams, tap to toggle eaten -- despite the day being a frozen historical
+record by design. `_EntryTile` now checks `controller.isViewingToday`: past days disable the
+`Dismissible`, drop the long-press handler, and swap the live `EatCheck` toggle for a plain static
+check icon, matching the read-only rendering History's own day-detail sheet already used. Today
+remains the only day anyone can act on.
+
+**Polish -- the read-only indicator on past-day entries:** the check-circle/circle-outline icon
+that replaced `EatCheck` on a read-only row still read as a checkbox, implying it was tappable
+when it wasn't. Replaced it with a colored-glass treatment instead: `GlassDecoration.body()` and
+`GlassCard` both gained an optional `color`/`tint` parameter (defaults to the existing white glass
+everywhere else), and a read-only `_EntryTile` now passes `tint: AppPalette.emerald,
+highlighted: true` -- a green-tinted, hero-elevation glass card (picking up the elevation's
+built-in emerald shadow bloom too) with no leading icon at all. Eaten/not-eaten still reads
+through the existing strike-through + opacity on the name, same as before.
+
+**Investigated -- week-strip cell briefly refusing to return to today:** reported as "go from
+Saturday to Friday, then can't tap back to Saturday." The strip's `isFuture` guard
+(`date.isAfter(today)`) is correct as written -- today itself is never future, only the days after
+it are. The device clock was checked directly (`adb shell date` -> `Sat Aug 29 00:15:42`) and this
+session's own real-world midnight had passed only ~15 minutes before the report, so the almost
+certain explanation is that Saturday was still genuinely tomorrow (rightly disabled) in the moments
+just before rollover, not a logic bug. No code change made for this specifically; the
+`_Greeting`-based "استعراض يوم سابق" tap-to-return chip added earlier this phase is an
+independent backup path that does not depend on the week strip at all if it recurs.
+
+**Feature -- consumed macro grams inside the ring:** the three thin macro rings around the main
+arc had color but no numbers -- `_RingLegend` said which color was which macro, but not how much
+of it had actually been eaten. `CalorieRing` now prints a third line under the kcal figure /
+remaining label: a colored dot matching each macro ring plus its consumed grams (protein, carbs,
+fat, same emerald/amber/violet mapping as everywhere else). Gated to `size > 145` so it only
+appears on the big ring -- past that point it would land in the same crowded range where
+`_TodayRingHeaderDelegate` already fades its other detail text out while the header collapses.
+
+**Feature -- a ring in History's day-detail sheet:** the calendar's day-detail popup only ever
+showed text totals and the entry list, no ring. Added a `CalorieRing` at the top, fed directly
+from that day's frozen `DayLog` (`consumedKcal`/`targets.kcal`/`consumedTotals`/`targets.macros`)
+-- the same numbers that day's Today screen showed while it was still today, not a live
+recomputation of anything. No planned band here: History is a record of what was actually eaten,
+not a projection. While in the file, migrated `_DayDetailSheet`'s chrome off the last remaining
+raw `DecoratedBox` sheet onto `GlassSheet`, the one spot the earlier sheet-vocabulary pass missed.
+
+### Data-loss bug — ticking a meal off did not survive a restart
+
+Two compounding defects, both in the materialization path. Verified fixed on the emulator by
+ticking a meal, `am force-stop`, relaunch: the tick and the 152-kcal ring both survived.
+
+1. **`scheduleVersionOf` used `Object.hashAll`.** Dart explicitly documents `Object.hash`/
+   `hashAll` as *not stable between runs of a program* — `String.hashCode` is randomized per
+   isolate — so an unchanged schedule produced a different "version" on every launch. Replaced
+   with a hand-rolled djb2 digest over a canonical `id|order|updatedAt` string, masked to 32 bits
+   each step so the value is identical on a native int and on the JS number representation. This
+   is the only reason a value like this can be persisted at all. `schedule_version_test.dart` now
+   pins the digest against a literal — the pre-existing "is stable across re-fetching identical
+   content" test could never have caught this, because within a single run even a randomized hash
+   looks stable.
+2. **`ensureDay` compared that fingerprint with `>=`.** A fingerprint has no ordering, so the
+   comparison was meaningless in both directions: roughly half the time a stale stored value
+   compared greater and materialization was wrongly skipped, the other half an unchanged schedule
+   compared lower and the day was needlessly rebuilt — and rebuilding regenerates every
+   `scheduled` entry from its schedule item with `eaten: false` and a fresh uuid. Now `==`.
+
+Also hardened the rebuild itself, which was one-shot-away from the same bug for a legitimate
+reason: `_fromSchedule` now takes the previous entry (matched on `scheduleItemId`) and carries its
+`eaten`, `eatenAt`, and `entryId` across. Editing the schedule mid-day no longer un-ticks what has
+already been eaten, and reusing the entryId keeps list keys, an in-flight eat toggle, and any
+`Dismissible` pointing at the same row. This does not weaken the daily reset: a new day has no
+document, so there is nothing to carry over and every entry still starts false.
+
+### Bug — the week strip froze at whatever day it last rebuilt on
+
+`_WeekStrip` computed `DateTime.now()` inline in `build`, and `_Greeting` had its own private
+`_isToday`. A process alive across midnight never re-ran them, so the new day kept failing the
+`isFuture` test and stayed permanently greyed out and untappable — the reported "I can't navigate
+to the current day", with the strip visibly disabling today's own cell.
+
+`TodayController` now publishes `today` as an `Rx<DateTime>`, updated by a single `Timer` armed
+for the next local midnight (one wakeup, not a poll), re-armed and recomputed on resume since a
+frozen background process runs no timers. `_isToday`, the strip, and the greeting all read it, so
+the rollover reaches every dependent at once. `_Greeting` got its own `Obx` in the process: its
+`build` runs outside the closure of whichever `Obx` created it, so reading an `Rx` there was never
+registering as a dependency.
+
+### Regression — `GlassSheet` was ~90% transparent
+
+The sheet-vocabulary migration replaced each sheet's
+`DecoratedBox(color: AppPalette.surface.withValues(alpha: .97))` with only `GlassDecoration.body`,
+a white gradient over *nothing*. Correct for a card floating on the aurora, wrong for a modal:
+form labels and text fields competed with whatever list was scrolled behind them. `GlassSheet` now
+paints an opaque `surface` base *under* the glass tint rather than instead of it. Still no
+`BackdropFilter` — a fill, not a blur, so the two-blur budget is untouched.
+
+### Feature — creating your own component
+
+New `+` beside the search field on the components screen (and in the picker sheet), opening
+`ComponentEditorSheet`: name, optional category chip, and protein/carbs/fat per 100g, with kcal
+shown live and never entered — derived through the same Atwater factors as everything else, so a
+component cannot claim an energy value its own macros contradict.
+
+**These do not go in the shared `foods` collection.** `firestore.rules` has `allow write: if false`
+there, deliberately: it is a public catalog seeded out of band, and letting any signed-in client
+write to it would make one user's typo everybody's data. Personal components live at
+`users/{uid}/foods`, where the existing `users/{uid}/{document=**}` rule already grants the owner
+full access and nobody else any — **no rules change was needed or made.** Same `FoodItem` shape and
+same mapper, so the picker, meal editor, and solver treat them identically.
+
+`FoodCatalogController` loads them whole on each reset (a hand-typed collection is inherently
+small) and merges the ones matching the active filter ahead of the shared page; they carry a
+`خاص بك` badge and are the only rows that can be deleted (long-press, with a confirm). The
+`listPersonal` read is deliberately unfiltered and unordered — filtering server-side would buy
+nothing at this size and would cost a composite index. `nameNormalized` is generated with the new
+shared `foldArabic`, which `normalizeFoodSearchToken` now also uses, so a hand-created component
+is findable by exactly the search that finds a migrated one; a test pins that.
+
+### Correcting a past day
+
+The read-only lock on past days left no way to *fix* a wrong record — which mattered immediately,
+because the `scheduleVersionOf` bug above had already wiped `eaten` on days the user had really
+eaten on, and those days were stuck reading 0 kcal with no recourse. Forgetting to tick something
+off before midnight is also just normal.
+
+Locked stays the default (the green glass, no checkbox — correcting history should be deliberate,
+not a mis-tap). A `تعديل` pill next to "استعراض يوم سابق" unlocks the day in view: rows revert to
+normal glass with live checkboxes and the pill becomes `تم`. `TodayController.editingPast` is
+per-selection and never persisted — `selectDate` clears it, so unlocking one day cannot leave
+others unlocked behind it.
+
+`canEditSelectedDay` (`isViewingToday || editingPast`) now gates `quickAddFood`,
+`addLibraryMeal`, and `logCustomEntry` as well as the row controls, so an unlocked day also
+accepts a meal that was missing from it — being able to untick but not add would be a strange
+half-correction. The FAB's refusal message now points at the pill rather than flatly saying today
+only.
+
+Two `Obx`-scope traps were hit and fixed while building this, both the same shape as the
+`_Greeting` one: a widget's `build` runs *outside* the closure of whichever `Obx` created it, so
+reading an `Rx` there registers no dependency. `readOnly` is therefore computed inside `TodayTab`'s
+`Obx` and passed into `_EntryTile` as a parameter, and `_EditDayToggle` carries its own `Obx` —
+without the latter the rows went editable while the button still read `تعديل`, because the pinned
+`SliverPersistentHeader`'s `shouldRebuild` compares the day and selected date but knows nothing
+about the unlock.
+
+Verified on the emulator end to end: day 28 read 0, unlocked, ticked, ring went to 152 with
+8/12/8 macros, `am force-stop`, relaunch — 152 still there, day green and locked again.
 
 Read this first, then `general.md`, then the `stepN.md` for whatever step is current.
 If you are a fresh agent picking this up: **everything you need is in this directory.** Do not
@@ -546,6 +1549,191 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
   `FirebaseAuth` — out of scope for this pass. This matches the rest of the suite's existing
   boundary: pure-Dart/mapper logic is unit-tested, Firestore-backed reads are not.
 
+- **Day switching flashed "لا يوجد سجل لهذا اليوم" before every day loaded.** `selectDate`
+  nulled `day.value` and set `loading.value = false` in the same breath, so for the frames
+  before the Firestore snapshot arrived the screen was in `loading == false && day == null` —
+  the exact signature the view uses for "this day has no record". Fixed by keeping `loading`
+  true until the first snapshot lands, plus a `_materializing` flag so a `null` arriving while
+  today's document is still being written is treated as not-yet rather than as an answer.
+  `_materializeToday` releases both in a `finally`. Today's screen is now an `AnimatedSwitcher`
+  whose child is keyed on `DayLog.keyFor(selectedDate)`, so a date change cross-fades while an
+  eat-toggle on the same day stays an in-place rebuild. The switcher needs a custom
+  `layoutBuilder` — the default centres the outgoing child and sizes the stack to the incoming
+  one, collapsing a full-height `CustomScrollView` mid-transition.
+
+- **Week strip only shows days that exist.** A chip for an empty past day dead-ended on "no
+  record for this day", and a future chip was rendered at 35% opacity with `onTap: null` — both
+  are places with nothing to see. `DayRepository.watchRange` (a live version of `getRange`: one
+  bounded `FieldPath.documentId` listener, no composite index) feeds `TodayController
+  .loggedDayKeys`, and the strip renders only those days plus today and the current selection,
+  so it can never become a strip with no way back. Re-subscribed on rollover only when the week
+  itself changed.
+
+- **`Sex.preferNotToSay` removed.** It existed so the app could still compute *something*,
+  using the midpoint (-78) of the male/female Mifflin-St Jeor constants. Dropped at the user's
+  request. `ProfileMapper` falls back to `Sex.male` for profiles written before the change, since
+  the stored string no longer matches any enum value; the profile screen can correct it.
+- **The rate of loss is now editable, in kcal.** `weeklyRateKg` had no UI on the profile screen
+  at all — it was set once in onboarding from a `.25/.5/.75/1.0` dropdown and never revisited.
+  The profile screen now has a 0–1100 kcal/day slider (step 50) writing
+  `ProfileController.dailyDelta`, which is the same value as `weeklyRateKg` converted through
+  `kKcalPerKg`, not a second stored field. `dailyDeltaForWeeklyRate` / `weeklyRateForDailyDelta`
+  in `energy.dart` are the one pair of conversions, shared by `dailyTarget` and the UI.
+  Projections (kg/week, /month, /year) are computed from `effectiveWeeklyRateKg` — what the
+  finished target actually delivers — because `dailyTarget` clamps at the energy floor, so an
+  aggressive cut becomes a gentler one and showing the requested rate would be a lie. The card
+  says so explicitly when the clamp bites.
+
+- **Committing an action now leaves the screen it was performed on.** Two places broke the rule
+  every sheet in the app already followed. The meal editor's app-bar check called
+  `_save(pop: false)` — the *only* caller of that flag — so it saved with no snack and no
+  navigation, indistinguishable from the tap doing nothing; the flag is gone and `_save` always
+  snacks and pops. The profile screen showed "تم حفظ التغييرات" and stayed on the form, which
+  reads as the save not having taken. It now pops on success and stays put on failure so the
+  input is not lost.
+
+- **A new calorie target did not reach the Today ring.** `DayLog` freezes its `targets` so that
+  editing a goal never rewrites history, and only `ensureDay` rebuilds a day — but its early-out
+  compared the schedule fingerprint alone, so a profile save left today's document holding the
+  old targets until the next midnight produced a fresh one. `ensureDay` now treats targets as
+  part of the freshness test and writes them through; the frozen-history guarantee is unaffected
+  because `TodayController` only ever calls it for today. `TodayController` also watches
+  `_session.profile` and re-materializes when the targets differ (compared first — the day
+  stream re-emits on every eat toggle, and an unconditional call would be a transaction per
+  emission). That also closes a cold-start gap where the profile arrived after the first
+  `selectDate` and nothing materialized.
+
+- **The week strip lost days it should have shown.** `loggedDayKeys` was an `RxSet`, and the
+  strip reads it with `contains` -- which does not register the read with the surrounding `Obx`.
+  The strip therefore rendered whatever the set happened to hold at its *first* build, which is
+  usually nothing, since the day-range query has not answered yet; whether a past day appeared
+  came down to a race. Now an `Rx<Set<String>>` read through `.value`, which registers properly.
+- **A red error frame on a quick eat-toggle.** `EatBurst` removed its overlay entry from two
+  places -- the next tap superseding it, and its own animation finishing -- with nothing stopping
+  both firing for the same entry. Toggling twice inside the burst's 500ms removed one entry twice
+  and Flutter asserted. Both paths now go through one `_dismiss` that clears `_active` first and
+  checks `mounted`.
+- **The macro bars got their own animation token.** They keyed their tween off `eatPulse`, which
+  is deliberately only bumped when ticking *on* (the ring's ripple is a tick-only effect), so
+  un-ticking snapped the bars back with no animation. Added `macroPulse`, bumped either way, and
+  threaded it through the header delegate as `macroTrigger`.
+
+- **Today tab: week strip centred, and entry rows now stack instead of scrolling away.**
+  The strip was start-aligned, which since empty days are filtered out usually left two or three
+  chips pinned to the leading edge, reading as a list that had lost its other items. Now a
+  `SingleChildScrollView` over a `Row` with `minWidth: constraints.maxWidth`, which centres when
+  the chips fit and still scrolls a full seven-day week. The day chip moved into its own
+  `_dayChip` method rather than staying inline in the item builder.
+- **Header collapse rearranges instead of just shrinking.** The macro panel sat 20px below the
+  ring's box, but the ring paints a soft glow past its box, so the two read as touching; the gap
+  is now 40 and `maxExtent` grew 650 -> 690 to match, since the target summary is anchored to the
+  bottom of that box and would otherwise just trade one overlap for another. On collapse the ring
+  stays centred -- it is the headline, and the compact bar is built around it: the selected day
+  on the left, the macros on the right -- while the macro panel narrows *and* scales about its
+  trailing edge to land beside it. (An earlier pass moved the ring itself into the left corner;
+  the boss asked for the symmetric arrangement instead.) The panel is deliberately laid out
+  wider than it ends up looking and then scaled: giving it a ~127px box directly reflows three
+  labelled rows into something unreadable, while laying out at 231 and scaling to .55 keeps the
+  proportions it has when open. Final proportions: the collapsed ring is 88, the day grows from a
+  44-wide strip chip into an 88 square on the same top edge (`DayChip` gained a `width`, with the
+  type scaled off it and capped at 1.35x -- at the full width ratio the square reads as two
+  oversized glyphs and overpowers the ring), and the panel widened by pulling its layout box in
+  to 128 and its trailing margin out to 8. The three then butt up against each other with no gaps,
+  which needs the width they are laid out in: a `LayoutBuilder` around the header's `Stack`
+  supplies it (not `MediaQuery` -- the numbers should come from the box this header actually
+  got). The bar packs from the leading margin rather than centring on the ring:
+  a symmetric arrangement left the whole leading corner empty, because the day is a square and
+  cannot both reach the margin and stay square beside a centred ring. Final collapsed geometry is
+  day 72 at x=20, ring 88 immediately after it (so it drifts just left of centre as the header
+  closes), and the panel taking the rest at .62 scale. Landing the panel exactly on the ring's
+  trailing edge means solving `right - scale * layoutWidth` for the layout box, since the panel
+  is scaled about that edge -- placing its layout box by eye only ever gets it near. Two mechanisms rather than one: scaling alone left the panel's
+  leading edge over the ring for most of the travel, and narrowing alone cannot shrink its
+  height. All of the geometry runs on `Curves.easeOutCubic` while the fades stay linear -- run
+  linearly, the ring is still half-size near the middle while the panel is still wide, and the
+  two spend most of the scroll overlapping. The ring's centre position is an `Align` fraction,
+  not a computed left edge: the arithmetic version needed the viewport width and put the ring
+  visibly off-centre. `CalorieRing` now hides its captions below 120px -- they never scaled with
+  the ring, so on the collapsed one they spilled out of the circle and over the panel next to it.
+  The selected day now rides out of the week strip into the compact bar as the strip fades, so
+  the collapsed header reads day + ring on the left and macros on the right and the date stays on
+  screen while scrolling. The chip is the same `DayChip` the strip builds, lifted out of
+  `_WeekStrip` and made shared so the travelling copy cannot drift out of sync with the strip's
+  styling. Making the ring's alignment actually bite needed one more fix: `GoalCelebration`
+  paints a fixed 320px burst, so it was handing `Align` a 320-wide child and the ring only ever
+  sat centred inside that box rather than reaching the edge -- it is now sized to the ring with
+  the burst allowed to overflow.
+- **`lib/ui/motion/stacking_card.dart` (new).** Wraps a list row so that once it reaches the pile
+  line it pins there and the following rows slide over it, forming a deck of glass edges. It only
+  ever paints a `Transform`, so layout, keys, and sliver recycling are untouched -- and the
+  measuring box sits *outside* that transform, so reading its position can never feed back into
+  the offset that moved it. `overshoot` alone would pin a row exactly on the line; subtracting a
+  `depth`-bounded term is what fans the parked rows out and what stops the pile deepening past
+  `maxVisible`. Two things the first pass got wrong and the device showed: parked rows are glass,
+  so the card behind showed its text straight through and the pile smeared into one row -- fixed
+  with an opaque plate faded in over the first row-edge of travel, plus a geometric (not linear)
+  opacity falloff that sinks the ones behind into shadow. And a pinned row is painted from a
+  layout position above the viewport, so the scroll view needs `kStackingCacheExtent` (900) or
+  the deepest rows get recycled out from under the pile. Gated on `MotionSettings`.
+  `_EntryTile` lost its `key`: the list's stable key now lives on the `StackingCard` around it,
+  which is the widget the sliver actually recycles.
+
+### Activity-level / Today live-refresh repair (2026-08-29)
+
+- **Saving a new activity level no longer leaves Today on the old profile.** `UserProfile`
+  compared equal by `uid` alone. GetX therefore suppressed every subsequent Firestore profile
+  snapshot for that user, so the profile document changed while the main tab continued to show
+  the previous activity/TDEE and targets. `UserProfile` now uses identity semantics, allowing
+  each new snapshot to propagate through `SessionController`; a regression test pins this.
+- **A target-only refresh preserves the day exactly.** When the schedule fingerprint is
+  unchanged, `DayRepository.ensureDay` now writes only `DayLog.targets` instead of rebuilding
+  scheduled entries. Activity changes cannot replace snapshots, reorder cards, mint IDs, or
+  disturb eaten state on the main tab.
+- **Emulator verification:** saved `light -> moderate` on `emulator-5554`; Today updated from
+  TDEE `3120` / target `2269` to TDEE `3517` / target `2517`. Firestore comparison confirmed
+  all 5 day entries were byte-for-byte unchanged and the schedule fingerprint stayed equal.
+  Restored the original `light` profile and confirmed the live tab returned to `3120` / `2269`
+  without restarting, again with all entries unchanged.
+
+### Glass snackbar system (2026-08-29)
+
+- Added one centralized `GlassSnackBar` treatment for info, success, warning, and error
+  feedback, including an in-surface action for undo. It uses the existing glass gradient,
+  specular edge, panel shadow, Cairo typography, and palette-specific icon/tint rather than the
+  default opaque Material bar.
+- The surface is deliberately filter-free `GlassCard`, not `GlassSurface`: a snackbar can be
+  visible beside the blurred header and bottom navigation, so another `BackdropFilter` would
+  exceed the project's two-filter budget. It remains floating, horizontally dismissible, and
+  replaces an existing snackbar instead of building a stale queue.
+- Migrated every `SnackBar`, `ScaffoldMessenger.showSnackBar`, and `Get.snackbar` caller in
+  `lib/` to the shared component. A widget test pins the glass surface, success icon, accessible
+  undo action, and absence of `BackdropFilter`.
+- Emulator visual QA on `emulator-5554` confirmed the floating snackbar clears the bottom nav
+  and FAB, keeps RTL layout, and reads as the same Living Glass material as the shell.
+
+### Shared specular-light navigation sweep (2026-08-29)
+
+- `GlassScaffold` now gives its existing screen-scoped specular light source one 360-degree
+  perimeter sweep when a route arrives. Device feedback showed the original 280ms ease-out
+  compressed most of the orbit into a flash; it is now a non-blocking 650ms custom ease-in-out
+  material sweep and lands at the identical physical light angle, so there is no final-frame
+  snap.
+- Shell tab navigation passes `lightEventKey: tabIndex`, replaying that same material response
+  while preserving the tab `IndexedStack`, Firestore subscriptions, and scroll positions. If a
+  second navigation happens during the sweep it joins the active controller instead of
+  restarting or stacking repaint work.
+- Scrolling continues to refract that same one-per-screen light angle by the Kimi token
+  (`refractionShift`), publishing only after a 2-degree change. The first pass incorrectly used
+  the 2px physical-source shift directly as 2 degrees per 100px; a 9x angular conversion now
+  makes that 18 degrees per 100px, so ordinary drags visibly move the 30-degree highlight.
+  Today's repeated entry cards add an 8-degree positional phase per row, placing each next
+  highlight slightly farther to the right instead of forming a rigid vertical line. This is
+  still one shared notifier with no per-card controller, blur, layout animation, or loop; each
+  `SpecularBorder` remains isolated by its existing `RepaintBoundary`.
+- Route, tab-replay, scroll, and reduced-motion behavior are pinned in
+  `test/ui/glass_scaffold_specular_test.dart`. OS reduced-motion disables both the entrance
+  sweep and scroll-linked movement.
+
 ### Deviations specific to Step 2 (also folded into the table below)
 
 - **`AsyncView<T>` not used in the food catalog.** It models loading/data/error as three
@@ -588,6 +1776,10 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 | `materializedFromScheduleVersion` source | Content fingerprint (`scheduleVersionOf`), not a stored counter | Free from the fetch `ensureDay` already does; a counter would need a transactional write on every schedule edit for no extra guarantee. |
 | Step 2.7's deletion list | Also deleted `create_meals_repository.dart` + `user_auth_repository.dart` | Found orphaned by dependency analysis; not in the plan's list but unreachable after the listed deletions. |
 | `lib/page/setting/` deletion | Deleted with no Step 2 replacement | The legacy screen was non-functional (mutated a dead static, placeholder labels); Step 4 still owes a real Settings screen over the already-working `SettingsController`. |
+| Living Glass Phase 1 user-motion preference | OS reduced-motion/accessibility is honoured now; no persisted user toggle yet | `AppSettings` has no motion/haptics fields. Adding them would change the profile model, mapper, and persistence, conflicting with the Kimi plan's explicit Phase 1 no-data-model boundary. Wire the setting in Step 4. |
+| Kimi phases must wait for the previous real-device raster p95 exit gate | Phase 3 and the safe Phase 4 motion primitives proceeded before that measurement | The user explicitly directed the implementation to continue one phase at a time without stopping. The p95 baseline/new measurement remains an explicit release gate, not replaced by emulator or automated evidence. |
+| Step 5A proxy/model uses Gemini Flash | xAI Grok, `grok-3-mini` default (cheapest), switchable via header picker; 800-token cap | The boss supplied a Grok credential and asked for the cheapest model plus a dropdown. Provider stays isolated behind `AiClient`; Step 5D search-provider choice remains separate. |
+| Step 5A: key lives only in a proxy, blocked from release by an assert | `XaiDirectClient` embeds the key from `--dart-define`, works in release, no assert | Boss's call for a personal-scale app. Mitigation: dedicated xAI key + hard spend cap at console.x.ai. Proxy kept for a later switch. |
 
 ---
 
@@ -609,8 +1801,9 @@ Full detail in `general.md` §2. Summary:
 
 ## Still undecided
 
-- **The AI assistant.** See `step5.md`. Not specified at all yet. Nothing in Steps 0–4 depends
-  on it. Do not write code for it.
+- **The AI assistant provider deployment.** Phase 5A is implemented locally using a secure
+  Firebase proxy and Grok 4.3. The supplied key must be rotated, stored as `XAI_API_KEY`, and the
+  proxy deployed before the live exit questions can be verified.
 - Moderation for the marketplace (a client-side mute list is the Step 3 stopgap).
 - Whether to rename the package from `com.example.diet_app2` — it would break the existing
   Firebase Android app registration and need a fresh `google-services.json`. Ask first.

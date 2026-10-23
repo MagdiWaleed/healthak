@@ -49,3 +49,7 @@ node_modules/
 # Defensive: never commit a Firebase service account key
 *serviceAccount*.json
 *-firebase-adminsdk-*.json
+functions/.secret.local
+
+# Local AI dev credentials (direct xAI key)
+ai_secrets.json

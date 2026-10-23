@@ -87,4 +87,26 @@ abstract final class AppTypography {
   /// without it a counting number reflows on every frame as digit widths
   /// change.
   static const tabular = [FontFeature.tabularFigures()];
+
+  static const heroNumber = TextStyle(
+    fontFamily: family,
+    fontWeight: FontWeight.w900,
+    letterSpacing: -1,
+    fontFeatures: tabular,
+  );
+
+  static const celebration = TextStyle(
+    fontFamily: family,
+    fontSize: 28,
+    fontWeight: FontWeight.w800,
+    height: 1.25,
+  );
+
+  static const whisper = TextStyle(
+    fontFamily: family,
+    fontSize: 13,
+    fontWeight: FontWeight.w500,
+    height: 1.45,
+    color: AppPalette.muted,
+  );
 }

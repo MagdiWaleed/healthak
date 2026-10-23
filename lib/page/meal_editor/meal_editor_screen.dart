@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -7,6 +9,8 @@ import '../../service/auth_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/gram_stepper.dart';
 import '../../ui/components/scale_stepper.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
+import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/motion/pressable.dart';
@@ -70,11 +74,13 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
   }
 
   void _snack(String message, {VoidCallback? undo}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      action:
-          undo == null ? null : SnackBarAction(label: 'تراجع', onPressed: undo),
-    ));
+    GlassSnackBar.show(
+      context,
+      message,
+      tone: undo == null ? GlassSnackTone.warning : GlassSnackTone.success,
+      actionLabel: undo == null ? null : 'تراجع',
+      onAction: undo,
+    );
   }
 
   Future<void> _addFood() async {
@@ -88,7 +94,7 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
 
   Future<void> _balance() => BalanceSheet.show(context, controller);
 
-  Future<void> _save({bool pop = true}) async {
+  Future<void> _save() async {
     if (controller.name.value.trim().isEmpty) {
       _snack('أدخل اسماً للوجبة أولاً');
       return;
@@ -114,8 +120,7 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('تحديث الجدول أيضاً؟'),
-            content: Text(
-                'هذه الوجبة مضافة لجدولك في ${linked.length} موضع. '
+            content: Text('هذه الوجبة مضافة لجدولك في ${linked.length} موضع. '
                 'هل تريد تحديثها لتطابق التعديلات الجديدة؟'),
             actions: [
               TextButton(
@@ -133,10 +138,12 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
       }
     }
 
-    if (pop && mounted) {
-      _snack('تم حفظ الوجبة');
-      Get.back(result: saved);
-    }
+    if (!mounted) return;
+    // Saving finishes the job the screen exists for, so it leaves. The
+    // app-bar check used to save in place with no snack and no navigation,
+    // which was indistinguishable from the tap doing nothing at all.
+    _snack('تم حفظ الوجبة');
+    Get.back(result: saved);
   }
 
   Future<void> _addToToday() async {
@@ -146,7 +153,9 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
     }
     final ok = await controller.addToToday();
     if (!mounted) return;
-    _snack(ok ? 'أُضيفت الوجبة لليوم' : (controller.error.value ?? 'تعذرت الإضافة'));
+    _snack(ok
+        ? 'أُضيفت الوجبة لليوم'
+        : (controller.error.value ?? 'تعذرت الإضافة'));
     if (ok) Get.back();
   }
 
@@ -162,7 +171,9 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
       daysOfWeek: picked.daysOfWeek,
     );
     if (!mounted) return;
-    _snack(ok ? 'أُضيفت الوجبة لجدولك' : (controller.error.value ?? 'تعذرت الإضافة'));
+    _snack(ok
+        ? 'أُضيفت الوجبة لجدولك'
+        : (controller.error.value ?? 'تعذرت الإضافة'));
     if (ok) Get.back();
   }
 
@@ -178,7 +189,9 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
           // fixes both the crash and gives the title a placeholder that
           // updates live as the user types.
           title: Obx(() => Text(
-                controller.name.value.isEmpty ? 'وجبة جديدة' : controller.name.value,
+                controller.name.value.isEmpty
+                    ? 'وجبة جديدة'
+                    : controller.name.value,
               )),
           actions: [
             Obx(() => controller.saving.value
@@ -190,7 +203,7 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2.4)),
                   )
                 : IconButton(
-                    onPressed: () => _save(pop: false),
+                    onPressed: _save,
                     icon: const Icon(Icons.check_rounded),
                     tooltip: 'حفظ',
                   )),
@@ -253,39 +266,102 @@ class _TotalsHeader extends StatelessWidget {
       // is a plain getter, not a Rx.
       // ignore: unused_local_variable
       final _ = controller.entries.length;
-      final totals = controller.totals;
+      final target = controller.dailyTargets;
+      // The headline is always this meal alone, so the number means one thing
+      // regardless of what today looks like. The day projection is a separate,
+      // clearly labelled section below -- and only shown when it is real.
+      final mealTotals = controller.totals;
+      final showDay = target != null && controller.projectsOntoToday;
+      final dayTotals =
+          showDay ? controller.totalsAfterApplyingDraft : mealTotals;
 
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
         child: GlassCard(
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: totals.kcal),
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, _) => Text(
-                  '${value.round()}',
-                  style: const TextStyle(
-                    fontFamily: AppTypography.family,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: AppPalette.text,
-                    fontFeatures: AppTypography.tabular,
+              const Text(
+                AppStrings.mealOwnTotal,
+                style: TextStyle(fontSize: 11, color: AppPalette.muted),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: mealTotals.kcal),
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, _) => Text(
+                      '${value.round()}',
+                      style: const TextStyle(
+                        fontFamily: AppTypography.family,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: AppPalette.text,
+                        fontFeatures: AppTypography.tabular,
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 6),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child:
+                        Text('سعرة', style: TextStyle(color: AppPalette.muted)),
+                  ),
+                  const Spacer(),
+                  _MacroPill(
+                      label: 'ب',
+                      value: mealTotals.protein,
+                      color: AppPalette.emerald),
+                  const SizedBox(width: 8),
+                  _MacroPill(
+                      label: 'ك',
+                      value: mealTotals.carbs,
+                      color: AppPalette.amber),
+                  const SizedBox(width: 8),
+                  _MacroPill(
+                      label: 'د',
+                      value: mealTotals.fat,
+                      color: AppPalette.violet),
+                ],
+              ),
+              if (showDay) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                    height: 1, color: Colors.white.withValues(alpha: .10)),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  controller.isNew
+                      ? AppStrings.dayAfterAdding
+                      : AppStrings.dayAfterEditing,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppPalette.muted),
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Padding(
-                padding: EdgeInsets.only(top: 6),
-                child: Text('سعرة', style: TextStyle(color: AppPalette.muted)),
-              ),
-              const Spacer(),
-              _MacroPill(label: 'ب', value: totals.protein, color: AppPalette.emerald),
-              const SizedBox(width: 8),
-              _MacroPill(label: 'ك', value: totals.carbs, color: AppPalette.amber),
-              const SizedBox(width: 8),
-              _MacroPill(label: 'د', value: totals.fat, color: AppPalette.violet),
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    _TargetDelta(
+                        label: 'سعرة',
+                        value: dayTotals.kcal,
+                        target: target.kcal),
+                    _TargetDelta(
+                        label: 'بروتين',
+                        value: dayTotals.protein,
+                        target: target.macros.protein),
+                    _TargetDelta(
+                        label: 'كارب',
+                        value: dayTotals.carbs,
+                        target: target.macros.carbs),
+                    _TargetDelta(
+                        label: 'دهون',
+                        value: dayTotals.fat,
+                        target: target.macros.fat),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -294,12 +370,47 @@ class _TotalsHeader extends StatelessWidget {
   }
 }
 
+class _TargetDelta extends StatelessWidget {
+  final String label;
+  final double value;
+  final double target;
+  const _TargetDelta({
+    required this.label,
+    required this.value,
+    required this.target,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = (value - target).round();
+    final met = delta >= 0;
+    final String text;
+    if (delta == 0) {
+      text = '$label · ${AppStrings.onTarget}';
+    } else if (delta > 0) {
+      text = '$label +$delta فوق الهدف';
+    } else {
+      text = '$label باقي ${-delta}';
+    }
+    return Text(
+      text,
+      style: TextStyle(
+        color: met ? AppPalette.emerald : AppPalette.muted,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        fontFeatures: AppTypography.tabular,
+      ),
+    );
+  }
+}
+
 class _MacroPill extends StatelessWidget {
   final String label;
   final double value;
   final Color color;
 
-  const _MacroPill({required this.label, required this.value, required this.color});
+  const _MacroPill(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -334,7 +445,8 @@ class _EmptyEditor extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.add_circle_outline, size: 48, color: AppPalette.muted),
+            const Icon(Icons.add_circle_outline,
+                size: 48, color: AppPalette.muted),
             const SizedBox(height: AppSpacing.sm),
             const Text('ابدأ بإضافة مكوّن'),
             const SizedBox(height: AppSpacing.sm),
@@ -357,7 +469,30 @@ class _EntryList extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
           itemCount: entries.length,
+          onReorderStart: (_) => unawaited(HapticPhrase.play(AppHaptics.lift)),
+          onReorderEnd: (_) => unawaited(HapticPhrase.play(AppHaptics.land)),
           onReorder: controller.reorder,
+          proxyDecorator: (child, _, animation) => AnimatedBuilder(
+            animation: animation,
+            child: child,
+            builder: (_, proxy) => Transform.scale(
+              scale: 1 + animation.value * .02,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppPalette.emerald
+                          .withValues(alpha: .16 * animation.value),
+                      blurRadius: 22 * animation.value,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: proxy,
+              ),
+            ),
+          ),
           itemBuilder: (context, index) {
             final entry = entries[index];
             return StaggeredEntry(
@@ -460,11 +595,13 @@ class _EntryRow extends StatelessWidget {
                 ),
             },
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, color: AppPalette.muted),
+              icon:
+                  const Icon(Icons.more_vert_rounded, color: AppPalette.muted),
               onSelected: (action) => _onMenu(context, action),
               itemBuilder: (context) => [
                 if (isRef)
-                  const PopupMenuItem(value: 'ungroup', child: Text('فك التجميع')),
+                  const PopupMenuItem(
+                      value: 'ungroup', child: Text('فك التجميع')),
                 const PopupMenuItem(value: 'delete', child: Text('حذف')),
               ],
             ),
@@ -564,8 +701,10 @@ class _ActionBar extends StatelessWidget {
                 ),
                 Expanded(
                   child: TextButton.icon(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text(AppStrings.comingNext))),
+                    onPressed: () => GlassSnackBar.show(
+                      context,
+                      AppStrings.comingNext,
+                    ),
                     icon: const Icon(Icons.storefront_outlined),
                     label: const Text('نشر'),
                   ),
@@ -602,7 +741,9 @@ class _ChipButton extends StatelessWidget {
               children: [
                 Icon(icon, size: 18, color: AppPalette.text),
                 const SizedBox(height: 2),
-                Text(label, style: const TextStyle(fontSize: 11, color: AppPalette.text)),
+                Text(label,
+                    style:
+                        const TextStyle(fontSize: 11, color: AppPalette.text)),
               ],
             ),
           ),

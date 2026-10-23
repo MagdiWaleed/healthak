@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../motion/pressable.dart';
 import '../theme/app_spacing.dart';
+import '../theme/glass_tokens.dart';
 import 'glass_decoration.dart';
+import 'specular_border.dart';
 
 /// The list-safe glass surface: tint, specular sheen, lit edge, shadow --
 /// and **no [BackdropFilter]**.
@@ -17,9 +19,20 @@ class GlassCard extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final BorderRadius borderRadius;
+  final GlassElevation elevation;
+
+  /// A positional phase for repeated cards. List builders can advance this
+  /// slightly per row so one physical light source lands farther along each
+  /// successive rounded edge without creating per-card controllers.
+  final double specularAngleOffset;
 
   /// Lifts the tint and edge. Use for the one card that should draw the eye.
   final bool highlighted;
+
+  /// Colors the body gradient instead of the neutral white every other
+  /// surface uses -- a status tint (locked/read-only, say) rather than an
+  /// elevation change.
+  final Color? tint;
 
   const GlassCard({
     required this.child,
@@ -30,28 +43,32 @@ class GlassCard extends StatelessWidget {
     this.borderRadius =
         const BorderRadius.all(Radius.circular(AppSpacing.radiusMd)),
     this.highlighted = false,
+    this.elevation = GlassElevation.card,
+    this.tint,
+    this.specularAngleOffset = 0,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveElevation = highlighted ? GlassElevation.hero : elevation;
     final surface = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
         gradient: GlassDecoration.body(
-          top: highlighted ? .22 : .16,
-          bottom: highlighted ? .09 : .055,
+          top: GlassTokens.topTint(effectiveElevation),
+          bottom: GlassTokens.bottomTint(effectiveElevation),
+          color: tint ?? Colors.white,
         ),
-        boxShadow: GlassDecoration.shadows,
+        boxShadow: GlassDecoration.shadowsFor(effectiveElevation),
       ),
       child: ClipRRect(
         borderRadius: borderRadius,
-        child: CustomPaint(
+        child: SpecularBorder(
           // Painted over the content so the lit edge is never covered by a
           // child that fills the card, such as an image.
-          foregroundPainter: GlassEdgePainter(
-            borderRadius: borderRadius,
-            intensity: highlighted ? 1.35 : 1.0,
-          ),
+          borderRadius: borderRadius,
+          intensity: GlassTokens.borderIntensity(effectiveElevation),
+          angleOffsetDegrees: specularAngleOffset,
           child: Stack(
             children: [
               const Positioned.fill(

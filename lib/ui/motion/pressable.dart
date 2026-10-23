@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/physics.dart';
+
+import '../feedback/haptics.dart';
+import '../theme/motion_settings.dart';
+import 'spring.dart';
 
 /// Scale-on-press wrapper.
 ///
-/// Driven by an [AnimationController] rather than [AnimatedScale] so the press
-/// and release can carry different curves: the press bites immediately, the
-/// release overshoots slightly on the way back. A symmetric implicit tween
-/// reads as mush.
+/// The existing gesture API stays intact while its internal controller follows
+/// the shared snappy spring, so every press and release settles consistently.
 class Pressable extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -35,18 +39,10 @@ class _PressableState extends State<Pressable>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 110),
-    reverseDuration: const Duration(milliseconds: 260),
   );
 
-  /// Reversing with a flipped easeOutBack drives the curve slightly below 0,
-  /// which the tween maps to a scale just above 1.0 -- the small overshoot on
-  /// release is what makes the tap feel physical.
-  late final Animation<double> _scale = CurvedAnimation(
-    parent: _controller,
-    curve: Curves.easeOutCubic,
-    reverseCurve: Curves.easeOutBack.flipped,
-  ).drive(Tween(begin: 1.0, end: widget.pressedScale));
+  late final Animation<double> _scale =
+      Tween<double>(begin: 1.0, end: widget.pressedScale).animate(_controller);
 
   bool get _enabled => widget.onTap != null || widget.onLongPress != null;
 
@@ -56,11 +52,26 @@ class _PressableState extends State<Pressable>
     super.dispose();
   }
 
-  void _down(TapDownDetails _) {
-    if (_enabled) _controller.forward();
+  void _animateTo(double target) {
+    if (!MotionSettings.enabled(context)) {
+      _controller.value = target;
+      return;
+    }
+    _controller.animateWith(
+      SpringSimulation(
+        AppSprings.snappy,
+        _controller.value,
+        target,
+        _controller.velocity,
+      ),
+    );
   }
 
-  void _release() => _controller.reverse();
+  void _down(TapDownDetails _) {
+    if (_enabled) _animateTo(1);
+  }
+
+  void _release() => _animateTo(0);
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -71,14 +82,18 @@ class _PressableState extends State<Pressable>
         onTapCancel: _release,
         onTapUp: (_) {
           _release();
-          if (widget.haptic) HapticFeedback.selectionClick();
+          if (widget.haptic) {
+            unawaited(HapticPhrase.play(AppHaptics.step));
+          }
           widget.onTap?.call();
         },
         onLongPress: widget.onLongPress == null
             ? null
             : () {
                 _release();
-                if (widget.haptic) HapticFeedback.mediumImpact();
+                if (widget.haptic) {
+                  unawaited(HapticPhrase.play(AppHaptics.lift));
+                }
                 widget.onLongPress!.call();
               },
         child: ScaleTransition(scale: _scale, child: widget.child),

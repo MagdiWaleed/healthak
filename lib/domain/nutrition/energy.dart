@@ -10,17 +10,12 @@ import 'macros.dart';
 enum Sex {
   male,
   female,
-
-  /// Uses the average of the male and female constants. Less accurate, but the
-  /// alternative is refusing to compute anything.
-  preferNotToSay,
 }
 
 extension SexLabel on Sex {
   String get labelAr => switch (this) {
         Sex.male => 'ذكر',
         Sex.female => 'أنثى',
-        Sex.preferNotToSay => 'أفضل عدم القول',
       };
 }
 
@@ -79,8 +74,6 @@ const double kMaxFatShare = 0.40;
 ///
 ///   male:   10*kg + 6.25*cm - 5*age + 5
 ///   female: 10*kg + 6.25*cm - 5*age - 161
-///
-/// `preferNotToSay` uses the midpoint of the two constants (-78).
 double bmrMifflinStJeor({
   required double weightKg,
   required double heightCm,
@@ -91,7 +84,6 @@ double bmrMifflinStJeor({
   final constant = switch (sex) {
     Sex.male => 5.0,
     Sex.female => -161.0,
-    Sex.preferNotToSay => -78.0,
   };
   return math.max(0, base + constant);
 }
@@ -99,6 +91,31 @@ double bmrMifflinStJeor({
 /// Total daily energy expenditure.
 double tdee({required double bmr, required ActivityLevel activity}) =>
     bmr * activity.multiplier;
+
+/// The daily kcal delta a weekly rate of change implies, and its inverse.
+///
+/// One pair of conversions, used by both [dailyTarget] and the UI, so the
+/// number shown next to a slider is the same number the target is built
+/// from rather than a second, drifting copy of the arithmetic.
+double dailyDeltaForWeeklyRate(double weeklyRateKg) =>
+    weeklyRateKg.abs() * kKcalPerKg / 7;
+
+double weeklyRateForDailyDelta(double dailyKcal) =>
+    dailyKcal.abs() * 7 / kKcalPerKg;
+
+/// The rate a finished target actually delivers.
+///
+/// Not always the rate that was asked for: [dailyTarget] clamps at the
+/// energy floor, so a large requested deficit quietly becomes a smaller one.
+/// Positive means losing, negative means gaining.
+double effectiveWeeklyRateKg({
+  required double bmr,
+  required ActivityLevel activity,
+  required double targetKcal,
+}) {
+  final dailyDeficit = tdee(bmr: bmr, activity: activity) - targetKcal;
+  return dailyDeficit * 7 / kKcalPerKg;
+}
 
 /// The lowest daily intake we will ever recommend.
 ///
@@ -121,7 +138,7 @@ double dailyTarget({
   required Sex sex,
 }) {
   final maintenance = tdee(bmr: bmr, activity: activity);
-  final delta = weeklyRateKg.abs() * kKcalPerKg / 7;
+  final delta = dailyDeltaForWeeklyRate(weeklyRateKg);
 
   final raw = switch (goal) {
     Goal.cut => maintenance - delta,

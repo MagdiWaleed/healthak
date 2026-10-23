@@ -5,11 +5,14 @@ import '../../domain/food/food_item.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/app_typography.dart';
+import '../../ui/theme/glass_tokens.dart';
+import 'component_editor_sheet.dart';
 import 'food_catalog_controller.dart';
 
 /// The search field, category chips, and paginated list.
@@ -59,9 +62,29 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
   void _onScroll() {
     // Trigger the next page a little before the physical end, so the network
     // round trip has time to land before the user hits blank space.
-    if (_scroll.position.pixels >
-        _scroll.position.maxScrollExtent - 400) {
+    if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 400) {
       widget.controller.loadMore();
+    }
+  }
+
+  Future<void> _createComponent() async {
+    final draft = await ComponentEditorSheet.show(context);
+    if (draft == null) return;
+    try {
+      final saved = await widget.controller.create(draft);
+      if (!mounted) return;
+      // In the picker, a component is created in order to be used right away;
+      // resolving the picker with it saves the user finding the row they just
+      // typed. In the browse screen there is nothing to resolve, so it simply
+      // appears at the top of the list.
+      widget.onSelect?.call(saved);
+    } catch (e) {
+      if (!mounted) return;
+      GlassSnackBar.show(
+        context,
+        'تعذر حفظ المكوّن: $e',
+        tone: GlassSnackTone.error,
+      );
     }
   }
 
@@ -73,15 +96,25 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
         Padding(
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.xs),
-          child: TextField(
-            controller: _search,
-            onChanged: c.search,
-            textInputAction: TextInputAction.search,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search_rounded),
-              hintText: 'ابحث عن مكوّن...',
-              isDense: true,
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _search,
+                  onChanged: c.search,
+                  textInputAction: TextInputAction.search,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search_rounded),
+                    hintText: 'ابحث عن مكوّن...',
+                    isDense: true,
+                  ),
+                ),
+              ),
+              if (c.canCreate) ...[
+                const SizedBox(width: AppSpacing.sm),
+                _AddComponentButton(onTap: _createComponent),
+              ],
+            ],
           ),
         ),
         Obx(() {
@@ -131,11 +164,11 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
             }
             return RefreshIndicator(
               onRefresh: c.reload,
+              color: AppPalette.emerald,
               child: ListView.separated(
                 controller: _scroll,
-                padding: EdgeInsets.fromLTRB(
-                    AppSpacing.md, AppSpacing.xs, AppSpacing.md,
-                    widget.bottomPadding),
+                padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.xs,
+                    AppSpacing.md, widget.bottomPadding),
                 itemCount: c.items.length + (c.hasMore.value ? 1 : 0),
                 separatorBuilder: (_, __) =>
                     const SizedBox(height: AppSpacing.sm),
@@ -158,8 +191,13 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
                     maxStaggered: 6,
                     child: _FoodRow(
                       food: food,
-                      onTap: () => (widget.onSelect ?? widget.onOpenDetail)
-                          ?.call(food),
+                      specularIndex: index,
+                      mine: c.isPersonal(food),
+                      onTap: () =>
+                          (widget.onSelect ?? widget.onOpenDetail)?.call(food),
+                      onDelete: c.isPersonal(food)
+                          ? () => c.deletePersonal(food)
+                          : null,
                     ),
                   );
                 },
@@ -172,22 +210,70 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
   }
 }
 
+/// The catalog's create-component affordance, sized to sit flush beside the
+/// dense search field rather than floating over the list like a second FAB --
+/// the screen already has one of those for the tab it lives in.
+class _AddComponentButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AddComponentButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: 'مكوّن جديد',
+        child: GlassCard(
+          onTap: onTap,
+          padding: const EdgeInsets.all(10),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          tint: AppPalette.emerald,
+          child: const Icon(Icons.add_rounded,
+              color: AppPalette.emerald, size: 22),
+        ),
+      );
+}
+
 class _FoodRow extends StatelessWidget {
   final FoodItem food;
   final VoidCallback? onTap;
 
-  const _FoodRow({required this.food, this.onTap});
+  /// A component this user created, as opposed to one from the shared
+  /// catalog. Only these can be deleted, and only these get the badge.
+  final bool mine;
+  final VoidCallback? onDelete;
+  final int specularIndex;
+
+  const _FoodRow({
+    required this.food,
+    required this.specularIndex,
+    this.onTap,
+    this.mine = false,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) => GlassCard(
+        specularAngleOffset:
+            specularIndex * GlassTokens.listSpecularStepDeg,
         onTap: onTap,
+        onLongPress: onDelete == null ? null : () => _confirmDelete(context),
         child: Row(
           children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(food.name, style: Theme.of(context).textTheme.titleMedium),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(food.name,
+                            style: Theme.of(context).textTheme.titleMedium),
+                      ),
+                      if (mine) ...[
+                        const SizedBox(width: 6),
+                        const _MineBadge(),
+                      ],
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     '${food.per100.kcal.round()} سعرة  •  '
@@ -210,6 +296,50 @@ class _FoodRow extends StatelessWidget {
             ),
             const Icon(Icons.chevron_left_rounded, color: AppPalette.muted),
           ],
+        ),
+      );
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppPalette.surface,
+        title: const Text('حذف المكوّن؟'),
+        content: Text(
+          'سيُحذف "${food.name}" من مكوّناتك. الوجبات التي تستخدمه '
+          'تحتفظ بقيمها كما هي.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child:
+                const Text('حذف', style: TextStyle(color: AppPalette.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed ?? false) onDelete?.call();
+  }
+}
+
+/// Marks a row as the user's own component rather than a shared-catalog one.
+class _MineBadge extends StatelessWidget {
+  const _MineBadge();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppPalette.emerald.withValues(alpha: .18),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Text(
+          'خاص بك',
+          style: TextStyle(fontSize: 10, color: AppPalette.emerald),
         ),
       );
 }

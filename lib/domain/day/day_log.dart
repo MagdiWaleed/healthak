@@ -225,6 +225,31 @@ class DayLog {
   Macros get plannedTotals =>
       entries.fold(Macros.zero, (Macros a, e) => a + e.totals);
 
+  /// Planned totals after previewing [draftTotals] in the meal editor.
+  ///
+  /// A new meal is added once. When an existing meal is being edited, every
+  /// frozen occurrence sourced from that meal is replaced one-for-one. This
+  /// keeps the preview aligned with today's plan without counting both the old
+  /// frozen recipe and its edited draft.
+  Macros plannedTotalsAfterDraft({
+    required String? replacingMealId,
+    required Macros draftTotals,
+  }) {
+    var unaffected = Macros.zero;
+    var replacedOccurrences = 0;
+
+    for (final entry in entries) {
+      if (replacingMealId != null && entry.sourceMealId == replacingMealId) {
+        replacedOccurrences++;
+      } else {
+        unaffected = unaffected + entry.totals;
+      }
+    }
+
+    final occurrences = replacedOccurrences == 0 ? 1 : replacedOccurrences;
+    return unaffected + draftTotals * occurrences.toDouble();
+  }
+
   /// Only what has actually been ticked off. This is what the ring shows.
   Macros get consumedTotals => entries
       .where((e) => e.eaten)
@@ -278,4 +303,25 @@ class DayLog {
   DayLog withoutEntry(String entryId) => copyWith(
         entries: entries.where((e) => e.entryId != entryId).toList(),
       );
+
+  /// Refreshes this meal's occurrences in the current day after an explicit
+  /// recipe save, while preserving each log entry's identity and eaten state.
+  /// Historical days are never passed through this operation.
+  DayLog refreshMealOccurrences({
+    required String sourceMealId,
+    required String name,
+    required List<FrozenItem> items,
+  }) {
+    var changed = false;
+    final next = <DayEntry>[];
+    for (final entry in entries) {
+      if (entry.sourceMealId == sourceMealId) {
+        changed = true;
+        next.add(entry.copyWith(name: name, items: List.unmodifiable(items)));
+      } else {
+        next.add(entry);
+      }
+    }
+    return changed ? copyWith(entries: next) : this;
+  }
 }

@@ -24,6 +24,25 @@ void main() {
       expect(scheduleVersionOf(a), scheduleVersionOf(b));
     });
 
+    test('is a pinned constant, not a per-run hash', () {
+      // The regression this exists for: the version used to be built with
+      // `Object.hashAll`, whose value Dart does not guarantee between runs of
+      // a program. Two runs of an *unchanged* schedule therefore disagreed,
+      // `ensureDay` re-materialized the day, and everything already ticked off
+      // came back with `eaten: false`.
+      //
+      // Comparing this against a literal is the only assertion that catches
+      // that: within a single test run even a randomized hash looks stable, so
+      // the test above cannot see the bug. If this value ever has to change,
+      // every already-stored day re-materializes once, so change it only
+      // deliberately.
+      final items = [
+        _item('x', order: 0, updatedAt: DateTime.utc(2026)),
+        _item('y', order: 1, updatedAt: DateTime.utc(2026)),
+      ];
+      expect(scheduleVersionOf(items), 423076138);
+    });
+
     test('is order-independent in the input list', () {
       final a = [_item('x'), _item('y')];
       final b = [_item('y'), _item('x')];

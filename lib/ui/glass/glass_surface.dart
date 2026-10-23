@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/glass_tokens.dart';
 import 'glass_decoration.dart';
+import 'specular_border.dart';
 
 /// A true blurred surface. **At most two of these may be mounted at once.**
 ///
@@ -22,6 +23,7 @@ class GlassSurface extends StatefulWidget {
   /// Body tint applied over the blur. Higher hides more of what is behind.
   final double tintTop;
   final double tintBottom;
+  final GlassElevation elevation;
 
   const GlassSurface({
     required this.child,
@@ -30,6 +32,7 @@ class GlassSurface extends StatefulWidget {
     this.sigma = GlassTokens.blur,
     this.tintTop = .20,
     this.tintBottom = .10,
+    this.elevation = GlassElevation.panel,
   });
 
   @override
@@ -69,7 +72,7 @@ class _GlassSurfaceState extends State<GlassSurface> {
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: widget.borderRadius,
-            boxShadow: GlassDecoration.shadows,
+            boxShadow: GlassDecoration.shadowsFor(widget.elevation),
           ),
           child: ClipRRect(
             // Mandatory. An unclipped BackdropFilter blurs the entire screen.
@@ -82,9 +85,9 @@ class _GlassSurfaceState extends State<GlassSurface> {
                 // and the surface gets a cheap-looking soft rim.
                 tileMode: TileMode.mirror,
               ),
-              child: CustomPaint(
-                foregroundPainter:
-                    GlassEdgePainter(borderRadius: widget.borderRadius),
+              child: SpecularBorder(
+                borderRadius: widget.borderRadius,
+                intensity: GlassTokens.borderIntensity(widget.elevation),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: GlassDecoration.body(
