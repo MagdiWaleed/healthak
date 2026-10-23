@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppPalette {
-  static const ink = Color(0xFF071411);
-  static const surface = Color(0xFF0D211C);
-  static const emerald = Color(0xFF46E2AE);
-  static const mint = Color(0xFFA5F3D4);
-  static const amber = Color(0xFFFFC56E);
-  static const violet = Color(0xFF9A8CFF);
-  static const text = Color(0xFFF4FBF8);
-  static const muted = Color(0xFFA7BDB6);
-  static const danger = Color(0xFFFF7D78);
+  static const ink = Color(0xFFF5F8F6);
+  static const surface = Colors.white;
+  static const emerald = Color(0xFF147D64);
+  static const mint = Color(0xFF237660);
+  static const amber = Color(0xFFA96616);
+  static const violet = Color(0xFF7260A4);
+  static const text = Color(0xFF193D33);
+  static const muted = Color(0xFF62766E);
+  static const danger = Color(0xFFBA4141);
+  static const outline = Color(0xFFDFE8E2);
+  static const soft = Color(0xFFEBF3EE);
+  static const onAccent = Colors.white;
 
   static const accentGradient = LinearGradient(
-    colors: [emerald, mint],
+    colors: [emerald, emerald],
     begin: AlignmentDirectional.topStart,
     end: AlignmentDirectional.bottomEnd,
   );

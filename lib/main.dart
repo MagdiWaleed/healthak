@@ -70,8 +70,8 @@ class HealthakApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        theme: AppTheme.dark,
-        darkTheme: AppTheme.dark,
+        theme: AppTheme.light,
+        themeMode: ThemeMode.light,
         initialRoute: AppRoutes.splash,
         getPages: AppPages.pages,
       );

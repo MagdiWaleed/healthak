@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../theme/glass_tokens.dart';
+import '../theme/app_colors.dart';
 import 'glass_decoration.dart';
 import 'specular_border.dart';
 
@@ -68,52 +69,62 @@ class _GlassSurfaceState extends State<GlassSurface> {
   }
 
   @override
-  Widget build(BuildContext context) => RepaintBoundary(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: widget.borderRadius,
-            boxShadow: GlassDecoration.shadowsFor(widget.elevation),
-          ),
-          child: ClipRRect(
-            // Mandatory. An unclipped BackdropFilter blurs the entire screen.
-            borderRadius: widget.borderRadius,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: widget.sigma,
-                sigmaY: widget.sigma,
-                // Without mirroring, the sampled edge falls off to transparent
-                // and the surface gets a cheap-looking soft rim.
-                tileMode: TileMode.mirror,
-              ),
-              child: SpecularBorder(
+  Widget build(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light
+          ? Container(
+              decoration: BoxDecoration(
+                color: AppPalette.surface,
                 borderRadius: widget.borderRadius,
-                intensity: GlassTokens.borderIntensity(widget.elevation),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: GlassDecoration.body(
-                      top: widget.tintTop,
-                      bottom: widget.tintBottom,
+                border: Border.all(color: AppPalette.outline),
+              ),
+              child: widget.child,
+            )
+          : RepaintBoundary(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: widget.borderRadius,
+                  boxShadow: GlassDecoration.shadowsFor(widget.elevation),
+                ),
+                child: ClipRRect(
+                  // Mandatory. An unclipped BackdropFilter blurs the entire screen.
+                  borderRadius: widget.borderRadius,
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: widget.sigma,
+                      sigmaY: widget.sigma,
+                      // Without mirroring, the sampled edge falls off to transparent
+                      // and the surface gets a cheap-looking soft rim.
+                      tileMode: TileMode.mirror,
                     ),
-                    borderRadius: widget.borderRadius,
-                  ),
-                  child: Stack(
-                    children: [
-                      const Positioned.fill(
-                        child: IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: GlassDecoration.specular,
-                            ),
+                    child: SpecularBorder(
+                      borderRadius: widget.borderRadius,
+                      intensity: GlassTokens.borderIntensity(widget.elevation),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: GlassDecoration.body(
+                            top: widget.tintTop,
+                            bottom: widget.tintBottom,
                           ),
+                          borderRadius: widget.borderRadius,
+                        ),
+                        child: Stack(
+                          children: [
+                            const Positioned.fill(
+                              child: IgnorePointer(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: GlassDecoration.specular,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            widget.child,
+                          ],
                         ),
                       ),
-                      widget.child,
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ),
-      );
+            );
 }

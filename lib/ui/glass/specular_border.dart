@@ -36,6 +36,7 @@ class SpecularBorder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (Theme.of(context).brightness == Brightness.light) return child;
     final angle = SpecularScope.maybeOf(context);
     if (angle == null) {
       return RepaintBoundary(

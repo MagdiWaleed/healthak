@@ -856,8 +856,9 @@ class AgentToolRegistry {
   Future<Map<String, dynamic>> _getToday() async {
     final now = _now().toLocal();
     final day = await _data.getDay(now);
-    if (day == null)
+    if (day == null) {
       return {'date': DayLog.keyFor(now), 'status': 'empty', 'entries': []};
+    }
     return {
       'date': day.dateKey,
       'entries': [

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../motion/pressable.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_colors.dart';
 import '../theme/glass_tokens.dart';
 import 'glass_decoration.dart';
 import 'specular_border.dart';
@@ -50,6 +51,31 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (Theme.of(context).brightness == Brightness.light) {
+      final surface = Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: tint == null
+              ? AppPalette.surface
+              : Color.alphaBlend(
+                  tint!.withValues(alpha: .045), AppPalette.surface),
+          borderRadius: borderRadius,
+          border: Border.all(
+              color: highlighted
+                  ? (tint ?? AppPalette.emerald).withValues(alpha: .35)
+                  : AppPalette.outline),
+        ),
+        child: child,
+      );
+      if (onTap == null && onLongPress == null) return surface;
+      return Pressable(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        pressedScale: .99,
+        haptic: true,
+        child: surface,
+      );
+    }
     final effectiveElevation = highlighted ? GlassElevation.hero : elevation;
     final surface = DecoratedBox(
       decoration: BoxDecoration(

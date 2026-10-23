@@ -154,20 +154,21 @@ class _AssistantHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 26, 22, 8),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _HeaderIconButton(
-              // Static glyph, not auto-mirrored like Flutter's built-in
-              // AppBar back button -- right-pointing is the correct RTL
-              // reading here (see the same note elsewhere in this repo).
-              icon: Icons.arrow_forward_rounded,
+              // This directional icon mirrors automatically in Arabic.
+              icon: Icons.arrow_back_rounded,
               tooltip: AppStrings.back,
               onTap: () => Navigator.of(context).maybePop(),
             ),
             const SizedBox(width: 10),
-            const _AgentPulse(size: 50, compact: true),
+            const CircleAvatar(
+              backgroundColor: AppPalette.soft,
+              child: Icon(Icons.eco_outlined, color: AppPalette.emerald),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -176,21 +177,10 @@ class _AssistantHeader extends StatelessWidget {
                   // The assistant is the app's most premium surface, so its
                   // wordmark gets the celebration-gradient treatment the rest
                   // of the typography reserves for goal moments.
-                  ShaderMask(
-                    blendMode: BlendMode.srcIn,
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [AppPalette.mint, AppPalette.emerald],
-                      begin: AlignmentDirectional.topStart,
-                      end: AlignmentDirectional.bottomEnd,
-                    ).createShader(bounds),
-                    child: Text(
-                      AppStrings.assistant,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium
-                          ?.copyWith(
-                              fontWeight: FontWeight.w900, letterSpacing: -.5),
-                    ),
+                  Text(
+                    AppStrings.assistant,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w700, color: AppPalette.emerald),
                   ),
                   const Text(
                     AppStrings.assistantPrivacyNote,
@@ -199,25 +189,40 @@ class _AssistantHeader extends StatelessWidget {
                 ],
               ),
             ),
-            _HeaderIconButton(
-              icon: Icons.fact_check_outlined,
-              tooltip: AppStrings.agentLogTooltip,
-              onTap: () => pushHealthak(() => const AgentHistoryScreen()),
+            PopupMenuButton<String>(
+              tooltip: AppStrings.assistantOptions,
+              icon: const Icon(Icons.more_vert, color: AppPalette.muted),
+              onSelected: (value) {
+                switch (value) {
+                  case 'log':
+                    pushHealthak(() => const AgentHistoryScreen());
+                  case 'history':
+                    _SessionListSheet.show(context);
+                  case 'new':
+                    Get.find<ChatOrchestrator>().startNewSession();
+                  case 'model':
+                    GlassSheet.show(context,
+                        builder: (_) => const GlassSheet(
+                              title: AppStrings.assistantModelPickerTooltip,
+                              child: Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: _ModelChip()),
+                            ));
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                    value: 'new', child: Text(AppStrings.assistantNewChat)),
+                PopupMenuItem(
+                    value: 'history',
+                    child: Text(AppStrings.assistantHistoryTooltip)),
+                PopupMenuItem(
+                    value: 'log', child: Text(AppStrings.agentLogTooltip)),
+                PopupMenuItem(
+                    value: 'model',
+                    child: Text(AppStrings.assistantModelPickerTooltip)),
+              ],
             ),
-            const SizedBox(width: 6),
-            _HeaderIconButton(
-              icon: Icons.history_rounded,
-              tooltip: AppStrings.assistantHistoryTooltip,
-              onTap: () => _SessionListSheet.show(context),
-            ),
-            const SizedBox(width: 6),
-            _HeaderIconButton(
-              icon: Icons.add_comment_outlined,
-              tooltip: AppStrings.assistantNewChat,
-              onTap: () => Get.find<ChatOrchestrator>().startNewSession(),
-            ),
-            const SizedBox(width: 10),
-            const _ModelChip(),
           ],
         ),
       );
@@ -242,13 +247,13 @@ class _HeaderIconButton extends StatelessWidget {
           haptic: true,
           pressedScale: .92,
           child: Container(
-            width: 34,
-            height: 34,
+            width: 44,
+            height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .06),
+              color: AppPalette.soft,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: .12)),
+              border: Border.all(color: AppPalette.outline),
             ),
             child: Icon(icon, size: 16, color: AppPalette.muted),
           ),
@@ -545,21 +550,11 @@ class _EmptyConversation extends StatelessWidget {
             children: [
               _AgentPulse(active: active),
               const SizedBox(height: 24),
-              ShaderMask(
-                blendMode: BlendMode.srcIn,
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [AppPalette.text, AppPalette.mint],
-                  begin: AlignmentDirectional.topStart,
-                  end: AlignmentDirectional.bottomEnd,
-                ).createShader(bounds),
-                child: Text(
-                  AppStrings.assistantHeadline,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.w900),
-                ),
+              Text(
+                AppStrings.assistantHeadline,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700, color: AppPalette.emerald),
               ),
               const SizedBox(height: 8),
               Text(
@@ -681,10 +676,10 @@ class _SuggestionRail extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .055),
+              color: AppPalette.surface,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
-                color: Colors.white.withValues(alpha: .15),
+                color: AppPalette.outline,
               ),
             ),
             child: Text(
@@ -751,30 +746,9 @@ class _Composer extends StatelessWidget {
                       height: 42,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: sending.value
-                            ? null
-                            : const LinearGradient(
-                                colors: [AppPalette.emerald, AppPalette.mint],
-                                begin: Alignment.topRight,
-                                end: Alignment.bottomLeft,
-                              ),
                         color: sending.value
-                            ? Colors.white.withValues(alpha: .08)
-                            : null,
-                        // The idle button emits the accent glow (L3 language);
-                        // while the agent works the glow goes violet -- the
-                        // same "thinking" color the pulse and typing dots use.
-                        boxShadow: [
-                          BoxShadow(
-                            color: (sending.value
-                                    ? AppPalette.violet
-                                    : AppPalette.emerald)
-                                .withValues(alpha: .30),
-                            blurRadius: 18,
-                            spreadRadius: -4,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                            ? AppPalette.soft
+                            : AppPalette.emerald,
                       ),
                       child: sending.value
                           ? const Padding(
@@ -786,7 +760,7 @@ class _Composer extends StatelessWidget {
                             )
                           : const Icon(
                               Icons.arrow_upward_rounded,
-                              color: AppPalette.ink,
+                              color: AppPalette.onAccent,
                             ),
                     ),
                   )),
@@ -984,7 +958,7 @@ class _MarkdownBody extends StatelessWidget {
           backgroundColor: Colors.white.withValues(alpha: .08),
         ),
         codeblockDecoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: .06),
+          color: AppPalette.soft,
           borderRadius: BorderRadius.circular(10),
         ),
         blockquote: body.copyWith(color: AppPalette.muted),
@@ -1026,152 +1000,72 @@ class _ProposalCard extends StatelessWidget {
         // waits, the card breathes a violet glow so "the app is asking you
         // something" reads from across the room. Resolved proposals render
         // flat. `BoxShadow` only -- no blur filter, budget untouched.
-        child: _BreathingGlow(
-          active: pending,
-          color: AppPalette.violet,
-          borderRadius: 22,
-          child: GlassCard(
-            elevation: GlassElevation.panel,
-            highlighted: pending,
-            tint: pending ? AppPalette.violet : null,
-            padding: const EdgeInsets.all(13),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        child: GlassCard(
+          elevation: GlassElevation.panel,
+          highlighted: pending,
+          tint: pending ? AppPalette.emerald : null,
+          padding: const EdgeInsets.all(13),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 16,
+                    color: pending ? AppPalette.violet : AppPalette.muted,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      proposal.titleAr,
+                      style: TextStyle(
+                        color: pending ? AppPalette.text : AppPalette.muted,
+                        fontWeight: FontWeight.w700,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              ..._ProposalDetails.rowsFor(proposal),
+              if (pending) ...[
+                const SizedBox(height: 8),
+                const Text(AppStrings.assistantConfirmNote,
+                    style: TextStyle(fontSize: 11, color: AppPalette.muted)),
+                const SizedBox(height: 12),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.auto_awesome_rounded,
-                      size: 16,
-                      color: pending ? AppPalette.violet : AppPalette.muted,
+                    Expanded(
+                      child: _ProposalButton(
+                        label: AppStrings.assistantConfirm,
+                        filled: true,
+                        onTap: () => Get.find<ChatOrchestrator>()
+                            .confirmProposal(message.id),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        proposal.titleAr,
-                        style: TextStyle(
-                          color: pending ? AppPalette.text : AppPalette.muted,
-                          fontWeight: FontWeight.w700,
-                          height: 1.5,
-                        ),
+                      child: _ProposalButton(
+                        label: AppStrings.assistantCancel,
+                        filled: false,
+                        onTap: () => Get.find<ChatOrchestrator>()
+                            .cancelProposal(message.id),
                       ),
                     ),
                   ],
                 ),
-                ..._ProposalDetails.rowsFor(proposal),
-                if (pending) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ProposalButton(
-                          label: AppStrings.assistantConfirm,
-                          filled: true,
-                          onTap: () => Get.find<ChatOrchestrator>()
-                              .confirmProposal(message.id),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _ProposalButton(
-                          label: AppStrings.assistantCancel,
-                          filled: false,
-                          onTap: () => Get.find<ChatOrchestrator>()
-                              .cancelProposal(message.id),
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else if (message.status == ChatMessageStatus.cancelled) ...[
-                  const SizedBox(height: 6),
-                  const Text(
-                    AppStrings.assistantCancelled,
-                    style: TextStyle(color: AppPalette.muted, fontSize: 11),
-                  ),
-                ],
+              ] else if (message.status == ChatMessageStatus.cancelled) ...[
+                const SizedBox(height: 6),
+                const Text(
+                  AppStrings.assistantCancelled,
+                  style: TextStyle(color: AppPalette.muted, fontSize: 11),
+                ),
               ],
-            ),
+            ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// A slow breathing glow around its child while [active] -- the "waiting on
-/// you" state for proposal cards. One controller, boxShadow only, gated by
-/// `MotionSettings`; reduced-motion renders the child flat.
-class _BreathingGlow extends StatefulWidget {
-  final bool active;
-  final Color color;
-  final double borderRadius;
-  final Widget child;
-
-  const _BreathingGlow({
-    required this.active,
-    required this.color,
-    required this.borderRadius,
-    required this.child,
-  });
-
-  @override
-  State<_BreathingGlow> createState() => _BreathingGlowState();
-}
-
-class _BreathingGlowState extends State<_BreathingGlow>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2000),
-  );
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _sync();
-  }
-
-  @override
-  void didUpdateWidget(covariant _BreathingGlow oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.active != oldWidget.active) _sync();
-  }
-
-  void _sync() {
-    if (widget.active && MotionSettings.enabled(context)) {
-      controller.repeat(reverse: true);
-    } else {
-      controller.stop();
-      controller.value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.active) return widget.child;
-    return AnimatedBuilder(
-      animation: controller,
-      child: widget.child,
-      builder: (context, child) => DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(widget.borderRadius),
-          boxShadow: [
-            BoxShadow(
-              color:
-                  widget.color.withValues(alpha: .16 + controller.value * .18),
-              blurRadius: 22,
-              spreadRadius: -4,
-            ),
-          ],
-        ),
-        child: child,
       ),
     );
   }
@@ -1194,20 +1088,19 @@ class _ProposalButton extends StatelessWidget {
         haptic: true,
         pressedScale: .96,
         child: Container(
-          height: 38,
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             gradient: filled ? AppPalette.accentGradient : null,
-            color: filled ? null : Colors.white.withValues(alpha: .06),
+            color: filled ? null : AppPalette.surface,
             borderRadius: BorderRadius.circular(12),
-            border: filled
-                ? null
-                : Border.all(color: Colors.white.withValues(alpha: .15)),
+            border: filled ? null : Border.all(color: AppPalette.outline),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: filled ? AppPalette.ink : AppPalette.muted,
+              color: filled ? AppPalette.onAccent : AppPalette.text,
               fontWeight: FontWeight.w700,
               fontSize: 13,
             ),
@@ -1661,15 +1554,13 @@ class _StreamingCursorState extends State<_StreamingCursor>
 }
 
 class _AgentPulse extends StatefulWidget {
-  final double size;
   final bool active;
-  final bool compact;
 
   const _AgentPulse({
-    this.size = 132,
     this.active = false,
-    this.compact = false,
   });
+
+  static const double _size = 132;
 
   @override
   State<_AgentPulse> createState() => _AgentPulseState();
@@ -1714,11 +1605,11 @@ class _AgentPulseState extends State<_AgentPulse>
         child: AnimatedBuilder(
           animation: controller,
           builder: (context, _) => CustomPaint(
-            size: Size.square(widget.size),
+            size: const Size.square(_AgentPulse._size),
             painter: _AgentPulsePainter(
               phase: controller.value,
               active: widget.active,
-              compact: widget.compact,
+              compact: false,
             ),
           ),
         ),

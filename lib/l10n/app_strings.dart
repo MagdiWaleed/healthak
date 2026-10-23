@@ -3,6 +3,42 @@
 /// Legacy screens keep their original inline strings until Step 2 replaces
 /// them. New work uses this file so wording does not drift across screens.
 abstract final class AppStrings {
+  static const todayEnergy = 'المأكول اليوم';
+  static const remaining = 'المتبقي';
+  static const aboveTarget = 'فوق الهدف';
+  static const todayMeals = 'وجبات اليوم';
+  static const plannedDetails = 'عرض المخطط لليوم';
+  static const noDayRecord = 'لا يوجد سجل لهذا اليوم';
+  static const noMealsToday = 'لا توجد وجبات اليوم';
+  static const startWithMeal = 'ابدأ بإضافة وجبة أو مكوّن من طعامك';
+  static const backToToday = 'العودة لليوم';
+  static const dayRecord = 'سجل اليوم';
+  static const todaySubtitle = 'كل وجبة خطوة نحو هدفك';
+  static const historyReadOnly = 'للتصحيح، اضغط تعديل أولاً';
+  static const askAssistant = 'اسأل مساعد صحتك';
+  static const assistantEntryHint = 'سجّل وجبة، أو اسأل عن المتبقي من هدفك';
+  static const mealActions = 'خيارات الوجبة';
+  static const assistantConfirmNote = 'لن يُنفّذ الاقتراح قبل تأكيدك';
+  static const assistantOptions = 'خيارات المساعد';
+  static const weekdayShort = ['إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت', 'أحد'];
+  static const weekdays = [
+    'الإثنين',
+    'الثلاثاء',
+    'الأربعاء',
+    'الخميس',
+    'الجمعة',
+    'السبت',
+    'الأحد'
+  ];
+  static String outOfKcal(int target) => 'من $target سعرة';
+  static String energyProgress(int value, int target) =>
+      '$value من $target سعرة';
+  static String macroAmount(int value, int target) => '$value من $target ج';
+  static String plannedSummary(int kcal, int protein, int carbs, int fat) =>
+      '$kcal سعرة مخططة · بروتين $protein ج · كارب $carbs ج · دهون $fat ج';
+  static String entryNutrition(int kcal, int protein) =>
+      '$kcal سعرة · $protein ج بروتين';
+  static String eatenLabel(String name) => 'تم تناول $name';
   static const appName = 'صحتك';
   static const guestMode = 'وضع الضيف';
   static const guestHeadline = 'استكشف صحتك قبل إنشاء حساب';
@@ -11,8 +47,12 @@ abstract final class AppStrings {
   static const signInOrCreateAccount = 'تسجيل الدخول أو إنشاء حساب';
   static const previewOnly = 'معاينة فقط';
   static const dailyTarget = 'هدف اليوم';
-  static const remaining = 'متبقي';
   static const mealIdeas = 'أفكار وجبات';
+  static const done = 'تم';
+  static const edit = 'تعديل';
+  static const delete = 'حذف';
+  static const addMeal = 'إضافة وجبة';
+  static const newMeal = 'وجبة جديدة';
   static const accountNeeded = 'يلزم حساب للحفظ والتتبع';
   static const email = 'البريد الإلكتروني';
   static const password = 'كلمة المرور';

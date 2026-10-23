@@ -4,48 +4,60 @@ import 'app_colors.dart';
 import 'app_typography.dart';
 
 abstract final class AppTheme {
-  static ThemeData get dark => ThemeData(
+  static ThemeData get light => ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
         fontFamily: 'Cairo',
         scaffoldBackgroundColor: AppPalette.ink,
-        colorScheme: const ColorScheme.dark(
+        colorScheme: const ColorScheme.light(
           primary: AppPalette.emerald,
+          onPrimary: AppPalette.onAccent,
           secondary: AppPalette.amber,
           surface: AppPalette.surface,
+          onSurface: AppPalette.text,
           error: AppPalette.danger,
+          outline: AppPalette.outline,
         ),
         textTheme: AppTypography.textTheme,
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppPalette.ink,
           foregroundColor: AppPalette.text,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
-          centerTitle: true,
+          centerTitle: false,
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white.withValues(alpha: .07),
+          fillColor: AppPalette.surface,
+          labelStyle: const TextStyle(color: AppPalette.muted),
+          hintStyle: const TextStyle(color: AppPalette.muted),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(18),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: .16)),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppPalette.outline),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppPalette.outline),
           ),
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            minimumSize: const Size(48, 52),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          ),
+        dividerTheme: const DividerThemeData(color: AppPalette.outline),
+        navigationBarTheme: const NavigationBarThemeData(
+          backgroundColor: AppPalette.surface,
+          surfaceTintColor: Colors.transparent,
+          indicatorColor: AppPalette.soft,
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         ),
-        dividerTheme:
-            DividerThemeData(color: Colors.white.withValues(alpha: .12)),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppPalette.surface,
+          surfaceTintColor: Colors.transparent,
+        ),
         cardTheme: CardThemeData(
-          color: Colors.white.withValues(alpha: .08),
+          color: AppPalette.surface,
+          elevation: 0,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         ),
       );
-
-  static ThemeData get light =>
-      ThemeData(useMaterial3: true, fontFamily: 'Cairo');
 }

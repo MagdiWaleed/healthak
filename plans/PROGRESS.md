@@ -1,5 +1,29 @@
 # PROGRESS — handoff
 
+## UI refresh on cline-UI (2026-10-23)
+
+User requested merging the existing work into main, then continuing this branch
+with the new UI. Local main contains merge `ab158cd`; `cline-UI` fast-forwarded
+to that baseline before UI edits. Pushing origin/main was rejected by automatic
+approval review as a shared-remote mutation requiring explicit authorization;
+origin/main is unchanged.
+
+Implemented: light porcelain/emerald theme and flat shared surfaces; compact
+Today summary with expandable planned totals; stable assistant entry; visible
+meal actions and history locking; four permanently labelled nav items; a library
+create-meal button; calmer assistant header, options menu and confirmation cards.
+Voice capture/TTS are not part of this implementation. Full scope and boundaries:
+`plans/ui_refresh.md`.
+
+Fixed the two date-dependent action-log tests by injecting their existing clock
+seam, and the pre-existing analyzer braces info. Added focused UI and real-screen
+checks using test-only fixtures. Rendered UI evidence is under `output/review/`.
+Final validation: `flutter analyze` reports no issues; all **197 tests pass**;
+the final Android debug APK builds. Actual widget renders at 390px (Today) and
+360px (assistant), keyboard clearance, pending confirmation cards, and 320px
+large-text components were checked. The emulator disconnected before runtime QA;
+rendered screenshots use test-only records, not a live Firebase session.
+
 ## Repository review and UI/voice recommendation (2026-10-23)
 
 Review only; application behavior unchanged. Findings and next-step recommendations:
@@ -1767,6 +1791,7 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 
 | Plan said | What was done | Why |
 |---|---|---|
+| Living Glass default with repeated arrival/scroll effects | Light opaque surfaces, compact Today and stable labelled controls | User explicitly requested implementing the reviewed new UI on cline-UI (2026-10-23). Domain, storage and confirmation semantics preserved; voice remains separate. |
 | `tool/migrate_foods.dart` | `tool/migrate_foods.js` (Node + `firebase-admin`) | The Admin SDK bypasses security rules, so `foods` stays client-read-only and no weakened ruleset ever gets deployed. A Dart script would have needed a Flutter runtime *and* a temporary permissive rule. |
 | Generate `asset/image/noise.png` | Deferred to Step 1 as `lib/ui/background/grain_texture.dart` | Procedural generation — a seeded `Random` painted once into a `ui.Image` and tiled via `ImageShader`. No binary asset in git, tunable at runtime, one-time cost. |
 | TFLite caller "stubbed out" | Replaced with a working proportional-scale solver | ~15 lines, and strictly better than the broken model. Kept the legacy screen functional until Step 2 deleted it (now moot — the screen is deleted). |

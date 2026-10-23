@@ -25,12 +25,13 @@ class GlassButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (icon != null) ...[
-                  Icon(icon, color: AppPalette.ink),
+                  Icon(icon, color: AppPalette.onAccent),
                   const SizedBox(width: 8)
                 ],
                 Text(label,
                     style: const TextStyle(
-                        color: AppPalette.ink, fontWeight: FontWeight.w700)),
+                        color: AppPalette.onAccent,
+                        fontWeight: FontWeight.w700)),
               ],
             ),
           ),

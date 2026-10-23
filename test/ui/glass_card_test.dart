@@ -7,8 +7,9 @@ void main() {
   testWidgets('list cards can phase the shared specular light per row',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Column(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: const Column(
           children: [
             GlassCard(child: Text('one')),
             GlassCard(specularAngleOffset: 8, child: Text('two')),
@@ -24,8 +25,8 @@ void main() {
 
   testWidgets('scroll-safe GlassCard contains no BackdropFilter',
       (tester) async {
-    await tester
-        .pumpWidget(const MaterialApp(home: GlassCard(child: Text('meal'))));
+    await tester.pumpWidget(MaterialApp(
+        theme: ThemeData.dark(), home: const GlassCard(child: Text('meal'))));
     expect(find.byType(BackdropFilter), findsNothing);
   });
 }

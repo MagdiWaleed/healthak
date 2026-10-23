@@ -5,6 +5,7 @@ import '../../domain/profile/user_profile.dart';
 import '../../service/settings_controller.dart';
 import '../background/reactive_aurora.dart';
 import '../theme/glass_tokens.dart';
+import '../theme/app_colors.dart';
 import '../theme/mood_palette.dart';
 import '../theme/motion_settings.dart';
 import 'specular_border.dart';
@@ -84,7 +85,8 @@ class _GlassScaffoldState extends State<GlassScaffold>
   }
 
   void _playArrivalGlint() {
-    if (!MotionSettings.enabled(context)) {
+    if (Theme.of(context).brightness == Brightness.light ||
+        !MotionSettings.enabled(context)) {
       _arrival.stop();
       _arrival.value = 0;
       _publishSpecularAngle(force: true);
@@ -120,7 +122,10 @@ class _GlassScaffoldState extends State<GlassScaffold>
     if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
       return false;
     }
-    if (!MotionSettings.enabled(context)) return false;
+    if (Theme.of(context).brightness == Brightness.light ||
+        !MotionSettings.enabled(context)) {
+      return false;
+    }
     _scrollAngle = _restingAngle +
         notification.metrics.pixels /
             100 *
@@ -130,8 +135,7 @@ class _GlassScaffoldState extends State<GlassScaffold>
     final now = DateTime.now();
     final atGestureEdge = notification is ScrollStartNotification ||
         notification is ScrollEndNotification;
-    final jumpedFar =
-        (_scrollAngle - _lastScrollAnglePublished).abs() >= 9;
+    final jumpedFar = (_scrollAngle - _lastScrollAnglePublished).abs() >= 9;
     if (atGestureEdge ||
         jumpedFar ||
         now.difference(_lastScrollPublish) >= _scrollPublishGap) {
@@ -173,6 +177,17 @@ class _GlassScaffoldState extends State<GlassScaffold>
         ? Obx(() => background(
             Get.find<SettingsController>().settings.value.graphicsQuality))
         : background(GraphicsQuality.high);
+
+    if (Theme.of(context).brightness == Brightness.light) {
+      return Scaffold(
+        backgroundColor: AppPalette.ink,
+        appBar: widget.appBar,
+        bottomNavigationBar: widget.bottomNavigationBar,
+        floatingActionButton: widget.floatingActionButton,
+        floatingActionButtonLocation: widget.floatingActionButtonLocation,
+        body: SafeArea(child: widget.body),
+      );
+    }
 
     return SpecularScope(
       angle: _specularAngle,

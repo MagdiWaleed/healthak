@@ -7,7 +7,8 @@ void main() {
   test('records an entry and lists it newest-first', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final log = SharedPrefsAgentActionLog(preferences: prefs);
+    final log = SharedPrefsAgentActionLog(
+        preferences: prefs, now: () => DateTime(2026, 9, 4, 12));
 
     await log.record(AgentActionLogEntry(
       id: 'a1',
@@ -35,7 +36,8 @@ void main() {
   test('markUndone stamps the entry and it stays undoable=false', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final log = SharedPrefsAgentActionLog(preferences: prefs);
+    final log = SharedPrefsAgentActionLog(
+        preferences: prefs, now: () => DateTime(2026, 9, 4, 12));
 
     await log.record(AgentActionLogEntry(
       id: 'a1',
@@ -79,12 +81,14 @@ void main() {
     expect(entries.map((e) => e.id), ['kept']);
   });
 
-  test('every ProposalKind maps to a filter category except the internal-only ones',
+  test(
+      'every ProposalKind maps to a filter category except the internal-only ones',
       () {
     expect(ProposalKind.logFood.logCategory, AgentActionCategory.add);
     expect(ProposalKind.logMeal.logCategory, AgentActionCategory.add);
     expect(ProposalKind.createMeal.logCategory, AgentActionCategory.add);
-    expect(ProposalKind.logCustomComponent.logCategory, AgentActionCategory.add);
+    expect(
+        ProposalKind.logCustomComponent.logCategory, AgentActionCategory.add);
     expect(ProposalKind.restoreEntry.logCategory, AgentActionCategory.add);
     expect(ProposalKind.updateGrams.logCategory, AgentActionCategory.edit);
     expect(ProposalKind.removeEntry.logCategory, AgentActionCategory.remove);

@@ -7,8 +7,9 @@ void main() {
   testWidgets('route arrival makes one shared light orbit and settles',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: GlassScaffold(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: const GlassScaffold(
           body: SizedBox.expand(),
           lightEventKey: 0,
         ),
@@ -30,6 +31,7 @@ void main() {
 
   testWidgets('changing the page key replays the shared orbit', (tester) async {
     Widget app(int page) => MaterialApp(
+          theme: ThemeData.dark(),
           home: GlassScaffold(
             lightEventKey: page,
             body: const SizedBox.expand(),
@@ -53,8 +55,9 @@ void main() {
   testWidgets('reduced motion leaves the edge at its resting angle',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: MediaQuery(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: const MediaQuery(
           data: MediaQueryData(disableAnimations: true),
           child: GlassScaffold(body: SizedBox.expand()),
         ),
@@ -71,8 +74,9 @@ void main() {
   testWidgets('vertical scrolling refracts the one shared light source',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: GlassScaffold(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: const GlassScaffold(
           body: SingleChildScrollView(
             child: SizedBox(height: 1800),
           ),
