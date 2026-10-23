@@ -113,7 +113,7 @@ class GlassSheet extends StatelessWidget {
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: .25),
+                          color: AppPalette.muted.withValues(alpha: .35),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -122,15 +122,16 @@ class GlassSheet extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(
                               AppSpacing.md, AppSpacing.sm, AppSpacing.md, 0),
                           child: Row(children: [
-                            Text(title!,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 17,
-                                  color: AppPalette.text,
-                                )),
+                            Expanded(
+                                child: Text(title!,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 17,
+                                      color: AppPalette.text,
+                                    ))),
                           ]),
                         ),
-                      expand ? Expanded(child: child) : child,
+                      expand ? Expanded(child: child) : Flexible(child: child),
                     ],
                   ),
                 ],

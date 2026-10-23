@@ -203,7 +203,11 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2.4)),
                   )
                 : IconButton(
-                    onPressed: _save,
+                    onPressed: controller.loading.value ||
+                            controller.isEmpty ||
+                            controller.name.value.trim().isEmpty
+                        ? null
+                        : _save,
                     icon: const Icon(Icons.check_rounded),
                     tooltip: 'حفظ',
                   )),
@@ -215,7 +219,7 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
           }
           return Column(
             children: [
-              const SizedBox(height: 56),
+              const SizedBox(height: 12),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.md, 0, AppSpacing.md, AppSpacing.sm),
@@ -239,8 +243,14 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
                 onAddFood: _addFood,
                 onAddMealRef: _addMealRef,
                 onBalance: controller.isEmpty ? null : _balance,
-                onAddToToday: _addToToday,
-                onAddToSchedule: _addToSchedule,
+                onAddToToday:
+                    controller.isEmpty || controller.name.value.trim().isEmpty
+                        ? null
+                        : _addToToday,
+                onAddToSchedule:
+                    controller.isEmpty || controller.name.value.trim().isEmpty
+                        ? null
+                        : _addToSchedule,
               ),
             ],
           );
@@ -271,7 +281,8 @@ class _TotalsHeader extends StatelessWidget {
       // regardless of what today looks like. The day projection is a separate,
       // clearly labelled section below -- and only shown when it is real.
       final mealTotals = controller.totals;
-      final showDay = target != null && controller.projectsOntoToday;
+      final showDay =
+          target != null && controller.projectsOntoToday && !controller.isEmpty;
       final dayTotals =
           showDay ? controller.totalsAfterApplyingDraft : mealTotals;
 
@@ -335,8 +346,7 @@ class _TotalsHeader extends StatelessWidget {
                   controller.isNew
                       ? AppStrings.dayAfterAdding
                       : AppStrings.dayAfterEditing,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppPalette.muted),
+                  style: const TextStyle(fontSize: 11, color: AppPalette.muted),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Wrap(
@@ -637,8 +647,8 @@ class _ActionBar extends StatelessWidget {
   final VoidCallback onAddFood;
   final VoidCallback onAddMealRef;
   final VoidCallback? onBalance;
-  final VoidCallback onAddToToday;
-  final VoidCallback onAddToSchedule;
+  final VoidCallback? onAddToToday;
+  final VoidCallback? onAddToSchedule;
 
   const _ActionBar({
     required this.onAddFood,
@@ -697,16 +707,6 @@ class _ActionBar extends StatelessWidget {
                     onPressed: onAddToSchedule,
                     icon: const Icon(Icons.event_repeat_outlined),
                     label: const Text('أضف لجدولي'),
-                  ),
-                ),
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: () => GlassSnackBar.show(
-                      context,
-                      AppStrings.comingNext,
-                    ),
-                    icon: const Icon(Icons.storefront_outlined),
-                    label: const Text('نشر'),
                   ),
                 ),
               ],

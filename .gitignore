@@ -53,3 +53,5 @@ functions/.secret.local
 
 # Local AI dev credentials (direct xAI key)
 ai_secrets.json
+# Local emulator captures can contain personal account and food records.
+output/emulator-ux/

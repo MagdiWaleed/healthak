@@ -14,8 +14,9 @@ Cairo family; no new font/network dependency. Larger text and RTL must work.
 - Shared theme and surface primitives adopt flat opaque treatments. Legacy glass
   primitives remain bounded and their dark-path tests remain explicit; no blur
   budget assertion is removed. The production app currently uses light mode.
-- Today: compact calories/remaining + macros, expandable planned totals, a stable
-  labelled assistant entry, and meals grouped by slot. No collapsing 690px header,
+- Today: compact calories/remaining + macros, expandable planned totals, a
+  labelled assistant banner after meals and a header shortcut, with the slot
+  shown on each meal card. No collapsing 690px header,
   ambient sweeps, stacking rows, or repeated from-zero progress animation.
 - Preserve date browsing, explicit past-day unlock, correct frozen-day totals,
   eat toggles, edit/delete, quick add, stable entry keys, and per-day scroll state.
@@ -27,8 +28,9 @@ Cairo family; no new font/network dependency. Larger text and RTL must work.
 ## Boundaries
 
 No domain/schema/provider changes. Voice recording and TTS are not implemented in
-this UI pass; the assistant entry truthfully opens text chat. No fabricated food
-photos or added image fields: slot icons represent meals until real media exists.
+this UI pass; the assistant entry truthfully opens text chat. Original food
+photos are bundled locally and selected only for matching saved dishes; no
+image fields or remote storage writes were added.
 Inline proposal editing remains deferred. The transaction/rules/proxy issues from
 the source review remain separate work.
 
@@ -41,7 +43,10 @@ rendered screenshots under `output/review/` without introducing a production dem
 mode or connecting to Firebase. Android runtime QA remains required when an
 emulator or device is connected.
 
-Final local checks: analyzer clean, 197 tests pass, debug APK builds. Inspected
-`today-implemented.png`, `assistant-implemented.png`, and
-`assistant-proposal-implemented.png`. Corrected the mirrored assistant back arrow
-and removed the empty-state directional gradient that threw during rendering.
+The first pass was analyzer clean, 197 tests passed, and the debug APK built.
+After the emulator UX and photo pass, the analyzer is clean, 202 tests pass,
+and the final APK builds and installs on Pixel_4 via CLI. Inspected
+`output/emulator-ux/today-final-scrolled.png` and
+`output/emulator-ux/food-picker-final-full.png`; verified manual-entry keyboard
+clearance, incomplete meal actions, and the assistant header shortcut. The
+generated prompt set and bundled asset names are in `plans/food_image_prompts.md`.

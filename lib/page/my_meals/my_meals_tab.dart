@@ -8,6 +8,7 @@ import '../../service/auth_service.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
+import '../../ui/food/food_photo.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/navigation.dart';
 import '../../ui/motion/staggered_entry.dart';
@@ -180,11 +181,17 @@ class _MealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GlassCard(
-        specularAngleOffset:
-            specularIndex * GlassTokens.listSpecularStepDeg,
+        specularAngleOffset: specularIndex * GlassTokens.listSpecularStepDeg,
         onTap: onTap,
         child: Row(
           children: [
+            FoodPhoto(
+              asset: FoodPhoto.forMeal(
+                  meal.name, meal.entries.map((entry) => entry.name)),
+              fallbackIcon: Icons.restaurant_outlined,
+              size: 62,
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,8 +291,7 @@ class _ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GlassCard(
-        specularAngleOffset:
-            specularIndex * GlassTokens.listSpecularStepDeg,
+        specularAngleOffset: specularIndex * GlassTokens.listSpecularStepDeg,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

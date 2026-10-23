@@ -80,6 +80,7 @@ flutter:
   # A bare `- asset/` entry matches nothing, because asset/ holds only subdirectories.
   assets:
     - asset/image/
+    - asset/image/food/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

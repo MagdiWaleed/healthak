@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/food/food_item.dart';
+import '../../l10n/app_strings.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/glass_chip.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
+import '../../ui/food/food_photo.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
-import '../../ui/theme/app_typography.dart';
 import '../../ui/theme/glass_tokens.dart';
 import 'component_editor_sheet.dart';
 import 'food_catalog_controller.dart';
@@ -252,12 +253,17 @@ class _FoodRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GlassCard(
-        specularAngleOffset:
-            specularIndex * GlassTokens.listSpecularStepDeg,
+        specularAngleOffset: specularIndex * GlassTokens.listSpecularStepDeg,
         onTap: onTap,
         onLongPress: onDelete == null ? null : () => _confirmDelete(context),
         child: Row(
           children: [
+            FoodPhoto(
+              asset: FoodPhoto.forFoodName(food.name),
+              fallbackIcon: Icons.restaurant_outlined,
+              size: 56,
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -275,25 +281,20 @@ class _FoodRow extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 2),
+                  Text(AppStrings.foodPer100(food.per100.kcal.round()),
+                      style: Theme.of(context).textTheme.bodyMedium),
                   Text(
-                    '${food.per100.kcal.round()} سعرة  •  '
-                    'بروتين ${food.per100.protein.round()}غ  •  '
-                    'كارب ${food.per100.carbs.round()}غ  •  '
-                    'دهون ${food.per100.fat.round()}غ',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    AppStrings.foodMacrosCompact(
+                      food.per100.protein.round(),
+                      food.per100.carbs.round(),
+                      food.per100.fat.round(),
+                    ),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            const Text(
-              '/100غ',
-              style: TextStyle(
-                fontFamily: AppTypography.family,
-                fontSize: 11,
-                color: AppPalette.muted,
-              ),
-            ),
             const Icon(Icons.chevron_left_rounded, color: AppPalette.muted),
           ],
         ),

@@ -163,7 +163,7 @@ void main() {
   }
 
   testWidgets(
-      'Today screen keeps meals reachable and assistant visible without scrolling effects',
+      'Today screen keeps meals reachable and assistant accessible without scrolling',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -175,7 +175,7 @@ void main() {
     await tester.pumpWidget(app(const TodayTab(), key, navigation: true));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.byKey(const ValueKey('today-assistant')).hitTestable(),
+    expect(find.byTooltip(AppStrings.askAssistant).hitTestable(),
         findsOneWidget);
     expect(find.text(AppStrings.addMeal).hitTestable(), findsOneWidget);
     await capture(tester, key, 'today-implemented');

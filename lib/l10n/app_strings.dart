@@ -20,6 +20,22 @@ abstract final class AppStrings {
   static const mealActions = 'خيارات الوجبة';
   static const assistantConfirmNote = 'لن يُنفّذ الاقتراح قبل تأكيدك';
   static const assistantOptions = 'خيارات المساعد';
+  static const manualEntryTitle = 'إضافة طبق يدوي';
+  static const manualEntryHint =
+      'أدخل القيم للكمية التي ستسجّلها. تُحفظ في هذا اليوم فقط.';
+  static const dishName = 'اسم الطبق';
+  static const addToDay = 'إضافة لليوم';
+  static const saving = 'جارٍ الحفظ…';
+  static const saveFailed = 'تعذّر الحفظ. بياناتك ما زالت هنا، حاول مرة أخرى.';
+  static const invalidNutrition =
+      'أدخل أرقامًا صحيحة غير سالبة للقيم الغذائية.';
+  static const chooseMealSlot = 'موعد الوجبة';
+  static const automaticMealSlot = 'تلقائي حسب وقت الإضافة';
+  static const dayNotEditable =
+      'لم يعد هذا اليوم متاحًا للتعديل. ارجع واختر اليوم مجددًا.';
+  static const entryAdded = 'أُضيف الطبق إلى يومك';
+  static const noDayChange = 'عُد لليوم لإضافة طعامك';
+  static String calculatedKcal(int kcal) => '$kcal سعرة (محسوبة تلقائيًا)';
   static const weekdayShort = ['إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت', 'أحد'];
   static const weekdays = [
     'الإثنين',
@@ -38,6 +54,9 @@ abstract final class AppStrings {
       '$kcal سعرة مخططة · بروتين $protein ج · كارب $carbs ج · دهون $fat ج';
   static String entryNutrition(int kcal, int protein) =>
       '$kcal سعرة · $protein ج بروتين';
+  static String foodPer100(int kcal) => '$kcal سعرة / 100 ج';
+  static String foodMacrosCompact(int protein, int carbs, int fat) =>
+      'بروتين $protein · كارب $carbs · دهون $fat ج';
   static String eatenLabel(String name) => 'تم تناول $name';
   static const appName = 'صحتك';
   static const guestMode = 'وضع الضيف';

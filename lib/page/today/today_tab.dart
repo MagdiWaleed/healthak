@@ -6,6 +6,7 @@ import '../../l10n/app_strings.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/glass/glass_card.dart';
+import '../../ui/food/food_photo.dart';
 import '../../ui/motion/navigation.dart';
 import '../../ui/theme/app_colors.dart';
 import '../assistant/assistant_tab.dart';
@@ -51,8 +52,7 @@ class TodayTab extends GetView<TodayController> {
             )
           else ...[
             TodaySummary(key: ValueKey('summary-${day.dateKey}'), day: day),
-            _AssistantEntry(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             Row(children: [
               Expanded(
                   child: Text(AppStrings.todayMeals,
@@ -72,19 +72,10 @@ class TodayTab extends GetView<TodayController> {
                     message: AppStrings.startWithMeal),
               ),
             for (final slot in day.activeSlots) ...[
-              Padding(
-                key: ValueKey('slot-${slot.name}'),
-                padding: const EdgeInsets.only(top: 16, bottom: 8),
-                child: Text(slot.labelAr,
-                    style: const TextStyle(
-                        color: AppPalette.muted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700)),
-              ),
               for (final entry in day.entriesForSlot(slot))
                 Padding(
                   key: ValueKey('entry-${entry.entryId}'),
-                  padding: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.only(top: 10),
                   child: TodayEntryCard(
                     entry: entry,
                     readOnly: readOnly,
@@ -97,6 +88,8 @@ class TodayTab extends GetView<TodayController> {
                   ),
                 ),
             ],
+            const SizedBox(height: 14),
+            _AssistantEntry(),
           ],
         ];
         final indexes = <Key, int>{
@@ -130,6 +123,12 @@ class _TodayHeader extends StatelessWidget {
                     .titleLarge
                     ?.copyWith(color: AppPalette.emerald)),
             const Spacer(),
+            IconButton(
+              tooltip: AppStrings.askAssistant,
+              onPressed: () => pushHealthak(() => const AssistantTab()),
+              icon: const Icon(Icons.chat_bubble_outline_rounded,
+                  color: AppPalette.emerald),
+            ),
             if (controller.isViewingToday)
               Text(AppStrings.today,
                   style: Theme.of(context).textTheme.titleMedium),
@@ -162,11 +161,9 @@ class _TodayHeader extends StatelessWidget {
                       : AppStrings.edit),
                 ),
             ]),
-          Text(
-              controller.isViewingToday
-                  ? AppStrings.todaySubtitle
-                  : AppStrings.historyReadOnly,
-              style: Theme.of(context).textTheme.bodyMedium),
+          if (!controller.isViewingToday)
+            Text(AppStrings.historyReadOnly,
+                style: Theme.of(context).textTheme.bodyMedium),
         ],
       );
 }
@@ -181,7 +178,7 @@ class _AssistantEntry extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           onTap: () => pushHealthak(() => const AssistantTab()),
           child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             child: Row(children: [
               Icon(Icons.chat_bubble_outline_rounded,
                   color: AppPalette.onAccent, size: 25),
@@ -270,8 +267,8 @@ class DayChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             child: Container(
               width: width,
-              constraints: const BoxConstraints(minHeight: 62),
-              padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 2),
+              constraints: const BoxConstraints(minHeight: 58),
+              padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
               child: Column(children: [
                 Text(AppStrings.weekdayShort[date.weekday - 1],
                     style: TextStyle(
@@ -327,32 +324,32 @@ class TodayEntryCard extends StatelessWidget {
         ),
         onDismissed: (_) => onDelete(),
         child: GlassCard(
-          padding: const EdgeInsets.fromLTRB(10, 14, 14, 14),
+          padding: const EdgeInsets.all(10),
           onLongPress: readOnly ? null : onEdit,
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              width: 44,
-              height: 48,
-              decoration: BoxDecoration(
-                  color: AppPalette.soft,
-                  borderRadius: BorderRadius.circular(14)),
-              child: Icon(
-                  switch (entry.slot) {
-                    MealSlot.breakfast => Icons.breakfast_dining_outlined,
-                    MealSlot.lunch => Icons.rice_bowl_outlined,
-                    MealSlot.dinner => Icons.dinner_dining_outlined,
-                    MealSlot.snack => Icons.local_cafe_outlined,
-                  },
-                  color: AppPalette.emerald),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            FoodPhoto(
+              asset: FoodPhoto.forMeal(
+                  entry.name, entry.items.map((item) => item.name)),
+              fallbackIcon: switch (entry.slot) {
+                MealSlot.breakfast => Icons.breakfast_dining_outlined,
+                MealSlot.lunch => Icons.rice_bowl_outlined,
+                MealSlot.dinner => Icons.dinner_dining_outlined,
+                MealSlot.snack => Icons.local_cafe_outlined,
+              },
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                   Text(entry.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 4),
+                  Text(entry.slot.labelAr,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppPalette.emerald)),
+                  const SizedBox(height: 3),
                   Text(
                       entry.items
                           .map((item) =>
@@ -362,7 +359,7 @@ class TodayEntryCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontSize: 11, color: AppPalette.muted)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 5),
                   Text(
                       AppStrings.entryNutrition(
                           entry.kcal.round(), entry.totals.protein.round()),
@@ -371,7 +368,7 @@ class TodayEntryCard extends StatelessWidget {
                           color: AppPalette.emerald,
                           fontWeight: FontWeight.w600)),
                 ])),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
             Column(children: [
               if (!readOnly)
                 SizedBox(

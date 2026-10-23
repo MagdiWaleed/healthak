@@ -1,5 +1,50 @@
 # PROGRESS — handoff
 
+## UI reference, food imagery, and CLI emulator verification (2026-10-23)
+
+Continuing `cline-UI` after the first mockup was called out as the visual target.
+The Today list and library now show original dish photos where saved names and
+ingredients match; the food catalog/picker shows matching food photos. Ten
+generated images are bundled under `asset/image/food/` as 512px JPEGs (about
+905 KB total), so they work offline and require no Firestore/schema/storage
+write. Unmatched food keeps the existing neutral icon. The matching logic has
+a regression check for `ارز ابيض` versus `بيض`, which the emulator exposed.
+The Today assistant banner follows the list and a small header entry keeps
+chat reachable without scrolling; a fixed banner overlaid a meal card in the
+emulator and was removed. Food prompt set: `plans/food_image_prompts.md`.
+
+CLI Pixel_4 walkthrough: installed current debug APK, captured Today and
+My Meals, opened add-meal/manual-entry and verified the disabled save and
+keyboard resize, opened new-meal editor and confirmed incomplete actions stay
+disabled, and opened the food picker. No test meal was saved in this pass.
+Earlier temporary UXCLI_Test was removed and totals restored. Final validation:
+`flutter analyze --no-pub` clean, **202 tests pass**, final debug APK builds
+and installs on emulator-5554. The final CLI walk checked Today, scrolled meal
+photos, library, the food picker, the manual-entry keyboard/disabled save,
+incomplete meal editor, and the Today header shortcut into existing chat.
+Screenshots/XML are gitignored in `output/emulator-ux/` (notably
+`today-final-scrolled.png`, `food-picker-final-full.png`,
+`manual-keyboard-current.png`, and `meal-new-current.png`). No test meal was
+saved in this final pass.
+
+## Emulator UX walkthrough in progress (2026-10-23)
+
+User requested CLI emulator testing and improving the user journey after the UI
+refresh. On Pixel_4 / emulator-5554, installed the debug APK with `adb install -r`.
+Existing login/data retained. Confirmed real Today and manual-entry keyboard layout.
+Created temporary **UXCLI_Test** (protein 10g, carbs 20g, fat 5g = 165 kcal), then
+marked it eaten and confirmed consumed 0 -> 165 and remaining 2239 -> 2074.
+Completed portion edit 100g -> 95g (165 -> 157 kcal), then deleted UXCLI_Test.
+Cleanup verified: consumed returned to 0 and remaining to 2239; no pre-existing
+entries were changed. Emulator exited twice; continuing through a persistent
+headless CLI session with software graphics and lower resource settings.
+
+UX fixes underway: proper disabled/loading primary actions; async manual save
+that retains input on error; Arabic decimal parsing and finite/nonnegative input
+validation; manual meal-slot choice; keyboard-safe sheets; compact summary;
+disable incomplete recipe actions and remove unimplemented publish. Raw emulator
+screenshots/XML/logs stay local in gitignored `output/emulator-ux/`.
+
 ## UI refresh on cline-UI (2026-10-23)
 
 User requested merging the existing work into main, then continuing this branch
@@ -1792,6 +1837,7 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 | Plan said | What was done | Why |
 |---|---|---|
 | Living Glass default with repeated arrival/scroll effects | Light opaque surfaces, compact Today and stable labelled controls | User explicitly requested implementing the reviewed new UI on cline-UI (2026-10-23). Domain, storage and confirmation semantics preserved; voice remains separate. |
+| UI refresh used slot icons while real food media was absent | Bundle generated dish and catalog photos with exact name/ingredient matching, retain icon for unknown foods | User explicitly requested original food images matching the first mockup. Local assets keep the current frozen-day and Firestore schemas intact. |
 | `tool/migrate_foods.dart` | `tool/migrate_foods.js` (Node + `firebase-admin`) | The Admin SDK bypasses security rules, so `foods` stays client-read-only and no weakened ruleset ever gets deployed. A Dart script would have needed a Flutter runtime *and* a temporary permissive rule. |
 | Generate `asset/image/noise.png` | Deferred to Step 1 as `lib/ui/background/grain_texture.dart` | Procedural generation — a seeded `Random` painted once into a `ui.Image` and tiled via `ImageShader`. No binary asset in git, tunable at runtime, one-time cost. |
 | TFLite caller "stubbed out" | Replaced with a working proportional-scale solver | ~15 lines, and strictly better than the broken model. Kept the legacy screen functional until Step 2 deleted it (now moot — the screen is deleted). |

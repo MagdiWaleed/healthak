@@ -25,7 +25,7 @@ class TodaySummary extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         GlassCard(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -38,12 +38,20 @@ class TodaySummary extends StatelessWidget {
                       children: [
                         const Text(AppStrings.todayEnergy,
                             style: TextStyle(
-                                color: AppPalette.muted, fontSize: 12)),
+                                color: AppPalette.muted,
+                                fontSize: 12,
+                                height: 1.3)),
                         const SizedBox(height: 6),
                         Text('${day.consumedKcal.round()}',
-                            style: Theme.of(context).textTheme.displayMedium),
+                            style: Theme.of(context)
+                                .textTheme
+                                .displayMedium
+                                ?.copyWith(fontSize: 30, height: 1.2)),
                         Text(AppStrings.outOfKcal(target.round()),
-                            style: Theme.of(context).textTheme.bodyMedium),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                color: AppPalette.muted)),
                       ],
                     ),
                   ),
@@ -61,21 +69,26 @@ class TodaySummary extends StatelessWidget {
                                 ? AppStrings.aboveTarget
                                 : AppStrings.remaining,
                             style: const TextStyle(
-                                fontSize: 11, color: AppPalette.emerald)),
+                                fontSize: 11,
+                                height: 1.3,
+                                color: AppPalette.emerald)),
                         Text('${difference.abs().round()}',
                             style: const TextStyle(
                                 fontSize: 24,
+                                height: 1.3,
                                 fontWeight: FontWeight.w800,
                                 color: AppPalette.emerald)),
                         const Text(AppStrings.kcal,
                             style: TextStyle(
-                                fontSize: 10, color: AppPalette.emerald)),
+                                fontSize: 10,
+                                height: 1.3,
+                                color: AppPalette.emerald)),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Semantics(
                 label: AppStrings.todayEnergy,
                 value: AppStrings.energyProgress(
@@ -134,6 +147,7 @@ class TodaySummary extends StatelessWidget {
             tilePadding: const EdgeInsets.symmetric(horizontal: 4),
             childrenPadding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
             dense: true,
+            minTileHeight: 40,
             title: const Text(AppStrings.plannedDetails,
                 style: TextStyle(fontSize: 12, color: AppPalette.muted)),
             children: [
@@ -169,7 +183,7 @@ class _MacroProgress extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Color.alphaBlend(color.withValues(alpha: .055), Colors.white),
           borderRadius: BorderRadius.circular(16),
@@ -177,12 +191,13 @@ class _MacroProgress extends StatelessWidget {
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(label,
-              style:
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              style: const TextStyle(
+                  fontSize: 12, height: 1.4, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Text(AppStrings.macroAmount(value.round(), target.round()),
-              style: const TextStyle(fontSize: 11, color: AppPalette.muted)),
-          const SizedBox(height: 10),
+              style: const TextStyle(
+                  fontSize: 11, height: 1.4, color: AppPalette.muted)),
+          const SizedBox(height: 8),
           LinearProgressIndicator(
             value: target <= 0 ? 0 : (value / target).clamp(0.0, 1.0),
             color: color,
