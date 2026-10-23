@@ -1222,6 +1222,9 @@ abstract final class _ProposalDetails {
   static List<Widget> rowsFor(Proposal proposal) {
     final card = proposal.card;
     final rows = <Widget>[];
+    if (proposal.dateKey != null) {
+      rows.add(_line(AppStrings.agentProposalDate(proposal.dateKey!)));
+    }
 
     switch (proposal.kind) {
       case ProposalKind.swapMeal:

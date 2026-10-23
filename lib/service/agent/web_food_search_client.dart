@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import '../../l10n/app_strings.dart';
 
 import 'agent_models.dart';
 import 'ai_client.dart' show kXaiDirectKey;
@@ -24,8 +25,9 @@ abstract interface class WebFoodSearchClient {
 /// Builds the client only when a direct xAI key is embedded, mirroring
 /// [createAiClient] -- `null` when running against the (currently unused)
 /// Cloud Functions proxy, since that path has no key to call xAI with here.
-WebFoodSearchClient? createWebFoodSearchClient() =>
-    kXaiDirectKey.isNotEmpty ? XaiWebFoodSearchClient(apiKey: kXaiDirectKey) : null;
+WebFoodSearchClient? createWebFoodSearchClient() => kXaiDirectKey.isNotEmpty
+    ? XaiWebFoodSearchClient(apiKey: kXaiDirectKey)
+    : null;
 
 /// xAI's Live Search (`search_parameters` on `/v1/chat/completions`) was
 /// deprecated in favor of a hosted `web_search` tool that only exists on the
@@ -36,11 +38,8 @@ WebFoodSearchClient? createWebFoodSearchClient() =>
 /// non-streaming call the registry makes when `search_food_online` runs; the
 /// main chat loop never touches it.
 ///
-/// The endpoint silently ignores the requested chat model for a
-/// `web_search`-enabled call and always executes on a larger model
-/// server-side -- confirmed against the live API, not documented. Budget
-/// for that: roughly $0.02-0.03 per call, only spent when the catalog has
-/// no match.
+/// Uses an explicit search-capable model instead of relying on an implicit
+/// provider redirect from the lightweight chat model.
 class XaiWebFoodSearchClient implements WebFoodSearchClient {
   final http.Client _http;
   final String _apiKey;
@@ -57,7 +56,7 @@ class XaiWebFoodSearchClient implements WebFoodSearchClient {
   @override
   Future<WebFoodSearchResult> search(String query) async {
     final body = jsonEncode({
-      'model': 'grok-3-mini',
+      'model': 'grok-4.3',
       'reasoning': {'effort': 'low'},
       'input': [
         {
@@ -71,6 +70,7 @@ class XaiWebFoodSearchClient implements WebFoodSearchClient {
         {'type': 'web_search'},
       ],
       'stream': false,
+      'max_output_tokens': 1200,
     });
 
     late final http.Response response;
@@ -84,7 +84,7 @@ class XaiWebFoodSearchClient implements WebFoodSearchClient {
             },
             body: body,
           )
-          .timeout(const Duration(seconds: 25));
+          .timeout(const Duration(seconds: 60));
     } on TimeoutException {
       throw const AgentException(
         AgentFailureKind.offline,
@@ -113,7 +113,9 @@ class XaiWebFoodSearchClient implements WebFoodSearchClient {
 
     final Map<String, dynamic> decoded;
     try {
-      decoded = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final value = jsonDecode(utf8.decode(response.bodyBytes));
+      if (value is! Map<String, dynamic>) throw const FormatException();
+      decoded = value;
     } on FormatException {
       throw const AgentException(
         AgentFailureKind.invalidResponse,
@@ -122,27 +124,37 @@ class XaiWebFoodSearchClient implements WebFoodSearchClient {
     }
 
     final output = decoded['output'];
-    Map<String, dynamic>? message;
+    final texts = <String>[];
+    final sources = <String>{};
     if (output is List) {
-      for (final item in output.reversed) {
-        if (item is Map && item['type'] == 'message') {
-          message = item.cast<String, dynamic>();
-          break;
+      for (final item in output) {
+        if (item is! Map || item['type'] != 'message') continue;
+        final content = item['content'];
+        if (content is! List) continue;
+        for (final part in content) {
+          if (part is! Map || part['type'] != 'output_text') continue;
+          final text = part['text'];
+          if (text is String && text.trim().isNotEmpty) texts.add(text.trim());
+          final annotations = part['annotations'];
+          if (annotations is! List) continue;
+          for (final annotation in annotations) {
+            final url = annotation is Map ? annotation['url'] : null;
+            if (url is String &&
+                (Uri.tryParse(url)?.scheme == 'https' ||
+                    Uri.tryParse(url)?.scheme == 'http')) {
+              sources.add(url);
+            }
+          }
         }
       }
     }
-    final content = message?['content'];
-    final part = (content is List && content.isNotEmpty) ? content.first : null;
-    final text = (part is Map ? part['text'] : null) as String? ?? '';
-    final annotations = (part is Map ? part['annotations'] : null);
-    final sources = <String>{};
-    if (annotations is List) {
-      for (final annotation in annotations) {
-        final url = (annotation is Map) ? annotation['url'] : null;
-        if (url is String && url.isNotEmpty) sources.add(url);
-      }
+    if (texts.isEmpty ||
+        sources.isEmpty ||
+        (decoded['status'] != null && decoded['status'] != 'completed')) {
+      throw const AgentException(
+          AgentFailureKind.invalidResponse, AppStrings.agentSearchIncomplete);
     }
-
-    return WebFoodSearchResult(text: text, sources: sources.take(5).toList());
+    return WebFoodSearchResult(
+        text: texts.join('\n'), sources: sources.take(5).toList());
   }
 }

@@ -291,5 +291,24 @@ abstract final class AgentTools {
   static final Set<String> proposeNames =
       proposeOnly.map((tool) => tool.name).toSet();
 
-  static const all = [...readOnly, ...proposeOnly];
+  static final all = [
+    ...readOnly,
+    for (final tool in proposeOnly)
+      if (tool == proposeCreateMeal)
+        tool
+      else
+        AgentToolDefinition(
+          name: tool.name,
+          description: '${tool.description} date_key defaults to the current '
+              'local date. Only today is supported; never substitute today '
+              'when the user requested another date.',
+          parameters: {
+            ...tool.parameters,
+            'properties': {
+              ...tool.parameters['properties'] as Map<String, dynamic>,
+              'date_key': {'type': 'string', 'pattern': r'^\d{4}-\d{2}-\d{2}$'},
+            },
+          },
+        ),
+  ];
 }

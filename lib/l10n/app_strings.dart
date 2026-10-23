@@ -111,6 +111,11 @@ abstract final class AppStrings {
   static const energyExplanation =
       'تنقص سعراتك عن احتراقك الكلي، لا عن معدل الحرق الأساسي.';
   static const energyManualTitle = 'هدفك اليومي اليدوي';
+  static String agentProposalDate(String date) => 'تاريخ التسجيل: $date';
+  static const agentUnsupportedDate =
+      'يمكن للمساعد تعديل سجل اليوم فقط. لم يتم تسجيل شيء في تاريخ آخر.';
+  static const agentSearchIncomplete =
+      'لم يُرجع البحث نتيجة مكتملة مع مصادر. حاول مرة أخرى.';
   static const energyManualDescription = 'أدخلت هذا الهدف يدويًا.';
   static String energyActivity(String activity) => '× $activity';
   static String energyWeeklyGoal(String goal, double rate) =>

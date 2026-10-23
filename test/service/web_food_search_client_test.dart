@@ -26,7 +26,8 @@ void main() {
                 'content': [
                   {
                     'type': 'output_text',
-                    'text': '~60 kcal, 0.5g protein, 15g carbs, 0.2g fat per 100g.',
+                    'text':
+                        '~60 kcal, 0.5g protein, 15g carbs, 0.2g fat per 100g.',
                     'annotations': [
                       {
                         'type': 'url_citation',
@@ -53,6 +54,7 @@ void main() {
     expect(captured.url.path, '/v1/responses');
     expect(captured.headers['authorization'], 'Bearer test-key');
     final body = jsonDecode(captured.body) as Map<String, dynamic>;
+    expect(body['model'], 'grok-4.3');
     expect(body['tools'], [
       {'type': 'web_search'},
     ]);
@@ -75,7 +77,70 @@ void main() {
     );
   });
 
-  test('returns empty text/sources when the response has no message item',
+  test('collects text and citations across content parts', () async {
+    final client = XaiWebFoodSearchClient(
+        apiKey: 'k',
+        httpClient: MockClient((_) async => http.Response(
+            jsonEncode({
+              'status': 'completed',
+              'output': [
+                {
+                  'type': 'message',
+                  'content': [
+                    {
+                      'type': 'output_text',
+                      'text': 'protein: 20',
+                      'annotations': []
+                    },
+                    {
+                      'type': 'output_text',
+                      'text': 'fat: 5',
+                      'annotations': [
+                        {
+                          'type': 'url_citation',
+                          'url': 'https://example.com/food'
+                        }
+                      ]
+                    },
+                  ]
+                }
+              ]
+            }),
+            200)));
+    final result = await client.search('food');
+    expect(result.text, 'protein: 20\nfat: 5');
+    expect(result.sources, ['https://example.com/food']);
+  });
+
+  for (final payload in [
+    <dynamic>[],
+    {
+      'output': [
+        {
+          'type': 'message',
+          'content': [
+            {
+              'type': 'output_text',
+              'text': 'unsupported estimate',
+              'annotations': []
+            }
+          ]
+        }
+      ]
+    },
+    {'status': 'incomplete', 'output': []},
+  ]) {
+    test('rejects malformed, ungrounded or incomplete search: $payload',
+        () async {
+      final client = XaiWebFoodSearchClient(
+          apiKey: 'k',
+          httpClient:
+              MockClient((_) async => http.Response(jsonEncode(payload), 200)));
+      await expectLater(client.search('food'), throwsA(isA<AgentException>()));
+    });
+  }
+
+  test('rejects an empty response instead of reporting search success',
       () async {
     final client = XaiWebFoodSearchClient(
       apiKey: 'k',
@@ -85,9 +150,9 @@ void main() {
           )),
     );
 
-    final result = await client.search('q');
-
-    expect(result.text, '');
-    expect(result.sources, isEmpty);
+    await expectLater(
+        client.search('q'),
+        throwsA(isA<AgentException>()
+            .having((e) => e.kind, 'kind', AgentFailureKind.invalidResponse)));
   });
 }

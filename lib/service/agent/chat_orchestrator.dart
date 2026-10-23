@@ -13,7 +13,7 @@ import 'ai_client.dart';
 import 'chat_session.dart';
 import 'chat_title_generator.dart';
 
-const int kMaxAgentToolCallsPerTurn = 6;
+const int kMaxAgentToolCallsPerTurn = 24;
 
 class ChatOrchestrator extends GetxController {
   final AiClient _client;
@@ -145,7 +145,10 @@ class ChatOrchestrator extends GetxController {
         final textBuffer = StringBuffer();
         await for (final chunk in _client.agentTurn(
           turnId: turnId,
-          messages: List.unmodifiable(_apiMessages),
+          messages: List.unmodifiable([
+            ..._apiMessages,
+            {'role': 'system', 'content': _tools.buildDateContext()},
+          ]),
           tools: toolsEnabled ? _tools.definitions : const [],
           model: model,
           knownCatalog: knownCatalog,
@@ -189,17 +192,6 @@ class ChatOrchestrator extends GetxController {
           break;
         }
 
-        callsUsed += calls.length;
-        if (callsUsed > kMaxAgentToolCallsPerTurn) {
-          toolsEnabled = false;
-          _apiMessages.add({
-            'role': 'system',
-            'content':
-                'توقّف عن استدعاء الأدوات وأجب الآن بما توفر لديك، واذكر بوضوح ما لم تستطع التحقق منه.',
-          });
-          continue;
-        }
-
         _apiMessages.add({
           'role': 'assistant',
           if (assistantText.isNotEmpty) 'content': assistantText,
@@ -216,8 +208,17 @@ class ChatOrchestrator extends GetxController {
           ],
         });
 
-        var proposedThisBatch = false;
         for (final call in calls) {
+          if (callsUsed >= kMaxAgentToolCallsPerTurn) {
+            _apiMessages.add({
+              'role': 'tool',
+              'tool_call_id': call.id,
+              'content': jsonEncode(
+                  {'error': 'tool_limit_reached', 'executed': false}),
+            });
+            continue;
+          }
+          callsUsed++;
           final workingId = _uuid.v4();
           messages.add(ChatMessage(
             id: workingId,
@@ -248,8 +249,6 @@ class ChatOrchestrator extends GetxController {
 
           final proposal = result.proposal;
           if (proposal != null) {
-            proposedThisBatch = true;
-            _supersedePendingProposals();
             messages.add(ChatMessage(
               id: _uuid.v4(),
               kind: ChatMessageKind.proposal,
@@ -261,11 +260,8 @@ class ChatOrchestrator extends GetxController {
           }
         }
 
-        // One in-flight proposal at a time: once this batch produced one,
-        // let the model say one short line and stop -- it must not chain
-        // straight into a second proposal before the user has acted on the
-        // first.
-        if (proposedThisBatch) toolsEnabled = false;
+        if (!toolsEnabled) break;
+        toolsEnabled = callsUsed < kMaxAgentToolCallsPerTurn;
       }
     } on AgentException catch (error) {
       lastFailure.value = error.kind;
@@ -310,7 +306,8 @@ class ChatOrchestrator extends GetxController {
     if (index == -1) return;
     final message = messages[index];
     final proposal = message.proposal;
-    if (proposal == null || message.status != ChatMessageStatus.pendingConfirm) {
+    if (proposal == null ||
+        message.status != ChatMessageStatus.pendingConfirm) {
       return;
     }
     messages[index] = message.copyWith(status: ChatMessageStatus.complete);
@@ -401,16 +398,6 @@ class ChatOrchestrator extends GetxController {
     } on Object {
       // The chat receipt already shows the result; a logging failure just
       // means this write won't appear in the persisted audit screen.
-    }
-  }
-
-  void _supersedePendingProposals() {
-    for (var i = 0; i < messages.length; i++) {
-      final message = messages[i];
-      if (message.kind == ChatMessageKind.proposal &&
-          message.status == ChatMessageStatus.pendingConfirm) {
-        messages[i] = message.copyWith(status: ChatMessageStatus.cancelled);
-      }
     }
   }
 

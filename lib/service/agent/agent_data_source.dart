@@ -80,13 +80,12 @@ class HealthakAgentDataSource implements AgentDataSource {
 
   @override
   Future<List<FoodItem>> searchFoods(String query) async {
-    final normalized = foldArabic(query);
     final personal = await _foods.listPersonal();
     final localMatches = personal
-        .where((food) => foldArabic(food.name).contains(normalized))
+        .where((food) => matchesFoodSearch(food.name, query))
         .toList(growable: false);
-    final shared = await _foods.list(searchToken: query);
-    return [...localMatches, ...shared.items];
+    final shared = await _foods.search(query);
+    return [...localMatches, ...shared];
   }
 
   @override

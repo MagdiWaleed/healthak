@@ -1,6 +1,7 @@
 import 'package:diet_app2/domain/day/day_log.dart';
 import 'package:diet_app2/domain/food/food_item.dart';
 import 'package:diet_app2/domain/meal/meal_definition.dart';
+import 'package:diet_app2/domain/meal/meal_entry.dart';
 import 'package:diet_app2/domain/nutrition/energy.dart';
 import 'package:diet_app2/domain/nutrition/macros.dart';
 import 'package:diet_app2/domain/profile/user_profile.dart';
@@ -18,6 +19,100 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('mixed saved meals and components all confirm independently', () async {
+    final data = _FoodOnlyData();
+    final orchestrator = ChatOrchestrator(
+      client: _MultipleProposalsClient(mixed: true, count: 4),
+      tools: AgentToolRegistry(data: data));
+    await orchestrator.send('أضف وجبتين ومكوّنين');
+    final proposals = orchestrator.messages.where(
+      (m) => m.kind == ChatMessageKind.proposal).toList();
+    expect(proposals, hasLength(4));
+    expect(proposals.map((m) => m.proposal!.kind), [
+      ProposalKind.logFood, ProposalKind.logMeal,
+      ProposalKind.logFood, ProposalKind.logMeal]);
+    for (final proposal in proposals) {
+      await orchestrator.confirmProposal(proposal.id);
+    }
+    expect(data._day!.entries, hasLength(4));
+    await orchestrator.undoReceipt(orchestrator.messages.last.id);
+    expect(data._day!.entries, hasLength(3));
+  });
+  for (final sequential in [false, true]) {
+    test('keeps and confirms all proposals (sequential: $sequential)',
+        () async {
+      final data = _FoodOnlyData();
+      final client = _MultipleProposalsClient(sequential: sequential);
+      final orchestrator = ChatOrchestrator(
+          client: client, tools: AgentToolRegistry(data: data));
+      await orchestrator.send('أضف مكوّنين');
+      final proposals = orchestrator.messages
+          .where((m) => m.kind == ChatMessageKind.proposal)
+          .toList();
+      expect(proposals, hasLength(2));
+      expect(
+          proposals.every((m) => m.status == ChatMessageStatus.pendingConfirm),
+          isTrue);
+      expect(data._day, isNull);
+      for (final proposal in proposals) {
+        await orchestrator.confirmProposal(proposal.id);
+      }
+      expect(data._day!.entries, hasLength(2));
+      expect(data._day!.entries.map((e) => e.items.single.grams), [100, 200]);
+      expect(client.context.last['content'],
+          contains(DayLog.keyFor(DateTime.now())));
+    });
+  }
+
+  test('tool budget keeps accepted calls and answers every overflow call',
+      () async {
+    final client =
+        _MultipleProposalsClient(count: kMaxAgentToolCallsPerTurn + 2);
+    final orchestrator = ChatOrchestrator(
+        client: client, tools: AgentToolRegistry(data: _FoodOnlyData()));
+    await orchestrator.send('أضف عدة مكوّنات');
+    expect(
+        orchestrator.messages.where((m) => m.kind == ChatMessageKind.proposal),
+        hasLength(kMaxAgentToolCallsPerTurn));
+    expect(client.context.where((m) => m['role'] == 'tool'),
+        hasLength(kMaxAgentToolCallsPerTurn + 2));
+    expect(client.context.where((m) => m['role'] == 'tool').last['content'],
+        contains('tool_limit_reached'));
+  });
+
+  test('proposal cannot move to tomorrow when confirmed after midnight',
+      () async {
+    var now = DateTime(2026, 9, 25, 23, 59);
+    final data = _FoodOnlyData();
+    final registry = AgentToolRegistry(data: data, now: () => now);
+    final result = await registry.run(const AgentToolCall(
+        id: 'p',
+        name: 'propose_log_food',
+        arguments: {'food_id': 'food-1', 'grams': 100}));
+    expect(result.proposal!.dateKey, '2026-09-25');
+    now = DateTime(2026, 9, 26);
+    await expectLater(registry.confirm(result.proposal!),
+        throwsA(isA<AgentProposalStaleException>()));
+    expect(data._day, isNull);
+    expect(registry.buildDateContext(), contains('2026-09-26'));
+  });
+
+  test('explicit other date is refused instead of silently writing today',
+      () async {
+    final registry = AgentToolRegistry(
+        data: _FoodOnlyData(), now: () => DateTime(2026, 9, 25));
+    final result = await registry.run(const AgentToolCall(
+        id: 'p',
+        name: 'propose_log_food',
+        arguments: {
+          'food_id': 'food-1',
+          'grams': 100,
+          'date_key': '2026-09-24'
+        }));
+    expect(result.isError, isTrue);
+    expect(result.data['error'], 'unsupported_date');
+    expect(result.proposal, isNull);
+  });
   test('executes a read tool and streams the grounded follow-up', () async {
     final client = _ToolThenAnswerClient();
     final orchestrator = ChatOrchestrator(
@@ -86,7 +181,8 @@ void main() {
       store = SharedPrefsAgentConversationStore(preferences: prefs);
     });
 
-    test('the first message lazily creates a session and titles it from a fallback',
+    test(
+        'the first message lazily creates a session and titles it from a fallback',
         () async {
       final orchestrator = ChatOrchestrator(
         client: _EchoClient(),
@@ -99,11 +195,12 @@ void main() {
 
       expect(orchestrator.currentSessionId.value, isNotNull);
       expect(orchestrator.sessions, hasLength(1));
-      expect(orchestrator.sessions.single.title,
-          'ما هو هدفي اليومي من البروتين؟');
+      expect(
+          orchestrator.sessions.single.title, 'ما هو هدفي اليومي من البروتين؟');
     });
 
-    test('the AI-generated title wins over the fallback when a generator is set',
+    test(
+        'the AI-generated title wins over the fallback when a generator is set',
         () async {
       final orchestrator = ChatOrchestrator(
         client: _EchoClient(),
@@ -118,7 +215,8 @@ void main() {
       expect(orchestrator.sessions.single.title, 'هدف البروتين اليومي');
     });
 
-    test('startNewSession clears the board without touching the previous thread',
+    test(
+        'startNewSession clears the board without touching the previous thread',
         () async {
       final orchestrator = ChatOrchestrator(
         client: _EchoClient(),
@@ -246,8 +344,8 @@ void main() {
       expect(afterConfirm.single.kind, ProposalKind.logFood);
       expect(afterConfirm.single.isUndoable, isTrue);
 
-      final receiptMessage =
-          orchestrator.messages.firstWhere((m) => m.kind == ChatMessageKind.receipt);
+      final receiptMessage = orchestrator.messages
+          .firstWhere((m) => m.kind == ChatMessageKind.receipt);
       await orchestrator.undoReceipt(receiptMessage.id);
 
       final afterUndo = await actionLog.list();
@@ -255,7 +353,8 @@ void main() {
       // itself landed as its own new entry ("an undo is itself a logged
       // action") -- two rows total.
       expect(afterUndo, hasLength(2));
-      expect(afterUndo.firstWhere((e) => e.id == afterConfirm.single.id).isUndone,
+      expect(
+          afterUndo.firstWhere((e) => e.id == afterConfirm.single.id).isUndone,
           isTrue);
     });
   });
@@ -273,6 +372,40 @@ class _EchoClient implements AiClient {
     String? knownCatalog,
   }) async* {
     yield const AgentTextDelta('تمام.');
+    yield const AgentDoneChunk();
+  }
+}
+
+class _MultipleProposalsClient implements AiClient {
+  final bool mixed;
+  final bool sequential;
+  final int count;
+  int calls = 0;
+  List<Map<String, dynamic>> context = [];
+  _MultipleProposalsClient({this.sequential = false, this.count = 2, this.mixed = false});
+  @override
+  Stream<AgentChunk> agentTurn(
+      {required String turnId,
+      required List<Map<String, dynamic>> messages,
+      required List<AgentToolDefinition> tools,
+      String? model,
+      String? knownCatalog}) async* {
+    context = messages;
+    final round = calls++;
+    if (round < (sequential ? count : 1)) {
+      expect(tools, isNotEmpty);
+      for (var i = sequential ? round : 0;
+          i < (sequential ? round + 1 : count);
+          i++) {
+        yield AgentToolCallChunk(AgentToolCall(
+            id: 'call-$i',
+            name: mixed && i.isOdd ? 'propose_log_meal' : 'propose_log_food',
+            arguments: mixed && i.isOdd ? {'meal_id': 'meal-1'} :
+              {'food_id': 'food-1', 'grams': (i + 1) * 100}));
+      }
+    } else {
+      yield const AgentTextDelta('الاقتراحات بانتظار التأكيد.');
+    }
     yield const AgentDoneChunk();
   }
 }
@@ -307,7 +440,8 @@ class _FoodOnlyData implements AgentDataSource {
       _day?.dateKey == dateKey ? _day : null;
 
   @override
-  Future<List<DayLog>> getHistory(DateTime start, DateTime end) async => const [];
+  Future<List<DayLog>> getHistory(DateTime start, DateTime end) async =>
+      const [];
 
   @override
   Future<List<MealDefinition>> getMeals() async => const [];
@@ -344,14 +478,20 @@ class _FoodOnlyData implements AgentDataSource {
   }
 
   @override
-  Future<FoodItem?> getFoodById(String id) async => id == _food.id ? _food : null;
+  Future<FoodItem?> getFoodById(String id) async =>
+      id == _food.id ? _food : null;
 
   @override
   Future<FoodItem> createPersonalFood(FoodItem draft) async =>
       draft.withId('personal-1');
 
   @override
-  Future<MealDefinition?> getMealById(String id) async => null;
+  Future<MealDefinition?> getMealById(String id) async => id != 'meal-1' ? null :
+    MealDefinition(id: id, ownerUid: uid, name: 'وجبة دجاج',
+      createdAt: DateTime(2026), updatedAt: DateTime(2026), entries: [
+        FoodEntry(localId: 'entry-1', foodId: _food.id, name: _food.name,
+          per100: _food.per100, grams: 150, order: 0),
+      ]);
 
   @override
   Future<MealDefinition> saveMeal(MealDefinition draft) async => draft;

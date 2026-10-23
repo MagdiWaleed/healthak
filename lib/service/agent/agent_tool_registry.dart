@@ -1,4 +1,5 @@
 import 'package:uuid/uuid.dart';
+import '../../l10n/app_strings.dart';
 
 import '../../domain/day/day_log.dart';
 import '../../domain/food/food_item.dart';
@@ -49,13 +50,24 @@ class AgentToolRegistry {
 
   List<AgentToolDefinition> get definitions => AgentTools.all;
 
+  String buildDateContext() {
+    final now = _now().toLocal();
+    return 'Current local date: ${DayLog.keyFor(now)}. '
+        'Local time: ${now.toIso8601String()}; '
+        'UTC offset minutes: ${now.timeZoneOffset.inMinutes}. '
+        'Resolve today/yesterday/tomorrow relative to this date, never an old '
+        'conversation date. Day writes support today only. If another date is '
+        'requested, explain that limitation; never silently log it today.';
+  }
+
   /// A compact, precalled listing of the user's own personal components and
   /// saved meals with their real ids -- sent as extra system context so the
   /// model has these ids upfront instead of guessing one or having to
   /// search for something it already owns. The shared catalog is far too
   /// large for this and still goes through search_foods as before.
   Future<String> buildKnownCatalogContext() async {
-    final results = await Future.wait([_data.getPersonalFoods(), _data.getMeals()]);
+    final results =
+        await Future.wait([_data.getPersonalFoods(), _data.getMeals()]);
     final personalFoods = results[0] as List<FoodItem>;
     final meals = results[1] as List<MealDefinition>;
     if (personalFoods.isEmpty && meals.isEmpty) return '';
@@ -83,7 +95,27 @@ class AgentToolRegistry {
   Future<AgentToolResult> run(AgentToolCall call) async {
     try {
       if (AgentTools.proposeNames.contains(call.name)) {
-        final proposal = await _buildProposal(call);
+        final dateKey = call.name == 'propose_create_meal'
+            ? null
+            : DayLog.keyFor(_now().toLocal());
+        final requestedDate = call.arguments['date_key'];
+        if (requestedDate != null && requestedDate != dateKey) {
+          throw const FormatException('unsupported_date');
+        }
+        final built = await _buildProposal(call);
+        final proposal = Proposal(
+          id: built.id,
+          toolCallId: built.toolCallId,
+          kind: built.kind,
+          titleAr: built.titleAr,
+          execArgs: built.execArgs,
+          dateKey: dateKey,
+          card: {...built.card, if (dateKey != null) 'date': dateKey},
+          modelSummary: {
+            ...built.modelSummary,
+            if (dateKey != null) 'date': dateKey
+          },
+        );
         return AgentToolResult(
           toolName: call.name,
           data: proposal.modelSummary,
@@ -141,11 +173,15 @@ class AgentToolRegistry {
   /// Throws [AgentProposalStaleException] if the entry the proposal targets
   /// has changed (or vanished) since the proposal was built.
   Future<AgentReceipt> confirm(Proposal proposal) async {
+    if (proposal.dateKey != null &&
+        proposal.dateKey != DayLog.keyFor(_now().toLocal())) {
+      throw const AgentProposalStaleException();
+    }
     switch (proposal.kind) {
       case ProposalKind.logFood:
         {
           final a = proposal.execArgs as _LogFoodArgs;
-          final day = await _ensureToday();
+          final day = await _ensureDate(proposal.dateKey);
           final entry = DayEntry(
             entryId: _uuid.v4(),
             origin: DayEntryOrigin.quickAdd,
@@ -172,7 +208,7 @@ class AgentToolRegistry {
       case ProposalKind.logMeal:
         {
           final a = proposal.execArgs as _LogMealArgs;
-          final day = await _ensureToday();
+          final day = await _ensureDate(proposal.dateKey);
           final entry = DayEntry(
             entryId: _uuid.v4(),
             origin: DayEntryOrigin.oneShot,
@@ -280,7 +316,7 @@ class AgentToolRegistry {
             per100: a.per100,
             note: 'أضافه المساعد (تقديري)',
           ));
-          final day = await _ensureToday();
+          final day = await _ensureDate(proposal.dateKey);
           final entry = DayEntry(
             entryId: _uuid.v4(),
             origin: DayEntryOrigin.quickAdd,
@@ -370,8 +406,8 @@ class AgentToolRegistry {
       switch (kind) {
         case ProposalKind.removeEntry:
         case ProposalKind.restoreEntry:
-          final entry = _entryFromJson(
-              (json['entry'] as Map).cast<String, dynamic>());
+          final entry =
+              _entryFromJson((json['entry'] as Map).cast<String, dynamic>());
           final dateKey = json['dateKey'] as String;
           return kind == ProposalKind.removeEntry
               ? _removeEntryProposal(entry, dateKey)
@@ -418,7 +454,8 @@ class AgentToolRegistry {
             ? DateTime.tryParse(json['eatenAt'] as String)
             : null,
         items: (json['items'] as List)
-            .map((item) => FrozenItem.fromJson((item as Map).cast<String, dynamic>()))
+            .map((item) =>
+                FrozenItem.fromJson((item as Map).cast<String, dynamic>()))
             .toList(),
       );
 
@@ -450,9 +487,11 @@ class AgentToolRegistry {
     }
   }
 
-  Future<DayLog> _ensureToday() async {
+  Future<DayLog> _ensureDate(String? dateKey) async {
     final profile = await _data.getProfile();
-    return _data.ensureDay(_now(), profile?.targets ?? NutritionTargets.empty);
+    return _data.ensureDay(
+        dateKey == null ? _now().toLocal() : DateTime.parse(dateKey),
+        profile?.targets ?? NutritionTargets.empty);
   }
 
   Proposal _removeEntryProposal(DayEntry entry, String dateKey) => Proposal(
@@ -525,7 +564,8 @@ class AgentToolRegistry {
       },
       modelSummary: {
         'status': 'awaiting_confirmation',
-        'summary_ar': 'اقتراح جاهز: تسجيل ${food.name}. بانتظار تأكيد المستخدم.',
+        'summary_ar':
+            'اقتراح جاهز: تسجيل ${food.name}. بانتظار تأكيد المستخدم.',
       },
       execArgs: _LogFoodArgs(food: food, grams: grams, slot: slot),
     );
@@ -564,7 +604,8 @@ class AgentToolRegistry {
       },
       modelSummary: {
         'status': 'awaiting_confirmation',
-        'summary_ar': 'اقتراح جاهز: تسجيل ${meal.name}. بانتظار تأكيد المستخدم.',
+        'summary_ar':
+            'اقتراح جاهز: تسجيل ${meal.name}. بانتظار تأكيد المستخدم.',
       },
       execArgs: _LogMealArgs(
         mealId: meal.id,
@@ -657,7 +698,8 @@ class AgentToolRegistry {
       id: _uuid.v4(),
       toolCallId: call.id,
       kind: ProposalKind.updateGrams,
-      titleAr: 'هغيّر ${entry.name} من ${_fmt(oldGrams)} لـ ${_fmt(newGrams)} جم',
+      titleAr:
+          'هغيّر ${entry.name} من ${_fmt(oldGrams)} لـ ${_fmt(newGrams)} جم',
       card: {
         'name': entry.name,
         'old_grams': oldGrams,
@@ -812,8 +854,10 @@ class AgentToolRegistry {
   // ---------------------------------------------------------------------
 
   Future<Map<String, dynamic>> _getToday() async {
-    final day = await _data.getDay(_now());
-    if (day == null) return const {'status': 'empty', 'entries': []};
+    final now = _now().toLocal();
+    final day = await _data.getDay(now);
+    if (day == null)
+      return {'date': DayLog.keyFor(now), 'status': 'empty', 'entries': []};
     return {
       'date': day.dateKey,
       'entries': [
@@ -848,11 +892,14 @@ class AgentToolRegistry {
     if (rawDays is! num) throw const FormatException('days_required');
     final days = rawDays.toInt();
     if (days < 1 || days > 7) throw const FormatException('days_out_of_range');
-    final end = DateTime(_now().year, _now().month, _now().day);
-    final start = end.subtract(Duration(days: days - 1));
+    final now = _now().toLocal();
+    final end = DateTime(now.year, now.month, now.day);
+    final start = DateTime(now.year, now.month, now.day - days + 1);
     final logs = await _data.getHistory(start, end);
     return {
       'requested_days': days,
+      'start_date': DayLog.keyFor(start),
+      'end_date': DayLog.keyFor(end),
       'days': [
         for (final day in logs)
           {
@@ -1030,6 +1077,7 @@ class AgentToolRegistry {
       };
 
   static String _validationMessage(String code) => switch (code) {
+        'unsupported_date' => AppStrings.agentUnsupportedDate,
         'days_required' => 'حدّد عدد الأيام المطلوبة.',
         'days_out_of_range' => 'يمكن قراءة آخر 7 أيام كحد أقصى.',
         'query_too_short' => 'اكتب حرفين على الأقل للبحث.',
@@ -1068,7 +1116,8 @@ class _LogFoodArgs {
   final FoodItem food;
   final double grams;
   final MealSlot slot;
-  const _LogFoodArgs({required this.food, required this.grams, required this.slot});
+  const _LogFoodArgs(
+      {required this.food, required this.grams, required this.slot});
 }
 
 class _LogMealArgs {

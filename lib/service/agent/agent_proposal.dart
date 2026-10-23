@@ -21,6 +21,8 @@ enum ProposalKind {
 /// real `DayEntry` snapshots), never raw model-supplied ids or macros, so
 /// confirming it later cannot re-introduce a hallucinated value.
 class Proposal {
+  /// Local calendar day resolved when the card was built; null for library/undo.
+  final String? dateKey;
   final String id;
   final String toolCallId;
   final ProposalKind kind;
@@ -42,6 +44,7 @@ class Proposal {
   final Object execArgs;
 
   const Proposal({
+    this.dateKey,
     required this.id,
     required this.toolCallId,
     required this.kind,

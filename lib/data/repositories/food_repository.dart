@@ -108,6 +108,34 @@ class FoodRepository {
 
   Stream<FoodItem?> watchById(String id) =>
       _refs.foods.doc(id).snapshots().map((snapshot) => snapshot.data());
+
+  /// The index stores words/prefixes, not whole phrases. Filter all query
+  /// words locally after fetching a bounded set of indexed candidates.
+  Future<List<FoodItem>> search(String text) async {
+    final words = foodSearchWords(text);
+    if (words.isEmpty) return const [];
+    final snapshot = await _refs.foods
+        .where('active', isEqualTo: true)
+        .where('searchTokens', arrayContainsAny: words.take(30).toList())
+        .limit(120)
+        .get();
+    return snapshot.docs
+        .map((doc) => doc.data())
+        .where((food) => matchesFoodSearch(food.name, text))
+        .toList();
+  }
+}
+
+List<String> foodSearchWords(String text) => foldArabic(text)
+    .split(RegExp(r'\s+'))
+    .where((word) => word.runes.length >= 2)
+    .toSet()
+    .toList();
+
+bool matchesFoodSearch(String name, String query) {
+  final normalized = foldArabic(name);
+  final words = foodSearchWords(query);
+  return words.isNotEmpty && words.every(normalized.contains);
 }
 
 /// The Arabic fold the migration script writes `nameNormalized` with:

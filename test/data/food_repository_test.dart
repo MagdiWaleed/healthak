@@ -4,6 +4,14 @@ import 'package:diet_app2/domain/nutrition/macros.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('food phrases match all words despite order, spacing and Arabic marks',
+      () {
+    expect(foodSearchWords(' صدر   دَجَاج '), ['صدر', 'دجاج']);
+    expect(matchesFoodSearch('دجاج طازج صدر', 'صدر دَجَاج'), isTrue);
+    expect(matchesFoodSearch('صدر دجاج', 'دجاج صدر'), isTrue);
+    expect(matchesFoodSearch('صدر دجاج', 'صدر لحم'), isFalse);
+    expect(matchesFoodSearch('صدر دجاج', '   '), isFalse);
+  });
   group('normalizeFoodSearchToken', () {
     test('rejects empty and one-character searches', () {
       expect(normalizeFoodSearchToken(null), isNull);
