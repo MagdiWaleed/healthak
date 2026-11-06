@@ -342,4 +342,54 @@ abstract final class AppStrings {
   static String agentRemovePlanProposal(String name) => 'إزالة $name من الخطة';
   static const agentRemovedPlan = 'أزلت التمرين من الخطة.';
   static const agentUndo = 'تراجع';
+  // --- Phase 6 progress strings ---
+  static const progressWeight = 'تطور الوزن';
+  static const progressDays = 'الأيام';
+  static const progress7Days = '7 يوم';
+  static const progress30Days = '30 يوم';
+  static const progress90Days = '90 يوم';
+  static const progressNoWeights = 'لا توجد قياسات وزن في هذه الفترة';
+  static const progressLoadFailed = 'تعذّر تحميل التقدم. حاول مرة أخرى لاحقًا.';
+  static const progressGoalLine = 'الهدف';
+  static const progressTrend = 'الوزن الحالي';
+  static const progressRangeChange = 'التغير في الفترة';
+  static const progressWeeklyRate = 'المعدل الأسبوعي';
+  static const progressEta = 'موعد الوصول';
+  static const progressSetGoal = 'حدد هدفًا';
+  static const progressStreaks = 'سلاسل الإنجاز';
+  static const progressCalorieStreak = 'هدف السعرات';
+  static const progressTrainingStreak = 'إكمال التمرين';
+  static const progressWeighInStreak = 'تسجيل الوزن';
+  static String progressCurrentStreak(int count) => 'الحالي: $count يوم';
+  static String progressBestStreak(int count) => 'الأفضل: $count يوم';
+  static const progressWeeklyRecap = 'ملخص آخر 7 أيام';
+  static String progressAvgKcal(int avg, int? target) =>
+      'متوسط السعرات: $avg / ${target?.toString() ?? '—'}';
+  static String progressSessions(int done, int planned) =>
+      'التمارين: $done / $planned';
+  static String progressWeightDelta(double? delta) =>
+      'تغير الوزن: ${delta == null ? '—' : '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)} كجم'}';
+  static const progressRecentWeights = 'آخر قياسات الوزن';
+  static const progressDeleteTitle = 'حذف قياس الوزن؟';
+  static const progressDeleteBody = 'سيُحذف هذا القياس من سجل الوزن.';
+  // --- Phase 8b chat strings ---
+  static const agentInvalidKey = 'مفتاح المساعد غير صالح ويحتاج إلى تحديث.';
+  static const agentKeyNoChatAccess =
+      'مفتاح المساعد لا يملك صلاحية المحادثة. فعّل صلاحية Chat للمفتاح من لوحة xAI.';
+  static const agentModelUnavailable = 'النموذج غير متاح حاليًا.';
+  static const agentQuota = 'بلغ المساعد حد الاستخدام حاليًا. حاول لاحقًا.';
+  static const agentGenericError = 'تعذّر تشغيل المساعد. حاول مرة أخرى.';
+  static String agentTechnicalCode(int code) => 'رمز الخطأ: $code';
+  static const agentErrorTitle = 'حدثت مشكلة';
+  static String agentToolsUsed(int count) =>
+      'استخدم ${count.toString().replaceAllMapped(RegExp(r'[0-9]'), (match) => '٠١٢٣٤٥٦٧٨٩'[int.parse(match.group(0)!)])} أدوات';
+  static const agentGreetingMorning = 'صباح الخير';
+  static const agentGreetingAfternoon = 'مساء الخير';
+  static const agentGreetingEvening = 'مساء الخير';
+  static const agentSuggestionProteinLeft = 'كم بقي لي من البروتين؟';
+  static const agentSuggestionDinnerRemaining = 'اقترح عشاء يناسب ما تبقى';
+  static const agentSuggestionWorkoutToday = 'ما تمرين اليوم؟';
+  static const agentSuggestionWeightTrend = 'كيف يتغير وزني؟';
+  static const agentSuggestionStartTraining = 'ساعدني أبدأ خطة تمرين';
+  static const agentSuggestionStartWeight = 'كيف أبدأ تتبع وزني؟';
 }

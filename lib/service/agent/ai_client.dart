@@ -9,6 +9,7 @@ import 'agent_model_catalog.dart';
 import 'agent_models.dart';
 import 'agent_prompt.dart';
 import 'agent_tools.dart';
+import '../../l10n/app_strings.dart';
 
 const String kAgentProxyUrl = String.fromEnvironment(
   'AI_PROXY_URL',
@@ -33,6 +34,7 @@ abstract interface class AiClient {
     required List<Map<String, dynamic>> messages,
     required List<AgentToolDefinition> tools,
     String? model,
+
     /// Precalled personal-food/meal ids (see
     /// `AgentToolRegistry.buildKnownCatalogContext`). Sent as extra system
     /// context on every turn, never stored in [messages] history.
@@ -42,32 +44,45 @@ abstract interface class AiClient {
 
 /// Chooses the direct client when a build-time key is present, otherwise the
 /// authenticated Cloud Functions proxy.
-AiClient createAiClient() =>
-    kXaiDirectKey.isNotEmpty ? XaiDirectClient(apiKey: kXaiDirectKey) : XaiProxyClient();
+AiClient createAiClient() => kXaiDirectKey.isNotEmpty
+    ? XaiDirectClient(apiKey: kXaiDirectKey)
+    : XaiProxyClient();
 
 const _offlineError = AgentException(
   AgentFailureKind.offline,
   'يحتاج المساعد إلى اتصال بالإنترنت.',
 );
 
-AgentException _statusError(int status) {
-  if (status == 401 || status == 403) {
+AgentException agentStatusError(int status, String body) {
+  // A valid key created without the chat endpoint ACL (e.g. an image-only
+  // "Imagine" key) gets 403 permission-denied: say exactly what to fix.
+  if (status == 403 && body.toLowerCase().contains('permission-denied')) {
     return const AgentException(
-      AgentFailureKind.unauthorized,
-      'انتهت جلسة الدخول. سجّل الدخول مرة أخرى.',
-    );
+        AgentFailureKind.unauthorized, AppStrings.agentKeyNoChatAccess);
+  }
+  final invalidKey = body.toLowerCase().contains('incorrect api key') ||
+      body.toLowerCase().contains('invalid api key');
+  if (invalidKey || status == 401 || status == 403) {
+    return const AgentException(
+        AgentFailureKind.unauthorized, AppStrings.agentInvalidKey);
+  }
+  if (isModelNotFound(status, body)) {
+    return const AgentException(
+        AgentFailureKind.server, AppStrings.agentModelUnavailable);
   }
   if (status == 429) {
-    return const AgentException(
-      AgentFailureKind.quota,
-      'بلغت الحد اليومي. يمكنك المتابعة غدًا.',
-    );
+    return const AgentException(AgentFailureKind.quota, AppStrings.agentQuota);
   }
   return AgentException(
     AgentFailureKind.server,
-    'تعذّر تشغيل المساعد ($status).',
+    '${AppStrings.agentGenericError}\n${AppStrings.agentTechnicalCode(status)}',
   );
 }
+
+bool isModelNotFound(int status, String body) =>
+    status == 404 &&
+    (body.toLowerCase().contains('model') ||
+        body.toLowerCase().contains('not found'));
 
 /// Calls the authenticated Firebase proxy, which owns the key and streams
 /// already-normalized SSE events.
@@ -129,7 +144,8 @@ class XaiProxyClient implements AiClient {
           );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw _statusError(response.statusCode);
+        throw agentStatusError(
+            response.statusCode, await response.stream.bytesToString());
       }
 
       await for (final line in response.stream
@@ -142,7 +158,9 @@ class XaiProxyClient implements AiClient {
         switch (event['type']) {
           case 'text_delta':
             final delta = event['text'];
-            if (delta is String && delta.isNotEmpty) yield AgentTextDelta(delta);
+            if (delta is String && delta.isNotEmpty) {
+              yield AgentTextDelta(delta);
+            }
           case 'tool_call':
             final id = event['id'];
             final name = event['name'];
@@ -160,7 +178,8 @@ class XaiProxyClient implements AiClient {
             ));
           case 'usage':
             final cost = event['costUsd'];
-            yield AgentUsageChunk(costUsd: cost is num ? cost.toDouble() : null);
+            yield AgentUsageChunk(
+                costUsd: cost is num ? cost.toDouble() : null);
           case 'done':
             yield const AgentDoneChunk();
           case 'error':
@@ -253,13 +272,32 @@ class XaiDirectClient implements AiClient {
         })
         ..body = jsonEncode(body);
 
-      final response = await _http.send(request).timeout(
+      var response = await _http.send(request).timeout(
             _kAgentTimeout,
             onTimeout: () => throw _offlineError,
           );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw _statusError(response.statusCode);
+        final errorBody = await response.stream.bytesToString();
+        if (isModelNotFound(response.statusCode, errorBody) &&
+            resolved.id != AgentModels.fallbackId) {
+          body['model'] = AgentModels.fallbackId;
+          body['reasoning_effort'] =
+              AgentModels.byId(AgentModels.fallbackId).reasoningEffort;
+          final fallbackRequest = http.Request('POST', _endpoint)
+            ..headers.addAll(request.headers)
+            ..body = jsonEncode(body);
+          response = await _http.send(fallbackRequest).timeout(
+                _kAgentTimeout,
+                onTimeout: () => throw _offlineError,
+              );
+          if (response.statusCode < 200 || response.statusCode >= 300) {
+            throw agentStatusError(
+                response.statusCode, await response.stream.bytesToString());
+          }
+        } else {
+          throw agentStatusError(response.statusCode, errorBody);
+        }
       }
 
       final calls = <int, _ToolCallDraft>{};

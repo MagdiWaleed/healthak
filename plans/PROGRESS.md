@@ -6,11 +6,36 @@
 - Added the weekly editor route and binding. The editor supports weekday lists, reordering, sets/reps, active state, day chips, confirmed deletion, copying a day, and three confirmed library-based starter templates. Save batches upserts and deletions together through `WorkoutPlanRepository.saveAll`.
 - Added pure Arabic search normalization and focused controller, domain, and widget tests. `flutter analyze --no-pub` is clean; all 252 tests pass. `flutter build apk --debug --no-pub` could not start because the Android SDK is inaccessible in this sandbox; install, emulator interaction, screenshots, and logcat are unverified.
 
+## Phase 8b assistant UI and errors (2026-11-07)
+
+- Split the assistant page into five widget parts under `lib/page/assistant/widgets/`. Added dark emerald user bubbles, tool activity chips with a collapsed count, tappable source domains, snapshot-aware empty suggestions, motion-gated typing bounce and proposal/receipt pop motion, and friendly error cards with a secondary technical code and retry.
+- Added `url_launcher` with the permitted Android HTTPS VIEW query. The direct and web-search clients now read error response bodies, identify invalid keys even on HTTP 400, give clear quota/model errors, and retry a missing model once with `AgentModels.fallbackId`.
+- Added HTTP mapping/fallback and widget tests; updated the existing assistant screen fixture for the new snapshot method. `flutter pub get --offline` succeeded, `flutter analyze --no-pub` found no issues, and `flutter test --no-pub` passed all 262 tests.
+- `flutter build apk --debug --no-pub` stopped because this sandbox cannot locate the Android SDK. APK install, visual emulator drive, screenshot, and logcat verification remain open.
+
 ### Deviations
 
 | Decision | Reason |
 |---|---|
 | `saveAll` accepts deletion IDs in the same batch | Confirmed deletes and template replacement must save atomically with the edited plan. |
+
+| Work stayed on `redesign-v2-chat` | This is the branch supplied in the current checkout; no branch change or commit was made. |
+| Widget test source launcher is injected as a callback | It verifies the URL passed by the chip without invoking a platform plugin in the widget test. |
+
+## Redesign v2 Phase 6: Progress tab (2026-11-07)
+
+- Added the Progress weight chart with 7/30/90-day selection, raw weigh-ins, EMA trend, goal line, tooltip, and a chronological left-to-right axis inside the RTL screen. Added trend/change/rate/goal ETA tiles, a goal-sheet link, and a latest-ten list with edit and confirmed delete.
+- ProgressController holds one bounded 90-day subscription each for day logs, training days, and weights, plus one latest-ten weight subscription. It derives calorie/training/weigh-in streaks and the seven-day recap from the existing pure domain helpers, and cancels every subscription on close.
+- Added a seven-day kcal bar chart and history link. The existing `isCalorieHit` function and its tests were reused.
+- Added `fl_chart` 0.69.0 with offline pub resolution. `flutter analyze --no-pub` is clean; all 251 tests pass, including new controller, render, narrow RTL, and 1/2/90-point chart tests.
+- `flutter build apk --debug --no-pub` stopped before compilation because this sandbox cannot find the Android SDK. APK installation, emulator interaction, screenshots, and logcat are unverified.
+
+### Deviations
+
+| Decision | Reason |
+|---|---|
+| Full-width stat tiles on Progress | Large localized hero values overflowed two-column tiles at narrow widths. |
+| Latest-ten weight listener is separate from the bounded 90-day weight range | Recent entries must remain visible even when the selected chart range has no entries. |
 
 ## Redesign v2 Phase 4: Today hero (2026-11-07)
 

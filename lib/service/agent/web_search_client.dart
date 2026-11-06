@@ -6,7 +6,8 @@ import 'package:http/http.dart' as http;
 import '../../l10n/app_strings.dart';
 
 import 'agent_models.dart';
-import 'ai_client.dart' show kXaiDirectKey;
+import 'agent_model_catalog.dart';
+import 'ai_client.dart' show kXaiDirectKey, agentStatusError, isModelNotFound;
 import 'web_source.dart';
 export 'web_source.dart';
 
@@ -57,7 +58,7 @@ class XaiWebSearchClient implements WebSearchClient {
 
   @override
   Future<WebSearchResult> search(String query, WebSearchFocus focus) async {
-    final body = jsonEncode({
+    final requestBody = <String, dynamic>{
       'model': 'grok-4.3',
       'reasoning': {'effort': 'low'},
       'input': [
@@ -78,9 +79,9 @@ class XaiWebSearchClient implements WebSearchClient {
       ],
       'stream': false,
       'max_output_tokens': 1200,
-    });
+    };
 
-    late final http.Response response;
+    late http.Response response;
     try {
       response = await _http
           .post(
@@ -89,7 +90,7 @@ class XaiWebSearchClient implements WebSearchClient {
               HttpHeaders.authorizationHeader: 'Bearer $_apiKey',
               HttpHeaders.contentTypeHeader: 'application/json',
             },
-            body: body,
+            body: jsonEncode(requestBody),
           )
           .timeout(const Duration(seconds: 60));
     } on TimeoutException {
@@ -110,12 +111,22 @@ class XaiWebSearchClient implements WebSearchClient {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw AgentException(
-        response.statusCode == 429
-            ? AgentFailureKind.quota
-            : AgentFailureKind.server,
-        'تعذّر البحث في الإنترنت الآن.',
-      );
+      if (isModelNotFound(response.statusCode, response.body) &&
+          requestBody['model'] != AgentModels.fallbackId) {
+        requestBody['model'] = AgentModels.fallbackId;
+        requestBody.remove('reasoning');
+        response = await _http
+            .post(_endpoint,
+                headers: {
+                  HttpHeaders.authorizationHeader: 'Bearer $_apiKey',
+                  HttpHeaders.contentTypeHeader: 'application/json',
+                },
+                body: jsonEncode(requestBody))
+            .timeout(const Duration(seconds: 60));
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw agentStatusError(response.statusCode, response.body);
+      }
     }
 
     final Map<String, dynamic> decoded;
