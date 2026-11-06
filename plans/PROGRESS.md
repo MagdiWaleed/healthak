@@ -1,5 +1,20 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 6: Progress tab (2026-11-07)
+
+- Added the Progress weight chart with 7/30/90-day selection, raw weigh-ins, EMA trend, goal line, tooltip, and a chronological left-to-right axis inside the RTL screen. Added trend/change/rate/goal ETA tiles, a goal-sheet link, and a latest-ten list with edit and confirmed delete.
+- ProgressController holds one bounded 90-day subscription each for day logs, training days, and weights, plus one latest-ten weight subscription. It derives calorie/training/weigh-in streaks and the seven-day recap from the existing pure domain helpers, and cancels every subscription on close.
+- Added a seven-day kcal bar chart and history link. The existing `isCalorieHit` function and its tests were reused.
+- Added `fl_chart` 0.69.0 with offline pub resolution. `flutter analyze --no-pub` is clean; all 251 tests pass, including new controller, render, narrow RTL, and 1/2/90-point chart tests.
+- `flutter build apk --debug --no-pub` stopped before compilation because this sandbox cannot find the Android SDK. APK installation, emulator interaction, screenshots, and logcat are unverified.
+
+### Deviations
+
+| Decision | Reason |
+|---|---|
+| Full-width stat tiles on Progress | Large localized hero values overflowed two-column tiles at narrow widths. |
+| Latest-ten weight listener is separate from the bounded 90-day weight range | Recent entries must remain visible even when the selected chart range has no entries. |
+
 ## Redesign v2 Phase 4: Today hero (2026-11-07)
 
 - Replaced Today's summary section with calorie/training/protein activity rings, a remaining-kcal ticker, macro cards, a weigh-in card, and a four-item workout checklist. Kept the keyed meal list, portion and edit/delete flows, history unlock, assistant entries, planned details, and per-day scroll key.
