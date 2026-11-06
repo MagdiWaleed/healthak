@@ -5,6 +5,33 @@
 abstract final class AppStrings {
   static const nutrition = 'التغذية';
   static const training = 'التمارين';
+  static const trainingPlanEdit = 'تعديل الخطة الأسبوعية';
+  static const trainingStart = 'ابدأ خطتك';
+  static const trainingAddExercise = 'إضافة تمرين';
+  static const trainingDoneTotal = 'المكتمل';
+  static const trainingTotalSets = 'المجموعات';
+  static const trainingStreak = 'سلسلة التمرين';
+  static const trainingRest = 'يوم راحة';
+  static const trainingSearch = 'ابحث عن تمرين';
+  static const trainingCustom = 'تمرين مخصص';
+  static const trainingName = 'اسم التمرين';
+  static const trainingMuscle = 'العضلة';
+  static const trainingSets = 'مجموعات';
+  static const trainingReps = 'تكرارات';
+  static const trainingPause = 'إيقاف مؤقت';
+  static const trainingResume = 'استئناف';
+  static const trainingCopyDays = 'نسخ إلى أيام أخرى';
+  static const trainingTemplates = 'خطط جاهزة';
+  static const trainingPushPullLegs = 'دفع/سحب/أرجل';
+  static const trainingUpperLower = 'علوي/سفلي';
+  static const trainingFullBody = 'جسم كامل ٣ أيام';
+  static const trainingApplyTemplate = 'تطبيق الخطة؟';
+  static const trainingReplaceWarning =
+      'ستحل الخطة الجاهزة محل التمارين الحالية.';
+  static const trainingDeleteConfirm = 'حذف التمرين من الخطة؟';
+  static const trainingSelectDays = 'اختر الأيام';
+  static const trainingNoResults = 'لا توجد تمارين مطابقة';
+  static String trainingProgress(int done, int total) => '$done / $total';
   static const progress = 'التقدم';
   static const me = 'أنا';
   static const trainingEmptyTitle = 'خطتك التدريبية قريباً';

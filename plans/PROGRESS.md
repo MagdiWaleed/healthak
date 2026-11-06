@@ -1,5 +1,17 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 5: Training tab (2026-11-07)
+
+- Replaced the Training placeholder with a Monday-first day selector, progress ring, daily stats, streak, checklist, history unlock, one-off picker, and completion celebration. The controller watches the selected frozen day, plan, and recent training days; writes go through `TrainingDayRepository`.
+- Added the weekly editor route and binding. The editor supports weekday lists, reordering, sets/reps, active state, day chips, confirmed deletion, copying a day, and three confirmed library-based starter templates. Save batches upserts and deletions together through `WorkoutPlanRepository.saveAll`.
+- Added pure Arabic search normalization and focused controller, domain, and widget tests. `flutter analyze --no-pub` is clean; all 252 tests pass. `flutter build apk --debug --no-pub` could not start because the Android SDK is inaccessible in this sandbox; install, emulator interaction, screenshots, and logcat are unverified.
+
+### Deviations
+
+| Decision | Reason |
+|---|---|
+| `saveAll` accepts deletion IDs in the same batch | Confirmed deletes and template replacement must save atomically with the edited plan. |
+
 ## Redesign v2 Phase 4: Today hero (2026-11-07)
 
 - Replaced Today's summary section with calorie/training/protein activity rings, a remaining-kcal ticker, macro cards, a weigh-in card, and a four-item workout checklist. Kept the keyed meal list, portion and edit/delete flows, history unlock, assistant entries, planned details, and per-day scroll key.

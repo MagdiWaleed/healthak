@@ -13,6 +13,7 @@ class CheckTile extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
   final bool enabled;
   final Widget? leading;
+  final Widget? trailing;
   const CheckTile({
     required this.title,
     required this.checked,
@@ -20,6 +21,7 @@ class CheckTile extends StatelessWidget {
     this.subtitle,
     this.enabled = true,
     this.leading,
+    this.trailing,
     super.key,
   });
 
@@ -82,6 +84,7 @@ class CheckTile extends StatelessWidget {
                         : null,
                   ),
                 ),
+                if (trailing != null) ...[const SizedBox(width: 8), trailing!],
               ]),
             ),
           ),

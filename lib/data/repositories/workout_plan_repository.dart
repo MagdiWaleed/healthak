@@ -19,8 +19,12 @@ class WorkoutPlanRepository {
 
   Future<void> save(WorkoutPlanItem item) =>
       _refs.workoutPlan(uid).doc(item.id).set(item);
-  Future<void> saveAll(Iterable<WorkoutPlanItem> items) async {
+  Future<void> saveAll(Iterable<WorkoutPlanItem> items,
+      {Iterable<String> deleteIds = const []}) async {
     final batch = _refs.firestore.batch();
+    for (final id in deleteIds) {
+      batch.delete(_refs.workoutPlan(uid).doc(id));
+    }
     for (final item in items) {
       batch.set(_refs.workoutPlan(uid).doc(item.id), item);
     }

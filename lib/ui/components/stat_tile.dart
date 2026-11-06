@@ -30,21 +30,27 @@ class StatTile extends StatelessWidget {
             children: [
               Text(label, style: const TextStyle(color: AppPalette.muted)),
               const SizedBox(height: 5),
-              Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (int.tryParse(value) case final parsed?)
-                      TickerNumber(
-                          value: parsed, style: AppTypography.heroNumber)
-                    else
-                      Text(value, style: AppTypography.heroNumber),
-                    if (unit != null) ...[
-                      const SizedBox(width: 4),
-                      Text(unit!,
-                          style: const TextStyle(color: AppPalette.muted)),
-                    ],
-                  ]),
+              // Scales big values ("12 / 14", "103.4") down instead of
+              // overflowing narrow three-across tiles.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (int.tryParse(value) case final parsed?)
+                        TickerNumber(
+                            value: parsed, style: AppTypography.heroNumber)
+                      else
+                        Text(value, style: AppTypography.heroNumber),
+                      if (unit != null) ...[
+                        const SizedBox(width: 4),
+                        Text(unit!,
+                            style: const TextStyle(color: AppPalette.muted)),
+                      ],
+                    ]),
+              ),
               if (delta != null)
                 Text(
                     '${delta! > 0 ? '▲' : delta! < 0 ? '▼' : '–'} ${delta!.abs()}',

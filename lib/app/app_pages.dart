@@ -10,6 +10,7 @@ import '../page/home/home_shell.dart';
 import '../page/onboarding/onboarding_screen.dart';
 import '../page/profile/profile_screen.dart';
 import '../page/splash/splash_screen.dart';
+import '../page/training/plan_editor_screen.dart';
 import '../ui/motion/transitions.dart';
 import 'app_routes.dart';
 import 'bindings/cost_binding.dart';
@@ -17,6 +18,7 @@ import 'bindings/food_catalog_binding.dart';
 import 'bindings/home_binding.dart';
 import 'bindings/onboarding_binding.dart';
 import 'bindings/splash_binding.dart';
+import 'bindings/training_editor_binding.dart';
 
 /// Legacy `/legacy` fallback route (and `LegacyLtrShim`) were deleted here in
 /// Step 2's replacement pass: every screen it could have reached
@@ -39,6 +41,8 @@ abstract final class AppPages {
     _page(AppRoutes.foods, () => const FoodCatalogScreen(),
         binding: FoodCatalogBinding()),
     _page(AppRoutes.cost, () => const CostScreen(), binding: CostBinding()),
+    _page(AppRoutes.trainingEditor, () => const PlanEditorScreen(),
+        binding: TrainingEditorBinding()),
   ];
 
   static GetPage<dynamic> _page(

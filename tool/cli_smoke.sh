@@ -1,28 +1,30 @@
 #!/usr/bin/env bash
 # CLI end-to-end smoke test on a running Android emulator.
 #
-#   tool/cli_smoke.sh <tag> [--build] [--define-file ai_secrets.json] [label ...]
+#   tool/cli_smoke.sh <tag> [--define-file ai_secrets.json] [label|@swipe ...]
 #
-# Builds (optional), installs, cold-launches the app, screenshots the first
-# screen, then taps each given label (matched against the accessibility tree's
-# content-desc/text) and screenshots after each tap. Fails if logcat shows a
-# Flutter/Dart exception. Screenshots land in output/emulator-ux/<tag>-*.png
-# (gitignored).
-set -euo pipefail
+# Launches the app with `flutter run` in the background so Dart-side output
+# (framework errors, RenderFlex overflows) is captured from the first frame --
+# on this Flutter version that output does NOT reach `adb logcat`. Then it
+# screenshots the first screen, taps each label (matched against the
+# accessibility tree's content-desc/text), screenshots after each tap, and
+# fails on any Flutter error. A label of "@swipe" scrolls the screen up.
+# Output: output/emulator-ux/<tag>-*.png and <tag>-flutter.log (gitignored).
+set -uo pipefail
 export MSYS_NO_PATHCONV=1
 
 ADB="${ADB:-$HOME/AppData/Local/Android/sdk/platform-tools/adb.exe}"
 PKG=com.example.diet_app2
+DEVICE="${DEVICE:-emulator-5554}"
 OUT=output/emulator-ux
-TAG="${1:?usage: cli_smoke.sh <tag> [--build] [--define-file f] [label ...]}"
+TAG="${1:?usage: cli_smoke.sh <tag> [--define-file f] [label ...]}"
 shift
-BUILD=0
 DEFINE=()
 LABELS=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --build) BUILD=1 ;;
     --define-file) DEFINE=(--dart-define-from-file="$2"); shift ;;
+    --build) ;; # kept for compatibility: `flutter run` always builds
     *) LABELS+=("$1") ;;
   esac
   shift
@@ -30,37 +32,83 @@ done
 
 cd "$(dirname "$0")/.."
 mkdir -p "$OUT"
+LOG="$OUT/$TAG-flutter.log"
 
-"$ADB" get-state >/dev/null 2>&1 || { echo "FAIL: no emulator/device"; exit 1; }
+"$ADB" -s "$DEVICE" get-state >/dev/null 2>&1 || { echo "FAIL: no emulator/device"; exit 1; }
+"$ADB" -s "$DEVICE" shell am force-stop "$PKG"
 
-if [ "$BUILD" = 1 ]; then
-  flutter build apk --debug "${DEFINE[@]}" | tail -1
-fi
-"$ADB" install -r build/app/outputs/flutter-apk/app-debug.apk | tail -1
+flutter run -d "$DEVICE" --debug "${DEFINE[@]}" > "$LOG" 2>&1 &
+RUN_PID=$!
+finish() {
+  "$ADB" -s "$DEVICE" shell am force-stop "$PKG" >/dev/null 2>&1
+  sleep 2
+  kill "$RUN_PID" >/dev/null 2>&1 || true
+}
+trap finish EXIT
 
-"$ADB" logcat -c
-"$ADB" shell am force-stop "$PKG"
-"$ADB" shell am start -n "$PKG/.MainActivity" >/dev/null
-sleep 10
+# Wait (up to 6 min) for the app to be running under `flutter run`.
+for _ in $(seq 1 180); do
+  grep -q "Flutter run key commands" "$LOG" && break
+  if ! kill -0 "$RUN_PID" 2>/dev/null; then
+    echo "FAIL: flutter run exited"; tail -20 "$LOG"; exit 1
+  fi
+  sleep 2
+done
+grep -q "Flutter run key commands" "$LOG" || { echo "FAIL: app did not start"; tail -20 "$LOG"; exit 1; }
+sleep 6
 
-shot() { "$ADB" exec-out screencap -p > "$OUT/$TAG-$1.png"; echo "shot $OUT/$TAG-$1.png"; }
+shot() { "$ADB" -s "$DEVICE" exec-out screencap -p > "$OUT/$TAG-$1.png"; echo "shot $OUT/$TAG-$1.png"; }
 
 # Prints "x y" for the center of the first node whose content-desc or text
-# contains $1, or nothing.
+# contains $1, or nothing. A "last:" prefix picks the last match in document
+# order -- use it for bottom-nav tabs whose label also appears in page
+# content (e.g. "last:التمارين").
 find_center() {
-  "$ADB" shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
-  "$ADB" shell cat /sdcard/ui.xml | tr '>' '\n' \
-    | grep -F -- "$1" | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' | head -1 \
+  local pick="head -1" needle="$1"
+  case "$needle" in last:*) pick="tail -1"; needle="${needle#last:}" ;; esac
+  # Remove the previous dump first: a failed dump would otherwise leave a
+  # stale file and the tap would land on an old screen's coordinates.
+  "$ADB" -s "$DEVICE" shell rm -f /sdcard/ui.xml >/dev/null 2>&1
+  "$ADB" -s "$DEVICE" shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+  "$ADB" -s "$DEVICE" shell cat /sdcard/ui.xml 2>/dev/null | tr '>' '\n' \
+    | grep -F -- "$needle" | grep -oE 'bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' | $pick \
     | sed -E 's/bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]"/\1 \2 \3 \4/' \
     | awk '{ printf "%d %d\n", ($1+$3)/2, ($2+$4)/2 }'
 }
 
+# Wait (up to ~2 min) until the home shell is on screen: a JIT debug build is
+# slow to draw its first frame and the native splash has no labels.
+READY_LABEL="${READY_LABEL:-اليوم}"
+for _ in $(seq 1 60); do
+  [ -n "$(find_center "$READY_LABEL" || true)" ] && break
+  sleep 2
+done
+sleep 2
+
 shot 00-launch
 i=1
 for label in "${LABELS[@]}"; do
-  # Poll up to ~20s: the first screen may still be loading/animating.
+  # "@tab:N" taps bottom-nav slot N (1 = Today ... 5 = Me). Five equal slots
+  # laid out right-to-left on a 1080px-wide screen, bar centered at y=2100.
+  # Label matching is unreliable for tabs: the same words appear in content.
+  if [[ "$label" == @tab:* ]]; then
+    n="${label#@tab:}"
+    "$ADB" -s "$DEVICE" shell input tap $(( 1080 - (2 * n - 1) * 108 )) 2100
+    sleep 3
+    shot "$(printf %02d $i)-tab$n"
+    i=$((i + 1))
+    continue
+  fi
+  if [ "$label" = "@swipe" ]; then
+    "$ADB" -s "$DEVICE" shell input swipe 540 1700 540 700 400
+    sleep 2
+    shot "$(printf %02d $i)-swipe"
+    i=$((i + 1))
+    continue
+  fi
+  # Poll up to ~60s: first frames on the emulator can be slow.
   xy=""
-  for _ in $(seq 1 10); do
+  for _ in $(seq 1 30); do
     xy="$(find_center "$label" || true)"
     [ -n "$xy" ] && break
     sleep 2
@@ -72,23 +120,17 @@ for label in "${LABELS[@]}"; do
     exit 1
   fi
   # shellcheck disable=SC2086
-  "$ADB" shell input tap $xy
+  "$ADB" -s "$DEVICE" shell input tap $xy
   sleep 2
   shot "$(printf %02d $i)-tap"
   i=$((i + 1))
 done
+sleep 2
 
-# Only our process: launcher/system noise is not an app failure. Also catch
-# Flutter framework errors, which log under the "flutter" tag at info level.
-pid="$("$ADB" shell pidof "$PKG" | tr -d '' || true)"
-if [ -z "$pid" ]; then
-  echo "FAIL: app process died"
-  exit 1
-fi
-errors="$( { "$ADB" logcat -d --pid="$pid" '*:E'; "$ADB" logcat -d --pid="$pid" -s flutter:I; }   | grep -iE 'exception|error|overflow|RenderFlex|Unhandled' || true)"
+errors="$(grep -nE 'EXCEPTION CAUGHT|RenderFlex overflowed|overflowed by|Another exception was thrown|Unhandled Exception|\[ERROR' "$LOG" || true)"
 if [ -n "$errors" ]; then
-  echo "FAIL: errors in logcat:"
+  echo "FAIL: Flutter errors (full log: $LOG):"
   echo "$errors" | head -20
   exit 1
 fi
-echo "PASS: $TAG (${#LABELS[@]} taps, no Flutter errors)"
+echo "PASS: $TAG (${#LABELS[@]} steps, no Flutter errors; log $LOG)"
