@@ -103,6 +103,8 @@ class _TodayFixture extends GetxController implements TodayController {
 
 class _ChatFixture extends GetxController implements ChatOrchestrator {
   @override
+  Future<String?> todaySnapshotForSuggestions() async => null;
+  @override
   final messages = <ChatMessage>[].obs;
   @override
   final sending = false.obs;

@@ -51,6 +51,14 @@ class ChatOrchestrator extends GetxController {
   final lastFailure = Rxn<AgentFailureKind>();
   final lastTurnCostUsd = RxnDouble();
 
+  Future<String?> todaySnapshotForSuggestions() async {
+    try {
+      return await _tools.buildTodaySnapshotContext();
+    } on Object {
+      return null;
+    }
+  }
+
   /// Every conversation thread, newest first. Populated on init and kept in
   /// sync as sessions are created, titled, switched to, or deleted.
   final sessions = <ChatSession>[].obs;

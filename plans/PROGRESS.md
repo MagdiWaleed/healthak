@@ -1,5 +1,19 @@
 # PROGRESS — handoff
 
+## Phase 8b assistant UI and errors (2026-11-07)
+
+- Split the assistant page into five widget parts under `lib/page/assistant/widgets/`. Added dark emerald user bubbles, tool activity chips with a collapsed count, tappable source domains, snapshot-aware empty suggestions, motion-gated typing bounce and proposal/receipt pop motion, and friendly error cards with a secondary technical code and retry.
+- Added `url_launcher` with the permitted Android HTTPS VIEW query. The direct and web-search clients now read error response bodies, identify invalid keys even on HTTP 400, give clear quota/model errors, and retry a missing model once with `AgentModels.fallbackId`.
+- Added HTTP mapping/fallback and widget tests; updated the existing assistant screen fixture for the new snapshot method. `flutter pub get --offline` succeeded, `flutter analyze --no-pub` found no issues, and `flutter test --no-pub` passed all 262 tests.
+- `flutter build apk --debug --no-pub` stopped because this sandbox cannot locate the Android SDK. APK install, visual emulator drive, screenshot, and logcat verification remain open.
+
+### Deviations
+
+| Decision | Reason |
+|---|---|
+| Work stayed on `redesign-v2-chat` | This is the branch supplied in the current checkout; no branch change or commit was made. |
+| Widget test source launcher is injected as a callback | It verifies the URL passed by the chip without invoking a platform plugin in the widget test. |
+
 ## Redesign v2 Phase 6: Progress tab (2026-11-07)
 
 - Added the Progress weight chart with 7/30/90-day selection, raw weigh-ins, EMA trend, goal line, tooltip, and a chronological left-to-right axis inside the RTL screen. Added trend/change/rate/goal ETA tiles, a goal-sheet link, and a latest-ten list with edit and confirmed delete.

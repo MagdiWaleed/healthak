@@ -345,4 +345,24 @@ abstract final class AppStrings {
   static const progressRecentWeights = 'آخر قياسات الوزن';
   static const progressDeleteTitle = 'حذف قياس الوزن؟';
   static const progressDeleteBody = 'سيُحذف هذا القياس من سجل الوزن.';
+  // --- Phase 8b chat strings ---
+  static const agentInvalidKey = 'مفتاح المساعد غير صالح ويحتاج إلى تحديث.';
+  static const agentKeyNoChatAccess =
+      'مفتاح المساعد لا يملك صلاحية المحادثة. فعّل صلاحية Chat للمفتاح من لوحة xAI.';
+  static const agentModelUnavailable = 'النموذج غير متاح حاليًا.';
+  static const agentQuota = 'بلغ المساعد حد الاستخدام حاليًا. حاول لاحقًا.';
+  static const agentGenericError = 'تعذّر تشغيل المساعد. حاول مرة أخرى.';
+  static String agentTechnicalCode(int code) => 'رمز الخطأ: $code';
+  static const agentErrorTitle = 'حدثت مشكلة';
+  static String agentToolsUsed(int count) =>
+      'استخدم ${count.toString().replaceAllMapped(RegExp(r'[0-9]'), (match) => '٠١٢٣٤٥٦٧٨٩'[int.parse(match.group(0)!)])} أدوات';
+  static const agentGreetingMorning = 'صباح الخير';
+  static const agentGreetingAfternoon = 'مساء الخير';
+  static const agentGreetingEvening = 'مساء الخير';
+  static const agentSuggestionProteinLeft = 'كم بقي لي من البروتين؟';
+  static const agentSuggestionDinnerRemaining = 'اقترح عشاء يناسب ما تبقى';
+  static const agentSuggestionWorkoutToday = 'ما تمرين اليوم؟';
+  static const agentSuggestionWeightTrend = 'كيف يتغير وزني؟';
+  static const agentSuggestionStartTraining = 'ساعدني أبدأ خطة تمرين';
+  static const agentSuggestionStartWeight = 'كيف أبدأ تتبع وزني؟';
 }
