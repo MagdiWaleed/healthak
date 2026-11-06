@@ -11,12 +11,58 @@ import 'package:diet_app2/service/agent/agent_data_source.dart';
 import 'package:diet_app2/service/agent/agent_models.dart';
 import 'package:diet_app2/service/agent/agent_proposal.dart';
 import 'package:diet_app2/service/agent/agent_tool_registry.dart';
-import 'package:diet_app2/service/agent/web_food_search_client.dart';
+import 'package:diet_app2/service/agent/web_search_client.dart';
+import 'package:diet_app2/domain/body/body_weight.dart';
+import 'package:diet_app2/domain/training/training_day.dart';
+import 'package:diet_app2/domain/training/workout_plan_item.dart';
+import 'package:diet_app2/domain/training/exercise.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('search_web returns grounded sources and handles missing key', () async {
+    const call = AgentToolCall(
+        id: 'web',
+        name: 'search_web',
+        arguments: {'query': 'exercise technique', 'focus': 'fitness'});
+    final unavailable = await AgentToolRegistry(data: _FakeData()).run(call);
+    expect(unavailable.data['error'], 'web_search_unavailable');
+    final result = await AgentToolRegistry(
+            data: _FakeData(), generalWebSearch: _GeneralWebFake())
+        .run(call);
+    expect(result.data['summary'], 'Grounded answer');
+    expect(result.sources.single.url, 'https://example.org/technique');
+  });
+
+  test('weight and training proposals write only after confirm', () async {
+    final data = _TrainingFakeData();
+    final registry =
+        AgentToolRegistry(data: data, now: () => DateTime(2026, 11, 6));
+    final weight = await registry.run(const AgentToolCall(
+        id: 'w', name: 'propose_log_weight', arguments: {'kg': 80}));
+    expect(weight.proposal?.kind, ProposalKind.logWeight);
+    expect(data.weight, isNull);
+    await registry.confirm(weight.proposal!);
+    expect(data.weight, 80);
+    final toggle = await registry.run(const AgentToolCall(
+        id: 't',
+        name: 'propose_toggle_exercise',
+        arguments: {'local_id': 'item', 'done': true}));
+    expect(data.done, isFalse);
+    await registry.confirm(toggle.proposal!);
+    expect(data.done, isTrue);
+    final add = await registry.run(
+        const AgentToolCall(id: 'a', name: 'propose_add_plan_item', arguments: {
+      'exercise_id': 'push_up',
+      'sets': 3,
+      'reps': 12,
+      'days_of_week': [1, 3]
+    }));
+    expect(data.plan, isEmpty);
+    await registry.confirm(add.proposal!);
+    expect(data.plan.single.exerciseId, 'push_up');
+  });
   group('AgentToolRegistry read tools', () {
-    test('exposes the seven read tools plus the seven propose tools', () {
+    test('exposes nutrition, web, weight, training and proposal tools', () {
       final registry = AgentToolRegistry(data: _FakeData());
 
       expect(
@@ -29,6 +75,10 @@ void main() {
           'search_foods',
           'get_remaining_targets',
           'search_food_online',
+          'search_web',
+          'get_weight_history',
+          'get_training_today',
+          'get_workout_plan',
           'propose_log_food',
           'propose_log_meal',
           'propose_swap_meal',
@@ -36,9 +86,12 @@ void main() {
           'propose_remove_entry',
           'propose_create_meal',
           'propose_log_custom_component',
+          'propose_log_weight',
+          'propose_toggle_exercise',
+          'propose_add_plan_item',
         ]),
       );
-      expect(registry.definitions, hasLength(14));
+      expect(registry.definitions, hasLength(21));
     });
 
     test('search_food_online is refused when no search client is configured',
@@ -655,6 +708,77 @@ class _FakeData implements AgentDataSource {
 
   @override
   Future<void> deleteMeal(String id) async => meals.remove(id);
+}
+
+class _GeneralWebFake implements WebSearchClient {
+  @override
+  Future<WebSearchResult> search(String query, WebSearchFocus focus) async =>
+      const WebSearchResult(summary: 'Grounded answer', sources: [
+        WebSource(url: 'https://example.org/technique', title: 'Example')
+      ]);
+}
+
+class _TrainingFakeData extends _FakeData
+    implements AgentWeightTrainingDataSource {
+  double? weight;
+  bool done = false;
+  final plan = <WorkoutPlanItem>[];
+  @override
+  Future<List<BodyWeightEntry>> getWeightHistory(
+          DateTime from, DateTime to) async =>
+      [];
+  @override
+  Future<BodyWeightEntry?> getWeight(DateTime date) async => weight == null
+      ? null
+      : BodyWeightEntry(
+          dateKey: DayLog.keyFor(date),
+          date: date,
+          kg: weight!,
+          createdAt: date,
+          updatedAt: date);
+  @override
+  Future<void> logWeight(DateTime date, double kg) async {
+    weight = kg;
+  }
+
+  @override
+  Future<void> deleteWeight(DateTime date) async {
+    weight = null;
+  }
+
+  @override
+  Future<List<WorkoutPlanItem>> getWorkoutPlan() async => plan;
+  @override
+  Future<TrainingDay> getTrainingDay(DateTime date) async => TrainingDay(
+          dateKey: DayLog.keyFor(date),
+          date: date,
+          materializedFromPlanVersion: 0,
+          items: [
+            TrainingItem(
+                localId: 'item',
+                planItemId: 'p',
+                exerciseId: 'push_up',
+                nameAr: 'ضغط أرضي',
+                muscle: MuscleGroup.chest,
+                sets: 3,
+                reps: 12,
+                order: 0,
+                done: done)
+          ]);
+  @override
+  Future<void> toggleExercise(DateTime date, String localId) async {
+    done = !done;
+  }
+
+  @override
+  Future<void> savePlanItem(WorkoutPlanItem item) async {
+    plan.add(item);
+  }
+
+  @override
+  Future<void> deletePlanItem(String id) async {
+    plan.removeWhere((item) => item.id == id);
+  }
 }
 
 class _FakeWebSearch implements WebFoodSearchClient {

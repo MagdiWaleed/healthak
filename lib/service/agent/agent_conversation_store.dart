@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'agent_models.dart';
 import 'chat_session.dart';
+import 'web_source.dart';
 
 abstract interface class AgentConversationStore {
   /// Newest-first.
@@ -59,7 +60,8 @@ class SharedPrefsAgentConversationStore implements AgentConversationStore {
   }
 
   @override
-  Future<void> saveMessages(String sessionId, List<ChatMessage> messages) async {
+  Future<void> saveMessages(
+      String sessionId, List<ChatMessage> messages) async {
     final prefs = await _prefs;
     final rows = [
       for (final message in messages)
@@ -127,6 +129,7 @@ class SharedPrefsAgentConversationStore implements AgentConversationStore {
         'status': message.status.name,
         'text': message.text,
         'toolName': message.toolName,
+        'sources': [for (final source in message.sources) source.toJson()],
         'createdAt': message.createdAt.toIso8601String(),
       };
 
@@ -149,6 +152,11 @@ class SharedPrefsAgentConversationStore implements AgentConversationStore {
       status: status,
       text: text,
       toolName: json['toolName'] as String?,
+      sources: [
+        for (final raw
+            in json['sources'] is List ? json['sources'] as List : const [])
+          if (WebSource.fromJson(raw) case final source?) source,
+      ],
       createdAt: createdAt,
     );
   }

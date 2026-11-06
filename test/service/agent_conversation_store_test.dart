@@ -5,8 +5,30 @@ import 'package:diet_app2/service/agent/agent_models.dart';
 import 'package:diet_app2/service/agent/chat_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:diet_app2/service/agent/web_source.dart';
 
 void main() {
+  test('web sources round-trip and old rows default to empty sources',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final store = SharedPrefsAgentConversationStore(preferences: prefs);
+    await store.saveMessages('sources', [
+      ChatMessage(
+          id: 'm',
+          kind: ChatMessageKind.assistant,
+          text: 'جواب',
+          createdAt: DateTime(2026),
+          sources: const [
+            WebSource(url: 'https://example.org/a', title: 'Example')
+          ])
+    ]);
+    final loaded = await store.loadMessages('sources');
+    expect(loaded.single.sources.single.title, 'Example');
+    await prefs.setString('assistant.session.old',
+        '[{"id":"old","kind":"assistant","status":"complete","text":"x","createdAt":"2026-01-01T00:00:00.000"}]');
+    expect((await store.loadMessages('old')).single.sources, isEmpty);
+  });
   test('round-trips a session\'s messages and metadata', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();

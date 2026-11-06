@@ -7,6 +7,13 @@ import '../../domain/food/food_item.dart';
 import '../../domain/meal/meal_definition.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../domain/profile/user_profile.dart';
+import '../../domain/body/body_weight.dart';
+import '../../domain/training/training_day.dart';
+import '../../domain/training/workout_plan_item.dart';
+import '../../data/repositories/body_weight_repository.dart';
+import '../../data/repositories/training_day_repository.dart';
+import '../../data/repositories/workout_plan_repository.dart';
+import '../weigh_in_service.dart';
 
 abstract interface class AgentDataSource {
   String get uid;
@@ -42,13 +49,32 @@ abstract interface class AgentDataSource {
   Future<void> deleteMeal(String id);
 }
 
-class HealthakAgentDataSource implements AgentDataSource {
+/// Optional capability kept separate so existing nutrition data source fakes
+/// continue to model only their original contract.
+abstract interface class AgentWeightTrainingDataSource {
+  Future<List<BodyWeightEntry>> getWeightHistory(DateTime from, DateTime to);
+  Future<BodyWeightEntry?> getWeight(DateTime date);
+  Future<void> logWeight(DateTime date, double kg);
+  Future<void> deleteWeight(DateTime date);
+  Future<List<WorkoutPlanItem>> getWorkoutPlan();
+  Future<TrainingDay> getTrainingDay(DateTime date);
+  Future<void> toggleExercise(DateTime date, String localId);
+  Future<void> savePlanItem(WorkoutPlanItem item);
+  Future<void> deletePlanItem(String id);
+}
+
+class HealthakAgentDataSource
+    implements AgentDataSource, AgentWeightTrainingDataSource {
   @override
   final String uid;
   final DayRepository _days;
   final FoodRepository _foods;
   final MealRepository _meals;
   final ProfileRepository _profiles;
+  final BodyWeightRepository _weights;
+  final WorkoutPlanRepository _plan;
+  final TrainingDayRepository _training;
+  late final WeighInService _weighIn;
 
   HealthakAgentDataSource({
     required this.uid,
@@ -56,10 +82,51 @@ class HealthakAgentDataSource implements AgentDataSource {
     FoodRepository? foods,
     MealRepository? meals,
     ProfileRepository? profiles,
+    BodyWeightRepository? weights,
+    WorkoutPlanRepository? plan,
+    TrainingDayRepository? training,
+    WeighInService? weighIn,
   })  : _days = days ?? DayRepository(uid: uid),
         _foods = foods ?? FoodRepository(uid: uid),
         _meals = meals ?? MealRepository(uid: uid),
-        _profiles = profiles ?? ProfileRepository();
+        _profiles = profiles ?? ProfileRepository(),
+        _weights = weights ?? BodyWeightRepository(uid: uid),
+        _plan = plan ?? WorkoutPlanRepository(uid: uid),
+        _training = training ?? TrainingDayRepository(uid: uid) {
+    _weighIn =
+        weighIn ?? WeighInService(weights: _weights, profiles: _profiles);
+  }
+
+  @override
+  Future<List<BodyWeightEntry>> getWeightHistory(DateTime from, DateTime to) =>
+      _weights.watchRange(from, to).first;
+  @override
+  Future<BodyWeightEntry?> getWeight(DateTime date) => _weights.get(date);
+  @override
+  Future<void> logWeight(DateTime date, double kg) =>
+      _weighIn.logWeight(date: date, kg: kg);
+  @override
+  Future<void> deleteWeight(DateTime date) =>
+      _weights.delete(DayLog.keyFor(date));
+  @override
+  Future<List<WorkoutPlanItem>> getWorkoutPlan() => _plan.getAll();
+  @override
+  Future<TrainingDay> getTrainingDay(DateTime date) async {
+    final existing = await _training.watch(date).first;
+    if (existing != null) return existing;
+    return _training.ensureTrainingDay(date, await _plan.getAll());
+  }
+
+  @override
+  Future<void> toggleExercise(DateTime date, String localId) async {
+    await _training.ensureTrainingDay(date, await _plan.getAll());
+    await _training.toggle(date, localId);
+  }
+
+  @override
+  Future<void> savePlanItem(WorkoutPlanItem item) => _plan.save(item);
+  @override
+  Future<void> deletePlanItem(String id) => _plan.delete(id);
 
   @override
   Future<DayLog?> getDay(DateTime date) => _days.get(date);

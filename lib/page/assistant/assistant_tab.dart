@@ -929,6 +929,19 @@ class _MessageCard extends StatelessWidget {
                         ],
                       ],
                     ),
+                    if (message.sources.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      const Text(AppStrings.agentSources,
+                          style:
+                              TextStyle(color: AppPalette.muted, fontSize: 12)),
+                      for (final source in message.sources)
+                        Text(
+                            source.title ??
+                                Uri.tryParse(source.url)?.host ??
+                                source.url,
+                            style: const TextStyle(
+                                color: AppPalette.emerald, fontSize: 12)),
+                    ],
                     if (isError && failure != AgentFailureKind.quota) ...[
                       const SizedBox(height: 7),
                       Pressable(
@@ -1270,6 +1283,18 @@ abstract final class _ProposalDetails {
     }
 
     switch (proposal.kind) {
+      case ProposalKind.logWeight:
+        rows.add(_line('${AppStrings.agentWeightKg}: ${card['kg']}'));
+      case ProposalKind.toggleExercise:
+        rows.add(_line(
+            '${card['name']}: ${card['done'] == true ? AppStrings.agentExerciseDone : AppStrings.agentExerciseNotDone}'));
+      case ProposalKind.addPlanItem:
+        rows.add(_line('${card['name']} · ${card['sets']} × ${card['reps']}'));
+        rows.add(_line(
+            '${AppStrings.agentTrainingDays}: ${(card['days_of_week'] as List).join('، ')}'));
+      case ProposalKind.deletePlanItem:
+      case ProposalKind.deleteWeight:
+        break;
       case ProposalKind.swapMeal:
         rows.add(_line('${card['old_name']} â† ${card['new_name']}'));
         final delta = (card['delta'] as Map?)?.cast<String, num>();

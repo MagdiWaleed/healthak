@@ -13,6 +13,8 @@ import 'agent_tool_registry.dart';
 import 'ai_client.dart';
 import 'chat_session.dart';
 import 'chat_title_generator.dart';
+import 'web_source.dart';
+import '../../l10n/app_strings.dart';
 
 const int kMaxAgentToolCallsPerTurn = 24;
 
@@ -127,10 +129,17 @@ class ChatOrchestrator extends GetxController {
       // blocks the turn: a failure here just means no precall this time,
       // the model still has search_foods/get_meals as before.
       String? knownCatalog;
+      String? todaySnapshot;
+      final turnSources = <WebSource>[];
       try {
         knownCatalog = await _tools.buildKnownCatalogContext();
       } on Object {
         knownCatalog = null;
+      }
+      try {
+        todaySnapshot = await _tools.buildTodaySnapshotContext();
+      } on Object {
+        todaySnapshot = null;
       }
       while (true) {
         final assistantId = _uuid.v4();
@@ -149,6 +158,8 @@ class ChatOrchestrator extends GetxController {
           messages: List.unmodifiable([
             ..._apiMessages,
             {'role': 'system', 'content': _tools.buildDateContext()},
+            if (todaySnapshot != null && todaySnapshot.isNotEmpty)
+              {'role': 'system', 'content': todaySnapshot},
           ]),
           tools: toolsEnabled ? _tools.definitions : const [],
           model: model,
@@ -181,6 +192,7 @@ class ChatOrchestrator extends GetxController {
             (message) => message.copyWith(
               text: assistantText,
               status: ChatMessageStatus.complete,
+              sources: turnSources,
             ),
           );
         }
@@ -229,7 +241,19 @@ class ChatOrchestrator extends GetxController {
             toolName: call.name,
             createdAt: DateTime.now(),
           ));
-          final result = await _tools.run(call);
+          AgentToolResult result;
+          try {
+            result = await _tools.run(call);
+          } on Object {
+            result = AgentToolResult(toolName: call.name, isError: true, data: {
+              'error': 'tool_failed',
+              'message': AppStrings.agentToolFailed
+            });
+          }
+          for (final source in result.sources) {
+            if (turnSources.every((known) => known.url != source.url))
+              turnSources.add(source);
+          }
           _replaceMessage(
             workingId,
             (message) => message.copyWith(
@@ -549,6 +573,15 @@ class ChatOrchestrator extends GetxController {
   }
 
   static String _workingLabel(String tool) => switch (tool) {
+        'search_web' => AppStrings.agentSearchingWeb,
+        'get_weight_history' => AppStrings.agentReadingWeight,
+        'get_training_today' ||
+        'get_workout_plan' =>
+          AppStrings.agentReadingTraining,
+        'propose_log_weight' ||
+        'propose_toggle_exercise' ||
+        'propose_add_plan_item' =>
+          AppStrings.agentPreparingProposal,
         'get_today' => 'أقرأ سجل يومك…',
         'get_history_range' => 'أراجع أيامك الأخيرة…',
         'get_profile' => 'أراجع هدفك وأرقامك…',
@@ -568,6 +601,15 @@ class ChatOrchestrator extends GetxController {
       };
 
   static String _completeLabel(String tool) => switch (tool) {
+        'search_web' => AppStrings.agentSearchedWeb,
+        'get_weight_history' => AppStrings.agentReadWeight,
+        'get_training_today' ||
+        'get_workout_plan' =>
+          AppStrings.agentReadTraining,
+        'propose_log_weight' ||
+        'propose_toggle_exercise' ||
+        'propose_add_plan_item' =>
+          AppStrings.agentProposalReady,
         'get_today' => 'قرأت سجل اليوم',
         'get_history_range' => 'راجعت الأيام المطلوبة',
         'get_profile' => 'راجعت هدفك',

@@ -15,10 +15,35 @@ import 'package:diet_app2/service/agent/ai_client.dart';
 import 'package:diet_app2/service/agent/agent_conversation_store.dart';
 import 'package:diet_app2/service/agent/chat_orchestrator.dart';
 import 'package:diet_app2/service/agent/chat_title_generator.dart';
+import 'package:diet_app2/service/agent/web_search_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('search_web sources attach to the final assistant message', () async {
+    final orchestrator = ChatOrchestrator(
+        client: _WebTurnClient(),
+        tools: AgentToolRegistry(
+            data: _EmptyData(), generalWebSearch: _WebSearchFake()));
+    await orchestrator.send('كيف أتمرّن؟');
+    final answer = orchestrator.messages
+        .lastWhere((m) => m.kind == ChatMessageKind.assistant);
+    expect(answer.sources.single.url, 'https://example.org/exercise');
+  });
+
+  test('tool exception is returned to model and turn continues', () async {
+    final client = _WebTurnClient();
+    final orchestrator = ChatOrchestrator(
+        client: client, tools: _ThrowingRegistry(data: _EmptyData()));
+    await orchestrator.send('كيف أتمرّن؟');
+    expect(client.calls, 2);
+    expect(
+        client.secondMessages.any((m) =>
+            m['role'] == 'tool' &&
+            (m['content'] as String).contains('tool_failed')),
+        isTrue);
+    expect(orchestrator.messages.last.text, 'إجابة');
+  });
   test(
       'editing one food proposal preserves other pending cards and writes only on confirm',
       () async {
@@ -404,6 +429,45 @@ void main() {
 
 /// Answers every turn immediately with a fixed reply, no tool calls -- for
 /// tests that only care about session bookkeeping, not the tool loop.
+class _WebSearchFake implements WebSearchClient {
+  @override
+  Future<WebSearchResult> search(String query, WebSearchFocus focus) async =>
+      const WebSearchResult(summary: 'تمرين آمن', sources: [
+        WebSource(url: 'https://example.org/exercise', title: 'Example')
+      ]);
+}
+
+class _ThrowingRegistry extends AgentToolRegistry {
+  _ThrowingRegistry({required super.data});
+  @override
+  Future<AgentToolResult> run(AgentToolCall call) async =>
+      throw StateError('test');
+}
+
+class _WebTurnClient implements AiClient {
+  int calls = 0;
+  List<Map<String, dynamic>> secondMessages = const [];
+  @override
+  Stream<AgentChunk> agentTurn(
+      {required String turnId,
+      required List<Map<String, dynamic>> messages,
+      required List<AgentToolDefinition> tools,
+      String? model,
+      String? knownCatalog}) async* {
+    calls++;
+    if (calls == 1) {
+      yield const AgentToolCallChunk(AgentToolCall(
+          id: 'web',
+          name: 'search_web',
+          arguments: {'query': 'exercise technique', 'focus': 'fitness'}));
+    } else {
+      secondMessages = messages;
+      yield const AgentTextDelta('إجابة');
+    }
+    yield const AgentDoneChunk();
+  }
+}
+
 class _EchoClient implements AiClient {
   @override
   Stream<AgentChunk> agentTurn({

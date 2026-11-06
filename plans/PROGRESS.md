@@ -1,5 +1,13 @@
 # PROGRESS — handoff
 
+## Phase 8a assistant service (2026-11-07)
+
+- Rewrote the Arabic system prompt and mirrored it byte-for-byte in the Cloud Function.
+- Added focused xAI web search with cited sources, message persistence, and minimal source rendering. Added weight history, training reads, and three confirm-only proposals backed by Phase 1 repositories and `WeighInService`.
+- The orchestrator keeps its 24-call limit, adds a best-effort today snapshot, shows tool activity in existing working messages, and returns tool failures to the model for recovery.
+- `flutter pub get --offline` succeeded; `flutter analyze --no-pub` is clean and `flutter test --no-pub` passes all 229 tests. No live xAI or emulator verification in this phase.
+- This worktree is `redesign-v2-agent`, not `redesign-v2`. No commit was made.
+
 ## Reference-image rebuild and journey pass (2026-10-24)
 
 User asked to make the running app match `output/review/healthak-ui-concept.png`
@@ -1912,6 +1920,7 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 
 | Plan said | What was done | Why |
 |---|---|---|
+| Phase 8a read-only training lookup | `get_training_today` materializes a missing day through the Phase 1 repository | The repository assigns persistent local ids during materialization; proposal toggles must use those same ids. This may create today's training document on first assistant read. |
 | Living Glass default with repeated arrival/scroll effects | Light opaque surfaces, compact Today and stable labelled controls | User explicitly requested implementing the reviewed new UI on cline-UI (2026-10-23). Domain, storage and confirmation semantics preserved; voice remains separate. |
 | UI refresh used slot icons while real food media was absent | Bundle generated dish and catalog photos with exact name/ingredient matching, retain icon for unknown foods | User explicitly requested original food images matching the first mockup. Local assets keep the current frozen-day and Firestore schemas intact. |
 | Catalog quick-add selected a food and immediately logged 100 g | Add an editable portion and meal-slot review before creating the day entry | CLI emulator walk exposed an accidental-log path; user requested improving the journey after testing. |

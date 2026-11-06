@@ -12,6 +12,11 @@ enum ProposalKind {
   logCustomComponent,
   restoreEntry,
   deleteMeal,
+  logWeight,
+  toggleExercise,
+  addPlanItem,
+  deletePlanItem,
+  deleteWeight,
 }
 
 /// A pending write, parked in the conversation until the user taps تأكيد.
