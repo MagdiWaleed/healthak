@@ -1,12 +1,50 @@
 import 'dart:convert';
 
 import 'package:diet_app2/service/agent/agent_models.dart';
-import 'package:diet_app2/service/agent/web_food_search_client.dart';
+import 'package:diet_app2/service/agent/web_search_client.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
+  test('general search shapes fitness prompt and caps titled sources at five',
+      () async {
+    late http.Request captured;
+    final client = XaiWebSearchClient(
+        apiKey: 'k',
+        httpClient: MockClient((request) async {
+          captured = request;
+          return http.Response(
+              jsonEncode({
+                'status': 'completed',
+                'output': [
+                  {
+                    'type': 'message',
+                    'content': [
+                      {
+                        'type': 'output_text',
+                        'text': 'Use controlled form.',
+                        'annotations': [
+                          for (var i = 0; i < 7; i++)
+                            {
+                              'url': 'https://example.org/$i',
+                              'title': 'Source $i'
+                            }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }),
+              200);
+        }));
+    final result = await client.search('squat form', WebSearchFocus.fitness);
+    expect((jsonDecode(captured.body)['input'] as List).single['content'],
+        contains('exercise technique'));
+    expect(result.summary, 'Use controlled form.');
+    expect(result.sources, hasLength(5));
+    expect(result.sources.first.title, 'Source 0');
+  });
   test('parses the /v1/responses output into text and citation sources',
       () async {
     late http.Request captured;

@@ -8,11 +8,14 @@ import '../../domain/meal/meal_entry.dart';
 import '../../domain/meal/meal_math.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../domain/nutrition/macros.dart';
+import '../../domain/body/body_weight.dart';
+import '../../domain/training/exercise.dart';
+import '../../domain/training/workout_plan_item.dart';
 import 'agent_data_source.dart';
 import 'agent_models.dart';
 import 'agent_proposal.dart';
 import 'agent_tools.dart';
-import 'web_food_search_client.dart';
+import 'web_search_client.dart';
 
 class AgentToolResult {
   final String toolName;
@@ -23,12 +26,14 @@ class AgentToolResult {
   /// [ChatOrchestrator] parks this in the conversation as a confirmation
   /// card instead of treating [data] as a finished answer.
   final Proposal? proposal;
+  final List<WebSource> sources;
 
   const AgentToolResult({
     required this.toolName,
     required this.data,
     this.isError = false,
     this.proposal,
+    this.sources = const [],
   });
 }
 
@@ -37,16 +42,25 @@ class AgentToolRegistry {
   final DateTime Function() _now;
   final Uuid _uuid;
   final WebFoodSearchClient? _webSearch;
+  final WebSearchClient? _generalWebSearch;
+  AgentWeightTrainingDataSource get _trainingData {
+    if (_data is AgentWeightTrainingDataSource) {
+      return _data as AgentWeightTrainingDataSource;
+    }
+    throw const FormatException('data_unavailable');
+  }
 
   AgentToolRegistry({
     required AgentDataSource data,
     DateTime Function()? now,
     Uuid uuid = const Uuid(),
     WebFoodSearchClient? webSearch,
+    WebSearchClient? generalWebSearch,
   })  : _data = data,
         _now = now ?? DateTime.now,
         _uuid = uuid,
-        _webSearch = webSearch;
+        _webSearch = webSearch,
+        _generalWebSearch = generalWebSearch;
 
   List<AgentToolDefinition> get definitions => AgentTools.all;
 
@@ -92,6 +106,20 @@ class AgentToolRegistry {
     return buffer.toString().trim();
   }
 
+  Future<String> buildTodaySnapshotContext() async {
+    final now = _now().toLocal();
+    final day = await _data.getDay(now);
+    final profile = await _data.getProfile();
+    final training = await _trainingData.getTrainingDay(now);
+    final latest = (await _trainingData.getWeightHistory(
+        now.subtract(const Duration(days: 180)), now));
+    final weight = latest.isEmpty ? null : WeightTrend(latest).latestKg;
+    return 'لقطة اليوم: المتبقي من السعرات ${day == null ? 'غير متاح' : (day.targets.kcal - day.consumedKcal).toStringAsFixed(0)}؛ '
+        'البروتين ${day == null ? 'غير متاح' : (day.targets.macros.protein - day.consumedTotals.protein).toStringAsFixed(0)} جم؛ '
+        'التمرين ${training.items.where((e) => e.done).length}/${training.items.length}؛ '
+        'آخر وزن ${weight ?? 'غير متاح'} كجم؛ الهدف ${profile?.goalWeightKg ?? 'غير محدد'} كجم.';
+  }
+
   Future<AgentToolResult> run(AgentToolCall call) async {
     try {
       if (AgentTools.proposeNames.contains(call.name)) {
@@ -130,9 +158,22 @@ class AgentToolRegistry {
         'search_foods' => await _searchFoods(call.arguments),
         'get_remaining_targets' => await _getRemainingTargets(),
         'search_food_online' => await _searchFoodOnline(call.arguments),
+        'search_web' => await _searchWeb(call.arguments),
+        'get_weight_history' => await _getWeightHistory(call.arguments),
+        'get_training_today' => await _getTrainingToday(),
+        'get_workout_plan' => await _getWorkoutPlan(call.arguments),
         _ => throw const FormatException('unknown_tool'),
       };
-      return AgentToolResult(toolName: call.name, data: data);
+      return AgentToolResult(
+          toolName: call.name,
+          data: data,
+          isError: data.containsKey('error'),
+          sources: call.name == 'search_web'
+              ? [
+                  for (final raw in data['sources'] as List? ?? const [])
+                    if (WebSource.fromJson(raw) case final source?) source
+                ]
+              : const []);
     } on AgentException catch (error) {
       // Only reachable from search_food_online's own client -- surfaces its
       // specific offline/quota/server message instead of the generic
@@ -140,7 +181,11 @@ class AgentToolRegistry {
       return AgentToolResult(
         toolName: call.name,
         isError: true,
-        data: {'error': error.kind.name, 'message_ar': error.message},
+        data: {
+          'error': error.kind.name,
+          'message': error.message,
+          'message_ar': error.message
+        },
       );
     } on FormatException catch (error) {
       return AgentToolResult(
@@ -148,6 +193,7 @@ class AgentToolRegistry {
         isError: true,
         data: {
           'error': error.message,
+          'message': _validationMessage(error.message),
           'message_ar': _validationMessage(error.message),
         },
       );
@@ -157,6 +203,7 @@ class AgentToolRegistry {
         isError: true,
         data: const {
           'error': 'data_unavailable',
+          'message': 'تعذّر الوصول إلى البيانات.',
           'message_ar': 'تعذّر الوصول إلى بياناتك الآن. حاول مرة أخرى.',
         },
       );
@@ -178,6 +225,70 @@ class AgentToolRegistry {
       throw const AgentProposalStaleException();
     }
     switch (proposal.kind) {
+      case ProposalKind.logWeight:
+        {
+          final args = proposal.execArgs as Map<String, dynamic>;
+          final kg = args['kg'] as double;
+          final current = await _trainingData.getWeight(_now().toLocal());
+          if (current?.kg != args['previous']) {
+            throw const AgentProposalStaleException();
+          }
+          await _trainingData.logWeight(_now().toLocal(), kg);
+          final previous = args['previous'] as double?;
+          return _receipt(
+              proposal,
+              AppStrings.agentLoggedWeight(_fmt(kg)),
+              previous == null
+                  ? const []
+                  : [
+                      _inverseProposal(
+                          ProposalKind.logWeight,
+                          {'kg': previous, 'previous': kg},
+                          AppStrings.agentRestoreWeight)
+                    ]);
+        }
+      case ProposalKind.toggleExercise:
+        {
+          final args = proposal.execArgs as Map<String, dynamic>;
+          final id = args['local_id'] as String;
+          final done = args['done'] as bool;
+          final day = await _trainingData.getTrainingDay(_now().toLocal());
+          final item = day.items.where((e) => e.localId == id).firstOrNull;
+          if (item == null || item.done != args['previous']) {
+            throw const AgentProposalStaleException();
+          }
+          if (item.done != done) {
+            await _trainingData.toggleExercise(_now().toLocal(), id);
+          }
+          return _receipt(
+              proposal,
+              AppStrings.agentExerciseReceipt(done, item.nameAr),
+              item.done == done
+                  ? const []
+                  : [
+                      _inverseProposal(
+                          ProposalKind.toggleExercise,
+                          {'local_id': id, 'done': item.done, 'previous': done},
+                          AppStrings.agentRestoreExercise)
+                    ]);
+        }
+      case ProposalKind.addPlanItem:
+        {
+          final item = proposal.execArgs as WorkoutPlanItem;
+          await _trainingData.savePlanItem(item);
+          return _receipt(proposal, AppStrings.agentAddedPlan(item.nameAr), [
+            _inverseProposal(ProposalKind.deletePlanItem, item.id,
+                AppStrings.agentRemovePlanProposal(item.nameAr))
+          ]);
+        }
+      case ProposalKind.deletePlanItem:
+        {
+          final id = proposal.execArgs as String;
+          await _trainingData.deletePlanItem(id);
+          return _receipt(proposal, AppStrings.agentRemovedPlan, const []);
+        }
+      case ProposalKind.deleteWeight:
+        throw const FormatException('unsupported_undo');
       case ProposalKind.logFood:
         {
           final a = proposal.execArgs as _LogFoodArgs;
@@ -419,6 +530,14 @@ class AgentToolRegistry {
       case ProposalKind.deleteMeal:
         final a = proposal.execArgs as _DeleteMealArgs;
         return {'kind': proposal.kind.name, 'mealId': a.mealId};
+      case ProposalKind.toggleExercise:
+      case ProposalKind.logWeight:
+        return {'kind': proposal.kind.name, 'args': proposal.execArgs};
+      case ProposalKind.deletePlanItem:
+        return {'kind': proposal.kind.name, 'id': proposal.execArgs};
+      case ProposalKind.addPlanItem:
+      case ProposalKind.deleteWeight:
+        return null;
       case ProposalKind.logFood:
       case ProposalKind.logMeal:
       case ProposalKind.swapMeal:
@@ -447,6 +566,15 @@ class AgentToolRegistry {
               : _restoreEntryProposal(entry, dateKey);
         case ProposalKind.deleteMeal:
           return _deleteMealProposal(json['mealId'] as String);
+        case ProposalKind.toggleExercise:
+        case ProposalKind.logWeight:
+          return _inverseProposal(
+              kind,
+              (json['args'] as Map).cast<String, dynamic>(),
+              AppStrings.agentUndo);
+        case ProposalKind.deletePlanItem:
+          return _inverseProposal(
+              kind, json['id'] as String, AppStrings.agentUndo);
         default:
           return null;
       }
@@ -503,6 +631,18 @@ class AgentToolRegistry {
         summaryAr: summaryAr,
         inverse: inverse,
         executedAt: _now(),
+      );
+
+  Proposal _inverseProposal(ProposalKind kind, Object args, String title) =>
+      Proposal(
+        id: _uuid.v4(),
+        toolCallId: '',
+        kind: kind,
+        dateKey: DayLog.keyFor(_now().toLocal()),
+        titleAr: title,
+        card: const {},
+        modelSummary: const {},
+        execArgs: args,
       );
 
   /// Re-fetches the day and refuses to proceed if [expected] no longer
@@ -562,6 +702,9 @@ class AgentToolRegistry {
   // ---------------------------------------------------------------------
 
   Future<Proposal> _buildProposal(AgentToolCall call) => switch (call.name) {
+        'propose_log_weight' => _proposeLogWeight(call),
+        'propose_toggle_exercise' => _proposeToggleExercise(call),
+        'propose_add_plan_item' => _proposeAddPlanItem(call),
         'propose_log_food' => _proposeLogFood(call),
         'propose_log_meal' => _proposeLogMeal(call),
         'propose_swap_meal' => _proposeSwapMeal(call),
@@ -571,6 +714,103 @@ class AgentToolRegistry {
         'propose_log_custom_component' => _proposeLogCustomComponent(call),
         _ => throw const FormatException('unknown_tool'),
       };
+
+  Proposal _simpleProposal(AgentToolCall call, ProposalKind kind, String title,
+          Map<String, dynamic> card, Object payload) =>
+      Proposal(
+        id: _uuid.v4(),
+        toolCallId: call.id,
+        kind: kind,
+        titleAr: title,
+        card: card,
+        modelSummary: {'pending_confirmation': true, 'summary': title},
+        execArgs: payload,
+      );
+
+  Future<Proposal> _proposeLogWeight(AgentToolCall call) async {
+    final raw = call.arguments['kg'];
+    if (raw is! num || !raw.isFinite || raw < 25 || raw > 350) {
+      throw const FormatException('invalid_weight');
+    }
+    final today = _now().toLocal();
+    final previous = await _trainingData.getWeight(today);
+    final kg = raw.toDouble();
+    return _simpleProposal(
+        call,
+        ProposalKind.logWeight,
+        AppStrings.agentLogWeightProposal(_fmt(kg)),
+        {'kg': kg, 'previous_kg': previous?.kg},
+        {'kg': kg, 'previous': previous?.kg});
+  }
+
+  Future<Proposal> _proposeToggleExercise(AgentToolCall call) async {
+    final id = call.arguments['local_id'];
+    final done = call.arguments['done'];
+    if (id is! String || done is! bool) {
+      throw const FormatException('invalid_exercise');
+    }
+    final day = await _trainingData.getTrainingDay(_now().toLocal());
+    final item = day.items.where((e) => e.localId == id).firstOrNull;
+    if (item == null) throw const FormatException('exercise_not_found');
+    return _simpleProposal(
+        call,
+        ProposalKind.toggleExercise,
+        AppStrings.agentExerciseProposal(done, item.nameAr),
+        {'name': item.nameAr, 'done': done},
+        {'local_id': id, 'done': done, 'previous': item.done});
+  }
+
+  Future<Proposal> _proposeAddPlanItem(AgentToolCall call) async {
+    final args = call.arguments;
+    final exerciseId = args['exercise_id'];
+    final library = exerciseId is String ? exerciseById(exerciseId) : null;
+    final name = library?.nameAr ?? args['name'];
+    final muscle = library?.muscle ??
+        MuscleGroup.values.where((m) => m.name == args['muscle']).firstOrNull;
+    final sets = args['sets'];
+    final reps = args['reps'];
+    final rawDays = args['days_of_week'];
+    if (name is! String ||
+        name.trim().isEmpty ||
+        name.length > 80 ||
+        muscle == null ||
+        sets is! int ||
+        sets < 1 ||
+        sets > 20 ||
+        reps is! int ||
+        reps < 1 ||
+        reps > 100 ||
+        rawDays is! List ||
+        rawDays.isEmpty ||
+        rawDays.any((d) => d is! int || d < 1 || d > 7) ||
+        (exerciseId != null && library == null)) {
+      throw const FormatException('invalid_plan_item');
+    }
+    final plan = await _trainingData.getWorkoutPlan();
+    final now = _now();
+    final item = WorkoutPlanItem(
+        id: _uuid.v4(),
+        exerciseId: library?.id ?? '',
+        nameAr: name.trim(),
+        muscle: muscle,
+        sets: sets,
+        reps: reps,
+        daysOfWeek: rawDays.cast<int>().toSet(),
+        order: plan.length,
+        createdAt: now,
+        updatedAt: now);
+    return _simpleProposal(
+        call,
+        ProposalKind.addPlanItem,
+        AppStrings.agentAddPlanProposal(item.nameAr),
+        {
+          'name': item.nameAr,
+          'sets': sets,
+          'reps': reps,
+          'days_of_week': item.daysOfWeek.toList()
+        },
+        item);
+  }
 
   Future<Proposal> _proposeLogFood(AgentToolCall call) async {
     final args = call.arguments;
@@ -1051,6 +1291,99 @@ class AgentToolRegistry {
       'source': 'web',
       'text': result.text,
       'sources': result.sources,
+    };
+  }
+
+  Future<Map<String, dynamic>> _searchWeb(Map<String, dynamic> args) async {
+    final query = args['query'];
+    final focus =
+        WebSearchFocus.values.where((f) => f.name == args['focus']).firstOrNull;
+    if (query is! String ||
+        query.trim().length < 2 ||
+        query.length > 300 ||
+        focus == null) {
+      throw const FormatException('invalid_web_query');
+    }
+    final client = _generalWebSearch;
+    if (client == null) {
+      return const {
+        'error': 'web_search_unavailable',
+        'message': AppStrings.agentWebUnavailable
+      };
+    }
+    final result = await client.search(query.trim(), focus);
+    return {
+      'summary': result.summary,
+      'sources': [for (final source in result.sources.take(5)) source.toJson()]
+    };
+  }
+
+  Future<Map<String, dynamic>> _getWeightHistory(
+      Map<String, dynamic> args) async {
+    final days = args['days'];
+    if (days is! int || days < 1 || days > 180) {
+      throw const FormatException('days_out_of_range');
+    }
+    final now = _now().toLocal();
+    final entries = await _trainingData.getWeightHistory(
+        now.subtract(Duration(days: days - 1)), now);
+    final trend = WeightTrend(entries);
+    final goal = (await _data.getProfile())?.goalWeightKg;
+    return {
+      'entries': [
+        for (final e in trend.entries) {'date': e.dateKey, 'kg': e.kg}
+      ],
+      'trend_kg': trend.trendKg,
+      'weekly_rate_kg': trend.weeklyRateKg,
+      'latest_kg': trend.latestKg,
+      'goal_kg': goal,
+      'eta': goal == null
+          ? null
+          : trend.etaFor(goal)?.toIso8601String().substring(0, 10),
+    };
+  }
+
+  Future<Map<String, dynamic>> _getTrainingToday() async {
+    final day = await _trainingData.getTrainingDay(_now().toLocal());
+    return {
+      'date': day.dateKey,
+      'progress': day.progress,
+      'items': [
+        for (final item in day.items)
+          {
+            'local_id': item.localId,
+            'name': item.nameAr,
+            'muscle': item.muscle.name,
+            'sets': item.sets,
+            'reps': item.reps,
+            'done': item.done,
+          }
+      ]
+    };
+  }
+
+  Future<Map<String, dynamic>> _getWorkoutPlan(
+      Map<String, dynamic> args) async {
+    final weekday = args['weekday'];
+    if (weekday != null && (weekday is! int || weekday < 1 || weekday > 7)) {
+      throw const FormatException('invalid_weekday');
+    }
+    final plan = await _trainingData.getWorkoutPlan();
+    return {
+      'items': [
+        for (final item in plan)
+          if (item.active &&
+              (weekday == null || item.daysOfWeek.contains(weekday)))
+            {
+              'id': item.id,
+              'exercise_id': item.exerciseId,
+              'name': item.nameAr,
+              'muscle': item.muscle.name,
+              'sets': item.sets,
+              'reps': item.reps,
+              'days_of_week': item.daysOfWeek.toList()..sort(),
+            }
+      ]
     };
   }
 

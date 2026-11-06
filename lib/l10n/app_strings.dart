@@ -277,4 +277,35 @@ abstract final class AppStrings {
     'يوم مثالي، استمر!',
     'الحلقة اكتملت ✨',
   ];
+  // --- Phase 8a agent strings ---
+  static const agentToolFailed = 'تعذّر تنفيذ الأداة. حاول مرة أخرى.';
+  static const agentSearchingWeb = 'أبحث في الإنترنت…';
+  static const agentSearchedWeb = 'اكتمل البحث في الإنترنت';
+  static const agentReadingWeight = 'أراجع سجل الوزن…';
+  static const agentReadWeight = 'راجعت سجل الوزن';
+  static const agentReadingTraining = 'أراجع خطة التمرين…';
+  static const agentReadTraining = 'راجعت خطة التمرين';
+  static const agentPreparingProposal = 'أجهّز اقتراحًا…';
+  static const agentProposalReady = 'الاقتراح جاهز للتأكيد';
+  static const agentSources = 'المصادر';
+  static const agentWeightKg = 'الوزن بالكيلوجرام';
+  static const agentSetsReps = 'المجموعات والتكرارات';
+  static const agentTrainingDays = 'أيام التمرين';
+  static const agentExerciseDone = 'مكتمل';
+  static const agentExerciseNotDone = 'غير مكتمل';
+  static const agentWebUnavailable = 'البحث في الإنترنت غير متاح الآن.';
+  static const agentDataUnavailable = 'تعذّر الوصول إلى البيانات.';
+  static String agentLogWeightProposal(String kg) => 'تسجيل وزن اليوم: $kg كجم';
+  static String agentLoggedWeight(String kg) => 'سجّلت وزن اليوم: $kg كجم.';
+  static const agentRestoreWeight = 'استعادة وزن اليوم السابق';
+  static String agentExerciseProposal(bool done, String name) =>
+      '${done ? 'إكمال' : 'إلغاء إكمال'} $name';
+  static String agentExerciseReceipt(bool done, String name) =>
+      done ? 'أكملت $name.' : 'ألغيت إكمال $name.';
+  static const agentRestoreExercise = 'استعادة حالة التمرين';
+  static String agentAddPlanProposal(String name) => 'إضافة $name إلى الخطة';
+  static String agentAddedPlan(String name) => 'أضفت $name إلى خطة التمرين.';
+  static String agentRemovePlanProposal(String name) => 'إزالة $name من الخطة';
+  static const agentRemovedPlan = 'أزلت التمرين من الخطة.';
+  static const agentUndo = 'تراجع';
 }

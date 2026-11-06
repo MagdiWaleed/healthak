@@ -16,8 +16,15 @@ extension AgentActionCategoryOf on ProposalKind {
         ProposalKind.logCustomComponent ||
         ProposalKind.restoreEntry =>
           AgentActionCategory.add,
-        ProposalKind.updateGrams => AgentActionCategory.edit,
-        ProposalKind.removeEntry || ProposalKind.deleteMeal =>
+        ProposalKind.updateGrams ||
+        ProposalKind.logWeight ||
+        ProposalKind.toggleExercise =>
+          AgentActionCategory.edit,
+        ProposalKind.addPlanItem => AgentActionCategory.add,
+        ProposalKind.removeEntry ||
+        ProposalKind.deleteMeal ||
+        ProposalKind.deletePlanItem ||
+        ProposalKind.deleteWeight =>
           AgentActionCategory.remove,
         ProposalKind.swapMeal => AgentActionCategory.swap,
       };
@@ -74,10 +81,14 @@ class AgentActionLogEntry {
     final timestamp = DateTime.tryParse(json['timestamp'] as String? ?? '');
     final kindName = json['kind'];
     final summary = json['humanSummary'];
-    if (id is! String || timestamp == null || kindName is! String || summary is! String) {
+    if (id is! String ||
+        timestamp == null ||
+        kindName is! String ||
+        summary is! String) {
       return null;
     }
-    final kind = ProposalKind.values.where((k) => k.name == kindName).firstOrNull;
+    final kind =
+        ProposalKind.values.where((k) => k.name == kindName).firstOrNull;
     if (kind == null) return null;
     final rawChain = json['inverseChain'];
     return AgentActionLogEntry(

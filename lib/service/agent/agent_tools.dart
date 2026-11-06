@@ -124,6 +124,60 @@ abstract final class AgentTools {
     },
   );
 
+  static const searchWeb = AgentToolDefinition(
+    name: 'search_web',
+    description:
+        'Search the live web for general nutrition, fitness, exercise technique, supplements, or restaurant questions. Use whenever current or sourced facts are needed. Cite only returned sources. If unavailable, tell the user and do not guess.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'query': {'type': 'string', 'minLength': 2, 'maxLength': 300},
+        'focus': {
+          'type': 'string',
+          'enum': ['nutrition', 'fitness', 'general']
+        },
+      },
+      'required': ['query', 'focus'],
+      'additionalProperties': false,
+    },
+  );
+
+  static const getWeightHistory = AgentToolDefinition(
+    name: 'get_weight_history',
+    description:
+        'Read recorded body weights, smoothed trend, latest weight, goal, and estimated goal date. Never infer missing entries.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'days': {'type': 'integer', 'minimum': 1, 'maximum': 180}
+      },
+      'required': ['days'],
+      'additionalProperties': false
+    },
+  );
+  static const getTrainingToday = AgentToolDefinition(
+    name: 'get_training_today',
+    description:
+        'Read today’s frozen training checklist and completion state; local_id values identify items for proposals.',
+    parameters: {
+      'type': 'object',
+      'properties': <String, dynamic>{},
+      'additionalProperties': false
+    },
+  );
+  static const getWorkoutPlan = AgentToolDefinition(
+    name: 'get_workout_plan',
+    description:
+        'Read active weekly workout plan items, optionally filtered by weekday (Monday=1).',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'weekday': {'type': 'integer', 'minimum': 1, 'maximum': 7}
+      },
+      'additionalProperties': false
+    },
+  );
+
   static const readOnly = [
     getToday,
     getHistoryRange,
@@ -132,6 +186,10 @@ abstract final class AgentTools {
     searchFoods,
     getRemainingTargets,
     searchFoodOnline,
+    searchWeb,
+    getWeightHistory,
+    getTrainingToday,
+    getWorkoutPlan,
   ];
 
   // --- Write tools (propose-only; see 02_tools.md) -------------------------
@@ -278,6 +336,70 @@ abstract final class AgentTools {
     },
   );
 
+  static const proposeLogWeight = AgentToolDefinition(
+    name: 'propose_log_weight',
+    description:
+        'Propose logging body weight in kilograms for today only; requires confirmation.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'kg': {'type': 'number', 'minimum': 25, 'maximum': 350}
+      },
+      'required': ['kg'],
+      'additionalProperties': false
+    },
+  );
+  static const proposeToggleExercise = AgentToolDefinition(
+    name: 'propose_toggle_exercise',
+    description:
+        'Propose setting one of today’s training items to done or not done; local_id must come from get_training_today.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'local_id': {'type': 'string'},
+        'done': {'type': 'boolean'}
+      },
+      'required': ['local_id', 'done'],
+      'additionalProperties': false
+    },
+  );
+  static const proposeAddPlanItem = AgentToolDefinition(
+    name: 'propose_add_plan_item',
+    description:
+        'Propose adding a library exercise_id or custom Arabic name to the weekly workout plan; requires confirmation.',
+    parameters: {
+      'type': 'object',
+      'properties': {
+        'exercise_id': {'type': 'string'},
+        'name': {'type': 'string'},
+        'muscle': {
+          'type': 'string',
+          'enum': [
+            'chest',
+            'back',
+            'shoulders',
+            'arms',
+            'legs',
+            'glutes',
+            'core',
+            'cardio',
+            'fullBody'
+          ]
+        },
+        'sets': {'type': 'integer', 'minimum': 1, 'maximum': 20},
+        'reps': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+        'days_of_week': {
+          'type': 'array',
+          'items': {'type': 'integer', 'minimum': 1, 'maximum': 7},
+          'minItems': 1,
+          'maxItems': 7
+        },
+      },
+      'required': ['sets', 'reps', 'days_of_week'],
+      'additionalProperties': false
+    },
+  );
+
   static const proposeOnly = [
     proposeLogFood,
     proposeLogMeal,
@@ -286,6 +408,9 @@ abstract final class AgentTools {
     proposeRemoveEntry,
     proposeCreateMeal,
     proposeLogCustomComponent,
+    proposeLogWeight,
+    proposeToggleExercise,
+    proposeAddPlanItem,
   ];
 
   static final Set<String> proposeNames =

@@ -1,4 +1,5 @@
 import 'agent_proposal.dart';
+import 'web_source.dart';
 
 enum ChatMessageKind { user, assistant, working, notice, proposal, receipt }
 
@@ -23,6 +24,7 @@ class ChatMessage {
   final ChatMessageStatus status;
   final String text;
   final String? toolName;
+  final List<WebSource> sources;
   final DateTime createdAt;
 
   /// Set only for [ChatMessageKind.proposal]. Never persisted -- a pending
@@ -42,6 +44,7 @@ class ChatMessage {
     required this.createdAt,
     this.status = ChatMessageStatus.complete,
     this.toolName,
+    this.sources = const [],
     this.proposal,
     this.receipt,
   });
@@ -50,6 +53,7 @@ class ChatMessage {
     ChatMessageStatus? status,
     String? text,
     Proposal? proposal,
+    List<WebSource>? sources,
   }) =>
       ChatMessage(
         id: id,
@@ -57,6 +61,7 @@ class ChatMessage {
         status: status ?? this.status,
         text: text ?? this.text,
         toolName: toolName,
+        sources: sources ?? this.sources,
         createdAt: createdAt,
         proposal: proposal ?? this.proposal,
         receipt: receipt,
