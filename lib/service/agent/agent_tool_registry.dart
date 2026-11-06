@@ -44,8 +44,9 @@ class AgentToolRegistry {
   final WebFoodSearchClient? _webSearch;
   final WebSearchClient? _generalWebSearch;
   AgentWeightTrainingDataSource get _trainingData {
-    if (_data is AgentWeightTrainingDataSource)
+    if (_data is AgentWeightTrainingDataSource) {
       return _data as AgentWeightTrainingDataSource;
+    }
     throw const FormatException('data_unavailable');
   }
 
@@ -229,8 +230,9 @@ class AgentToolRegistry {
           final args = proposal.execArgs as Map<String, dynamic>;
           final kg = args['kg'] as double;
           final current = await _trainingData.getWeight(_now().toLocal());
-          if (current?.kg != args['previous'])
+          if (current?.kg != args['previous']) {
             throw const AgentProposalStaleException();
+          }
           await _trainingData.logWeight(_now().toLocal(), kg);
           final previous = args['previous'] as double?;
           return _receipt(
@@ -252,10 +254,12 @@ class AgentToolRegistry {
           final done = args['done'] as bool;
           final day = await _trainingData.getTrainingDay(_now().toLocal());
           final item = day.items.where((e) => e.localId == id).firstOrNull;
-          if (item == null || item.done != args['previous'])
+          if (item == null || item.done != args['previous']) {
             throw const AgentProposalStaleException();
-          if (item.done != done)
+          }
+          if (item.done != done) {
             await _trainingData.toggleExercise(_now().toLocal(), id);
+          }
           return _receipt(
               proposal,
               AppStrings.agentExerciseReceipt(done, item.nameAr),
@@ -725,8 +729,9 @@ class AgentToolRegistry {
 
   Future<Proposal> _proposeLogWeight(AgentToolCall call) async {
     final raw = call.arguments['kg'];
-    if (raw is! num || !raw.isFinite || raw < 25 || raw > 350)
+    if (raw is! num || !raw.isFinite || raw < 25 || raw > 350) {
       throw const FormatException('invalid_weight');
+    }
     final today = _now().toLocal();
     final previous = await _trainingData.getWeight(today);
     final kg = raw.toDouble();
@@ -741,8 +746,9 @@ class AgentToolRegistry {
   Future<Proposal> _proposeToggleExercise(AgentToolCall call) async {
     final id = call.arguments['local_id'];
     final done = call.arguments['done'];
-    if (id is! String || done is! bool)
+    if (id is! String || done is! bool) {
       throw const FormatException('invalid_exercise');
+    }
     final day = await _trainingData.getTrainingDay(_now().toLocal());
     final item = day.items.where((e) => e.localId == id).firstOrNull;
     if (item == null) throw const FormatException('exercise_not_found');
@@ -1299,11 +1305,12 @@ class AgentToolRegistry {
       throw const FormatException('invalid_web_query');
     }
     final client = _generalWebSearch;
-    if (client == null)
+    if (client == null) {
       return const {
         'error': 'web_search_unavailable',
         'message': AppStrings.agentWebUnavailable
       };
+    }
     final result = await client.search(query.trim(), focus);
     return {
       'summary': result.summary,
@@ -1314,8 +1321,9 @@ class AgentToolRegistry {
   Future<Map<String, dynamic>> _getWeightHistory(
       Map<String, dynamic> args) async {
     final days = args['days'];
-    if (days is! int || days < 1 || days > 180)
+    if (days is! int || days < 1 || days > 180) {
       throw const FormatException('days_out_of_range');
+    }
     final now = _now().toLocal();
     final entries = await _trainingData.getWeightHistory(
         now.subtract(Duration(days: days - 1)), now);
@@ -1357,8 +1365,9 @@ class AgentToolRegistry {
   Future<Map<String, dynamic>> _getWorkoutPlan(
       Map<String, dynamic> args) async {
     final weekday = args['weekday'];
-    if (weekday != null && (weekday is! int || weekday < 1 || weekday > 7))
+    if (weekday != null && (weekday is! int || weekday < 1 || weekday > 7)) {
       throw const FormatException('invalid_weekday');
+    }
     final plan = await _trainingData.getWorkoutPlan();
     return {
       'items': [

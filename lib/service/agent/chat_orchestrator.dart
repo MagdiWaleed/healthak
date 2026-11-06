@@ -251,8 +251,9 @@ class ChatOrchestrator extends GetxController {
             });
           }
           for (final source in result.sources) {
-            if (turnSources.every((known) => known.url != source.url))
+            if (turnSources.every((known) => known.url != source.url)) {
               turnSources.add(source);
+            }
           }
           _replaceMessage(
             workingId,
