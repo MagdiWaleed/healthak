@@ -16,20 +16,19 @@ class BodyWeightRepository {
       .snapshots()
       .map((s) => s.docs.map((d) => d.data()).toList());
 
+  // Firestore needs a composite index for `orderBy(documentId, descending)`,
+  // and none is deployed (it failed on device with failed-precondition). The
+  // collection is one small doc per weigh-in day, so read it in the default
+  // ascending order -- no index -- and pick the newest entries in memory.
+
   Stream<List<BodyWeightEntry>> watchLatest(int limit) => _refs
       .bodyWeights(uid)
-      .orderBy(FieldPath.documentId, descending: true)
-      .limit(limit)
       .snapshots()
-      .map((s) => s.docs.map((d) => d.data()).toList());
+      .map((s) => newestFirst(s.docs.map((d) => d.data()), limit));
 
   Future<BodyWeightEntry?> getLatest() async {
-    final snapshot = await _refs
-        .bodyWeights(uid)
-        .orderBy(FieldPath.documentId, descending: true)
-        .limit(1)
-        .get();
-    return snapshot.docs.isEmpty ? null : snapshot.docs.first.data();
+    final snapshot = await _refs.bodyWeights(uid).get();
+    return newestFirst(snapshot.docs.map((d) => d.data()), 1).firstOrNull;
   }
 
   Future<BodyWeightEntry?> get(DateTime date) async =>
@@ -39,3 +38,10 @@ class BodyWeightRepository {
   Future<void> delete(String dateKey) =>
       _refs.bodyWeights(uid).doc(dateKey).delete();
 }
+
+/// The [limit] newest entries, newest first (dateKey sorts chronologically).
+List<BodyWeightEntry> newestFirst(
+        Iterable<BodyWeightEntry> entries, int limit) =>
+    (entries.toList()..sort((a, b) => b.dateKey.compareTo(a.dateKey)))
+        .take(limit)
+        .toList(growable: false);

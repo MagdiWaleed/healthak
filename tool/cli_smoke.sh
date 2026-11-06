@@ -83,7 +83,9 @@ for _ in $(seq 1 60); do
   [ -n "$(find_center "$READY_LABEL" || true)" ] && break
   sleep 2
 done
-sleep 2
+# The shell's labels appear while the splash->home route transition is still
+# running, and Flutter ignores touches during transitions; let it settle.
+sleep 8
 
 shot 00-launch
 i=1
@@ -93,9 +95,21 @@ for label in "${LABELS[@]}"; do
   # Label matching is unreliable for tabs: the same words appear in content.
   if [[ "$label" == @tab:* ]]; then
     n="${label#@tab:}"
-    "$ADB" -s "$DEVICE" shell input tap $(( 1080 - (2 * n - 1) * 108 )) 2100
+    x=$(( 1080 - (2 * n - 1) * 108 ))
+    # Tapping a tab twice is harmless and survives a dropped first touch.
+    "$ADB" -s "$DEVICE" shell input tap "$x" 2100
+    sleep 1
+    "$ADB" -s "$DEVICE" shell input tap "$x" 2100
     sleep 3
     shot "$(printf %02d $i)-tab$n"
+    i=$((i + 1))
+    continue
+  fi
+  # "@text:VALUE" types ASCII into the focused field ("%s" = space).
+  if [[ "$label" == @text:* ]]; then
+    "$ADB" -s "$DEVICE" shell input text "${label#@text:}"
+    sleep 1
+    shot "$(printf %02d $i)-text"
     i=$((i + 1))
     continue
   fi

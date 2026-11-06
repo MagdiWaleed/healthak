@@ -56,6 +56,12 @@ dependencies:
   url_launcher: ^6.3.3
 
 
+# url_launcher_android >= 6.3.24 pulls androidx.browser 1.9 / core 1.17, which
+# need Android Gradle plugin 8.9.1; this project is pinned to AGP 8.7.3
+# (see AGENTS.md "Android build"). Drop this override when AGP is upgraded.
+dependency_overrides:
+  url_launcher_android: 6.3.23
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

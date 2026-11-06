@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 
 import 'package:get/get.dart';
@@ -97,7 +98,10 @@ class ProgressController extends GetxController {
   void onInit() {
     super.onInit();
     final from = DateTime(today.year, today.month, today.day - 89);
-    void failed(Object _) {
+    void failed(Object e) {
+      // Surfaced in `flutter run` / CLI smoke logs; the UI shows a generic
+      // message. Swallowing it hid a real Firestore failure on device.
+      debugPrint('ProgressController load failed: $e');
       error.value = 'load';
       loading.value = false;
     }
