@@ -16,8 +16,10 @@ class ProfileMapper {
   static Map<String, dynamic> toFirestore(UserProfile profile, SetOptions? _) =>
       toJson(profile);
 
-  static UserProfile fromJson(Map<String, dynamic> json,
-      {required String uid}) {
+  static UserProfile fromJson(
+    Map<String, dynamic> json, {
+    required String uid,
+  }) {
     final settings = stringMap(json['settings']);
     return UserProfile(
       uid: uid,
@@ -31,25 +33,43 @@ class ProfileMapper {
       birthYear: intValue(json['birthYear'], DateTime.now().year - 25),
       heightCm: doubleValue(json['heightCm']),
       weightKg: doubleValue(json['weightKg']),
+      goalWeightKg: json['goalWeightKg'] == null
+          ? null
+          : doubleValue(json['goalWeightKg']),
       activityLevel: enumValue(
-          ActivityLevel.values, json['activityLevel'], ActivityLevel.sedentary),
+        ActivityLevel.values,
+        json['activityLevel'],
+        ActivityLevel.sedentary,
+      ),
       goal: enumValue(Goal.values, json['goal'], Goal.maintain),
       weeklyRateKg: doubleValue(json['weeklyRateKg']),
       targets: NutritionTargets.fromJson(stringMap(json['targets'])),
       settings: AppSettings(
         themeMode: enumValue(
-            AppThemeMode.values, settings['themeMode'], AppThemeMode.dark),
+          AppThemeMode.values,
+          settings['themeMode'],
+          AppThemeMode.dark,
+        ),
         accent: enumValue(
-            AccentChoice.values, settings['accent'], AccentChoice.emerald),
+          AccentChoice.values,
+          settings['accent'],
+          AccentChoice.emerald,
+        ),
         graphicsQuality: enumValue(
           GraphicsQuality.values,
           settings['graphicsQuality'],
           GraphicsQuality.high,
         ),
         digits: enumValue(
-            DigitStyle.values, settings['digits'], DigitStyle.western),
-        units:
-            enumValue(UnitSystem.values, settings['units'], UnitSystem.metric),
+          DigitStyle.values,
+          settings['digits'],
+          DigitStyle.western,
+        ),
+        units: enumValue(
+          UnitSystem.values,
+          settings['units'],
+          UnitSystem.metric,
+        ),
       ),
       onboardingComplete: json['onboardingComplete'] as bool? ?? false,
       schemaVersion: intValue(json['schemaVersion'], 2),
@@ -66,6 +86,7 @@ class ProfileMapper {
         'birthYear': profile.birthYear,
         'heightCm': profile.heightCm,
         'weightKg': profile.weightKg,
+        'goalWeightKg': profile.goalWeightKg,
         'activityLevel': profile.activityLevel.name,
         'goal': profile.goal.name,
         'weeklyRateKg': profile.weeklyRateKg,

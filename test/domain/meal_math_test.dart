@@ -99,7 +99,8 @@ void main() {
     });
 
     test('applies the scale factor of a reference', () {
-      final inner = meal(id: 'inner', entries: [food(name: 'rice', grams: 100)]);
+      final inner =
+          meal(id: 'inner', entries: [food(name: 'rice', grams: 100)]);
       final outer = meal(id: 'outer', entries: [
         mealRef(mealId: 'inner', name: 'inner', scale: 0.5),
       ]);
@@ -123,7 +124,8 @@ void main() {
     });
 
     test('a diamond reference resolves consistently', () {
-      final shared = meal(id: 'shared', entries: [food(name: 'rice', grams: 100)]);
+      final shared =
+          meal(id: 'shared', entries: [food(name: 'rice', grams: 100)]);
       final outer = meal(id: 'outer', entries: [
         mealRef(mealId: 'shared', name: 'shared', order: 0),
         mealRef(mealId: 'shared', name: 'shared', order: 1),
@@ -441,8 +443,7 @@ void main() {
         mealRef(mealId: 'inner', name: 'inner', order: 1),
       ]);
 
-      final result =
-          withRecomputedCaches(outer, MealResolver([inner, outer]));
+      final result = withRecomputedCaches(outer, MealResolver([inner, outer]));
 
       expect(result.totalsCache.kcal, closeTo(200, 0.01));
       expect(result.depth, 1);

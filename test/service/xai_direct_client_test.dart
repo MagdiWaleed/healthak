@@ -14,9 +14,12 @@ void main() {
   const tools = AgentTools.readOnly;
 
   Future<List<AgentChunk>> collect(XaiDirectClient client) => client
-      .agentTurn(turnId: 'turn-abcabcabc', messages: const [
-        {'role': 'user', 'content': 'ماذا أكلت اليوم؟'}
-      ], tools: tools)
+      .agentTurn(
+          turnId: 'turn-abcabcabc',
+          messages: const [
+            {'role': 'user', 'content': 'ماذا أكلت اليوم؟'}
+          ],
+          tools: tools)
       .toList();
 
   test('streams text, tool calls and usage from raw xAI SSE', () async {
@@ -98,7 +101,8 @@ void main() {
     final call = chunks.whereType<AgentToolCallChunk>().single.call;
     expect(call.name, 'get_today');
     expect(call.arguments, <String, dynamic>{});
-    expect(chunks.whereType<AgentUsageChunk>().single.costUsd, closeTo(0.5, 1e-9));
+    expect(
+        chunks.whereType<AgentUsageChunk>().single.costUsd, closeTo(0.5, 1e-9));
     expect(chunks.last, isA<AgentDoneChunk>());
   });
 
@@ -112,14 +116,16 @@ void main() {
       }),
     );
 
-    await client.agentTurn(
-      turnId: 'turn-abcabcabc',
-      messages: const [
-        {'role': 'user', 'content': 'hi'}
-      ],
-      tools: const [],
-      model: 'grok-4',
-    ).toList();
+    await client
+        .agentTurn(
+          turnId: 'turn-abcabcabc',
+          messages: const [
+            {'role': 'user', 'content': 'hi'}
+          ],
+          tools: const [],
+          model: 'grok-4',
+        )
+        .toList();
 
     final body = jsonDecode(captured.body) as Map<String, dynamic>;
     expect(body['model'], 'grok-4');
@@ -146,7 +152,8 @@ void main() {
   test('maps HTTP 429 to a quota AgentException', () async {
     final client = XaiDirectClient(
       apiKey: 'k',
-      httpClient: MockClient((request) async => http.Response('slow down', 429)),
+      httpClient:
+          MockClient((request) async => http.Response('slow down', 429)),
     );
 
     expect(

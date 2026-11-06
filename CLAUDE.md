@@ -16,6 +16,15 @@ Guidance for any coding agent working in this repository.
 > Two codebases currently coexist in `lib/`. See "The two codebases" below before editing
 > anything.
 
+> ## CURRENT STATE (2026-11-06) — overrides stale tables below
+>
+> Legacy code is **deleted** (Step 2 done). `lib/page/**` is the **new feature layer** — build there.
+> `lib/data`, `lib/service`, `lib/ui`, `lib/app` are all live. Test suite: 209+ passing.
+> Active work: branch `redesign-v2` — dark neon redesign, 5-tab nav, body-weight tracking,
+> weekly workout checklists, assistant upgrade. Plan: `plans/step6_training_weight.md` + `plans/PROGRESS.md`.
+> Workflow: Claude writes specs and reviews; Codex implements (`.claude/skills/codex-delegate`).
+> Always verify from the command line: analyze, test, build APK, adb install, drive, screencap, logcat.
+
 ## What this is
 
 `diet_app2` (repo name `healthak`) — a Flutter calorie tracker with an Arabic (RTL) UI.

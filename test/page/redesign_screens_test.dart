@@ -175,8 +175,8 @@ void main() {
     await tester.pumpWidget(app(const TodayTab(), key, navigation: true));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.byTooltip(AppStrings.askAssistant).hitTestable(),
-        findsOneWidget);
+    expect(
+        find.byTooltip(AppStrings.askAssistant).hitTestable(), findsOneWidget);
     expect(find.text(AppStrings.addMeal).hitTestable(), findsOneWidget);
     await capture(tester, key, 'today-implemented');
     await tester.drag(find.byType(ListView).first, const Offset(0, -260));

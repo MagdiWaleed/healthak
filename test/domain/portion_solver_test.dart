@@ -26,10 +26,14 @@ void main() {
 
   group('solveProportional', () {
     test('scales every unlocked item to the energy target', () {
-      final items = [item(id: 'chicken', per100: chicken), item(id: 'rice', per100: rice)];
+      final items = [
+        item(id: 'chicken', per100: chicken),
+        item(id: 'rice', per100: rice)
+      ];
       final initialKcal = items.fold(0.0, (sum, current) => sum + current.kcal);
 
-      final result = solveProportional(items: items, targetKcal: initialKcal * 2);
+      final result =
+          solveProportional(items: items, targetKcal: initialKcal * 2);
 
       expect(result.solved, isTrue);
       expect(result.errorKcal, lessThanOrEqualTo(1));
@@ -88,11 +92,17 @@ void main() {
       expect(result.items.single.grams, 100);
     });
 
-    test('assigns a material rounding residual to the largest unlocked item', () {
+    test('assigns a material rounding residual to the largest unlocked item',
+        () {
       final result = solveProportional(
         items: [
-          item(id: 'largest', per100: const Macros(protein: 20, carbs: 0, fat: 0)),
-          item(id: 'smaller', per100: const Macros(protein: 0, carbs: 25, fat: 0), grams: 20),
+          item(
+              id: 'largest',
+              per100: const Macros(protein: 20, carbs: 0, fat: 0)),
+          item(
+              id: 'smaller',
+              per100: const Macros(protein: 0, carbs: 25, fat: 0),
+              grams: 20),
         ],
         targetKcal: 143,
       );
@@ -106,7 +116,8 @@ void main() {
   group('solveForMacros', () {
     test('converges on a reachable macro target without negative grams', () {
       final items = [
-        item(id: 'protein', per100: const Macros(protein: 20, carbs: 0, fat: 0)),
+        item(
+            id: 'protein', per100: const Macros(protein: 20, carbs: 0, fat: 0)),
         item(id: 'carbs', per100: const Macros(protein: 0, carbs: 30, fat: 0)),
         item(id: 'fat', per100: const Macros(protein: 0, carbs: 0, fat: 10)),
       ];
@@ -117,7 +128,8 @@ void main() {
         targetKcal: target.kcal,
         targetMacros: target,
       );
-      final actual = result.items.fold(Macros.zero, (sum, current) => sum + current.macros);
+      final actual = result.items
+          .fold(Macros.zero, (sum, current) => sum + current.macros);
 
       expect(result.solved, isTrue);
       expect(actual.protein, closeTo(target.protein, 1));

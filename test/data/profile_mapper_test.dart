@@ -64,6 +64,7 @@ void main() {
         weeklyRateKg: .5,
       ),
       settings: const AppSettings(graphicsQuality: GraphicsQuality.balanced),
+      goalWeightKg: 72,
       onboardingComplete: true,
       createdAt: now,
       updatedAt: now,
@@ -75,6 +76,8 @@ void main() {
     );
 
     expect(restored.uid, original.uid);
+    expect(restored.goalWeightKg, 72);
+    expect(restored.copyWith(clearGoalWeight: true).goalWeightKg, isNull);
     expect(restored.targets, original.targets);
     expect(restored.settings.graphicsQuality, GraphicsQuality.balanced);
     expect(restored.onboardingComplete, isTrue);

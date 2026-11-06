@@ -150,8 +150,7 @@ void main() {
     final items = [for (final e in entries) toSolverItem(e, locked: false)];
     final currentKcal = items.fold(0.0, (a, i) => a + i.kcal);
 
-    final result =
-        solveProportional(items: items, targetKcal: currentKcal * 2);
+    final result = solveProportional(items: items, targetKcal: currentKcal * 2);
     expect(result.solved, isTrue);
 
     final byId = {for (final item in result.items) item.localId: item};

@@ -31,7 +31,8 @@ void main() {
       expect(macros.isZero, isFalse);
     });
 
-    test('round-trips JSON and normalizes Firestore number representations', () {
+    test('round-trips JSON and normalizes Firestore number representations',
+        () {
       expect(Macros.fromJson(macros.toJson()), macros);
       expect(
         Macros.fromJson({'protein': 20, 'carbs': '30.5', 'fat': 10.0}),
@@ -51,7 +52,8 @@ void main() {
         macros.copyWith(carbs: 35),
         const Macros(protein: 20, carbs: 35, fat: 10),
       );
-      expect(macros.hashCode, const Macros(protein: 20, carbs: 30, fat: 10).hashCode);
+      expect(macros.hashCode,
+          const Macros(protein: 20, carbs: 30, fat: 10).hashCode);
     });
   });
 }

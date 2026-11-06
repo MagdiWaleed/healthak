@@ -51,6 +51,7 @@ class UserProfile {
   final int birthYear;
   final double heightCm;
   final double weightKg;
+  final double? goalWeightKg;
   final ActivityLevel activityLevel;
   final Goal goal;
   final double weeklyRateKg;
@@ -69,6 +70,7 @@ class UserProfile {
     required this.birthYear,
     required this.heightCm,
     required this.weightKg,
+    this.goalWeightKg,
     required this.activityLevel,
     required this.goal,
     required this.weeklyRateKg,
@@ -91,6 +93,8 @@ class UserProfile {
     int? birthYear,
     double? heightCm,
     double? weightKg,
+    double? goalWeightKg,
+    bool clearGoalWeight = false,
     ActivityLevel? activityLevel,
     Goal? goal,
     double? weeklyRateKg,
@@ -108,6 +112,8 @@ class UserProfile {
         birthYear: birthYear ?? this.birthYear,
         heightCm: heightCm ?? this.heightCm,
         weightKg: weightKg ?? this.weightKg,
+        goalWeightKg:
+            clearGoalWeight ? null : goalWeightKg ?? this.goalWeightKg,
         activityLevel: activityLevel ?? this.activityLevel,
         goal: goal ?? this.goal,
         weeklyRateKg: weeklyRateKg ?? this.weeklyRateKg,

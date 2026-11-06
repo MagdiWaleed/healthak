@@ -1978,3 +1978,18 @@ flutter test
 flutter build apk --debug
 flutter run -d emulator-5554
 ```
+# Step 6 Phase 1 domain and data (2026-11-06)
+
+Implemented body weight trends, the exercise library, workout plan and frozen training
+day models, streaks and weekly recap, `goalWeightKg`, typed Firestore mappers and
+references, three repositories, and a weigh-in service. Added focused domain,
+mapper, and pure weigh-in decision tests. The new Dart files passed `dart format`
+and the new pure domain code passed direct `dart analyze`. Full `flutter analyze
+--no-pub` and `flutter test --no-pub` were attempted, but Flutter produced no
+output and hung until interrupted. Direct analysis of the data/service code
+could not resolve packages because this sandbox denies access to the existing
+Pub cache. The full analyzer/test gate is therefore still unverified.
+
+Decision: the weigh-in service preserves manual nutrition targets and recomputes
+only computed targets. This follows the existing `TargetMode` semantics.
+

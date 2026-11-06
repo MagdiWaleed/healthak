@@ -2,8 +2,7 @@ import 'package:diet_app2/domain/day/day_log.dart';
 import 'package:diet_app2/domain/schedule/schedule_item.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-ScheduleItem _item(String id,
-        {int order = 0, DateTime? updatedAt}) =>
+ScheduleItem _item(String id, {int order = 0, DateTime? updatedAt}) =>
     ScheduleItem(
       id: id,
       mealId: 'meal-$id',

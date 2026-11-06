@@ -2,11 +2,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../domain/food/food_item.dart';
 import '../domain/day/day_log.dart';
+import '../domain/body/body_weight.dart';
+import '../domain/training/workout_plan_item.dart';
+import '../domain/training/training_day.dart';
 import '../domain/market/market_meal.dart';
 import '../domain/meal/meal_definition.dart';
 import '../domain/profile/user_profile.dart';
 import '../domain/schedule/schedule_item.dart';
 import 'mappers/day_mapper.dart';
+import 'mappers/body_weight_mapper.dart';
+import 'mappers/workout_plan_mapper.dart';
+import 'mappers/training_day_mapper.dart';
 import 'mappers/food_mapper.dart';
 import 'mappers/market_mapper.dart';
 import 'mappers/meal_mapper.dart';
@@ -82,6 +88,33 @@ class FirestoreRefs {
       .withConverter<DayLog>(
         fromFirestore: DayMapper.fromFirestore,
         toFirestore: DayMapper.toFirestore,
+      );
+
+  CollectionReference<BodyWeightEntry> bodyWeights(String uid) => _firestore
+      .collection('users')
+      .doc(uid)
+      .collection('bodyWeights')
+      .withConverter<BodyWeightEntry>(
+        fromFirestore: BodyWeightMapper.fromFirestore,
+        toFirestore: BodyWeightMapper.toFirestore,
+      );
+
+  CollectionReference<WorkoutPlanItem> workoutPlan(String uid) => _firestore
+      .collection('users')
+      .doc(uid)
+      .collection('workoutPlan')
+      .withConverter<WorkoutPlanItem>(
+        fromFirestore: WorkoutPlanMapper.fromFirestore,
+        toFirestore: WorkoutPlanMapper.toFirestore,
+      );
+
+  CollectionReference<TrainingDay> trainingDays(String uid) => _firestore
+      .collection('users')
+      .doc(uid)
+      .collection('trainingDays')
+      .withConverter<TrainingDay>(
+        fromFirestore: TrainingDayMapper.fromFirestore,
+        toFirestore: TrainingDayMapper.toFirestore,
       );
 
   CollectionReference<MarketMeal> get marketMeals =>

@@ -215,7 +215,8 @@ void main() {
       final proposal = result.proposal!;
       expect(proposal.kind, ProposalKind.logFood);
       expect(proposal.card['grams'], 2000); // clamped
-      expect((proposal.card['macros'] as Map)['kcal'], food.per100.forGrams(2000).kcal);
+      expect((proposal.card['macros'] as Map)['kcal'],
+          food.per100.forGrams(2000).kcal);
     });
 
     test('unknown food_id is rejected before any proposal is built', () async {
@@ -280,7 +281,11 @@ void main() {
         slot: MealSlot.lunch,
         order: 0,
         items: [
-          FrozenItem(foodId: 'food-1', name: 'صدر دجاج', per100: food.per100, grams: 100),
+          FrozenItem(
+              foodId: 'food-1',
+              name: 'صدر دجاج',
+              per100: food.per100,
+              grams: 100),
         ],
       ));
       final data = _FakeData(day: day);
@@ -298,7 +303,8 @@ void main() {
       expect(data.day!.entries.single.items.single.grams, 100);
     });
 
-    test('confirm refuses a stale proposal when the entry changed underneath it',
+    test(
+        'confirm refuses a stale proposal when the entry changed underneath it',
         () async {
       var day = DayLog.empty(DateTime(2026, 9, 4), targets);
       day = day.withEntry(DayEntry(
@@ -308,7 +314,11 @@ void main() {
         slot: MealSlot.lunch,
         order: 0,
         items: [
-          FrozenItem(foodId: 'food-1', name: 'صدر دجاج', per100: food.per100, grams: 100),
+          FrozenItem(
+              foodId: 'food-1',
+              name: 'صدر دجاج',
+              per100: food.per100,
+              grams: 100),
         ],
       ));
       final data = _FakeData(day: day);
@@ -324,7 +334,11 @@ void main() {
       // it's confirmed -- e.g. the user edited it by hand in Today.
       data.day = data.day!.withEntry(
         data.day!.entries.single.copyWith(items: [
-          FrozenItem(foodId: 'food-1', name: 'صدر دجاج', per100: food.per100, grams: 250),
+          FrozenItem(
+              foodId: 'food-1',
+              name: 'صدر دجاج',
+              per100: food.per100,
+              grams: 250),
         ]),
       );
 
@@ -345,7 +359,11 @@ void main() {
         slot: MealSlot.lunch,
         order: 0,
         items: [
-          FrozenItem(foodId: 'food-1', name: 'صدر دجاج', per100: food.per100, grams: 100),
+          FrozenItem(
+              foodId: 'food-1',
+              name: 'صدر دجاج',
+              per100: food.per100,
+              grams: 100),
         ],
       ));
       final newMeal = MealDefinition(
@@ -388,7 +406,8 @@ void main() {
       expect(data.day!.entries.single.items.single.grams, 100);
     });
 
-    test('a serialized inverse round-trips through JSON and still undoes correctly',
+    test(
+        'a serialized inverse round-trips through JSON and still undoes correctly',
         () async {
       var day = DayLog.empty(DateTime(2026, 9, 4), targets);
       final data = _FakeData(day: day, foods: [food]);
@@ -410,7 +429,8 @@ void main() {
           .whereType<Map<String, dynamic>>()
           .toList();
       expect(serialized, hasLength(1));
-      final decoded = jsonDecode(jsonEncode(serialized.single)) as Map<String, dynamic>;
+      final decoded =
+          jsonDecode(jsonEncode(serialized.single)) as Map<String, dynamic>;
       final rehydrated = registry.deserializeProposalForLog(decoded);
       expect(rehydrated, isNotNull);
 
@@ -435,7 +455,8 @@ void main() {
       expect(registry.serializeProposalForLog(result.proposal!), isNull);
     });
 
-    test('propose_create_meal only accepts real catalog foods and saves on confirm',
+    test(
+        'propose_create_meal only accepts real catalog foods and saves on confirm',
         () async {
       final data = _FakeData(foods: [food]);
       final registry = AgentToolRegistry(data: data, now: () => now);
@@ -455,7 +476,8 @@ void main() {
 
       expect(data.meals.values.map((m) => m.name), contains('وجبتي الجديدة'));
       await registry.undo(receipt);
-      expect(data.meals.values.map((m) => m.name), isNot(contains('وجبتي الجديدة')));
+      expect(data.meals.values.map((m) => m.name),
+          isNot(contains('وجبتي الجديدة')));
     });
 
     test('propose_log_food resolves a personal (not just shared) food by id',
@@ -481,7 +503,8 @@ void main() {
       expect(result.proposal!.card['name'], 'فاكهة التنين');
     });
 
-    test('buildKnownCatalogContext lists personal foods and meals with real ids',
+    test(
+        'buildKnownCatalogContext lists personal foods and meals with real ids',
         () async {
       const personalFood = FoodItem(
         id: 'personal-1',
@@ -515,7 +538,8 @@ void main() {
       expect(await registry.buildKnownCatalogContext(), isEmpty);
     });
 
-    test('propose_log_custom_component creates a personal food marked estimated',
+    test(
+        'propose_log_custom_component creates a personal food marked estimated',
         () async {
       final data = _FakeData(day: DayLog.empty(DateTime(2026, 9, 4), targets));
       final registry = AgentToolRegistry(data: data, now: () => now);
@@ -637,7 +661,8 @@ class _FakeWebSearch implements WebFoodSearchClient {
   @override
   Future<WebFoodSearchResult> search(String query) async =>
       const WebFoodSearchResult(
-        text: 'Per 100g dragon fruit: ~60 kcal, 0.5g protein, 15g carbs, 0.2g fat.',
+        text:
+            'Per 100g dragon fruit: ~60 kcal, 0.5g protein, 15g carbs, 0.2g fat.',
         sources: ['https://example.com/dragon-fruit'],
       );
 }
