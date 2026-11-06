@@ -55,3 +55,9 @@ functions/.secret.local
 ai_secrets.json
 # Local emulator captures can contain personal account and food records.
 output/emulator-ux/
+
+# Flutter tool state when verification redirects Windows app data to this workspace.
+.dartServer/
+.flutter
+.flutter_tool_state
+phase3_*_output.txt

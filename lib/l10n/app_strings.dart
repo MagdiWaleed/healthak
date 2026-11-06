@@ -3,6 +3,32 @@
 /// Legacy screens keep their original inline strings until Step 2 replaces
 /// them. New work uses this file so wording does not drift across screens.
 abstract final class AppStrings {
+  static const nutrition = 'التغذية';
+  static const training = 'التمارين';
+  static const progress = 'التقدم';
+  static const me = 'أنا';
+  static const trainingEmptyTitle = 'خطتك التدريبية قريباً';
+  static const trainingEmptyMessage = 'ستظهر هنا تمارينك الأسبوعية.';
+  static const progressEmptyTitle = 'تقدمك قريباً';
+  static const progressEmptyMessage = 'ستظهر هنا اتجاهات وزنك وإنجازاتك.';
+  static const currentWeight = 'الوزن الحالي';
+  static const goalWeight = 'الوزن المستهدف';
+  static const notSet = 'غير محدد';
+  static const kg = 'كجم';
+  static const profileAndGoals = 'الملف الشخصي والأهداف';
+  static const history = 'السجل';
+  static const foodCatalog = 'تصفح المكوّنات';
+  static const budget = 'الميزانية';
+  static const goalWeightSaved = 'تم حفظ الوزن المستهدف';
+  static const save = 'حفظ';
+  static const quickAdd = 'إضافة سريعة';
+  static const logFood = 'تسجيل طعام';
+  static const logWeight = 'تسجيل وزن';
+  static const startWorkout = 'ابدأ التمرين';
+  static const weightDate = 'تاريخ الوزن';
+  static const weightSaved = 'تم حفظ الوزن';
+  static const invalidWeight = 'أدخل وزناً بين 25 و350 كجم';
+  static const skipGoalWeight = 'تخطي الوزن المستهدف';
   static String streakDays(int count) => '$count أيام متتالية';
   static const todayEnergy = 'المأكول اليوم';
   static const remaining = 'المتبقي';

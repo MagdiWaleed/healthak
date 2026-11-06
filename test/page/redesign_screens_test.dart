@@ -139,13 +139,16 @@ void main() {
                               icon: Icon(Icons.today), label: AppStrings.today),
                           NavigationDestination(
                               icon: Icon(Icons.restaurant_menu),
-                              label: AppStrings.myMeals),
+                              label: AppStrings.nutrition),
                           NavigationDestination(
-                              icon: Icon(Icons.storefront),
-                              label: AppStrings.market),
+                              icon: Icon(Icons.fitness_center),
+                              label: AppStrings.training),
+                          NavigationDestination(
+                              icon: Icon(Icons.insights),
+                              label: AppStrings.progress),
                           NavigationDestination(
                               icon: Icon(Icons.person_outline),
-                              label: AppStrings.account),
+                              label: AppStrings.me),
                         ]))
                     : child)),
       );

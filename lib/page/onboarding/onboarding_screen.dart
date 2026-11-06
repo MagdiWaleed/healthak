@@ -191,6 +191,14 @@ class _ProfileForm extends StatelessWidget {
             label: AppStrings.weight,
             keyboardType: TextInputType.number),
         const SizedBox(height: 12),
+        GlassField(
+            controller: controller.goalWeight,
+            label: AppStrings.goalWeight,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true)),
+        TextButton(
+            onPressed: () => controller.goalWeight.clear(),
+            child: const Text(AppStrings.skipGoalWeight)),
+        const SizedBox(height: 12),
         DropdownButtonFormField<Sex>(
           initialValue: controller.sex.value,
           items: Sex.values

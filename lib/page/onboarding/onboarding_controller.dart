@@ -7,6 +7,7 @@ import '../../app/app_routes.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../domain/profile/user_profile.dart';
+import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
 
@@ -19,6 +20,7 @@ class OnboardingController extends GetxController {
   final birthYear = TextEditingController(text: '${DateTime.now().year - 25}');
   final height = TextEditingController(text: '170');
   final weight = TextEditingController(text: '70');
+  final goalWeight = TextEditingController();
   final isLogin = true.obs;
   final collectingProfile = false.obs;
   final busy = false.obs;
@@ -104,12 +106,23 @@ class OnboardingController extends GetxController {
     final year = int.tryParse(birthYear.text);
     final heightCm = double.tryParse(height.text);
     final weightKg = double.tryParse(weight.text);
+    final goalWeightKg = goalWeight.text.trim().isEmpty
+        ? null
+        : double.tryParse(goalWeight.text.trim().replaceAll('٫', '.'));
     if (year == null ||
         heightCm == null ||
         weightKg == null ||
         heightCm <= 0 ||
         weightKg <= 0) {
       error.value = 'أدخل سنة الميلاد والطول والوزن بشكل صحيح';
+      return;
+    }
+    if (goalWeight.text.trim().isNotEmpty &&
+        (goalWeightKg == null ||
+            !goalWeightKg.isFinite ||
+            goalWeightKg < 25 ||
+            goalWeightKg > 350)) {
+      error.value = AppStrings.invalidWeight;
       return;
     }
     busy.value = true;
@@ -126,6 +139,7 @@ class OnboardingController extends GetxController {
       birthYear: year,
       heightCm: heightCm,
       weightKg: weightKg,
+      goalWeightKg: goalWeightKg,
       activityLevel: activity.value,
       goal: goal.value,
       weeklyRateKg: weeklyRate.value,
@@ -171,6 +185,7 @@ class OnboardingController extends GetxController {
     birthYear.dispose();
     height.dispose();
     weight.dispose();
+    goalWeight.dispose();
     super.onClose();
   }
 }

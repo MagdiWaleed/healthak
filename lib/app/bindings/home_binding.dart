@@ -1,7 +1,11 @@
 import 'package:get/get.dart';
 
 import '../../page/home/home_controller.dart';
+import '../../page/progress/progress_controller.dart';
 import '../../page/today/today_controller.dart';
+import '../../page/training/training_controller.dart';
+import '../../data/repositories/body_weight_repository.dart';
+import '../../data/repositories/profile_repository.dart';
 import '../../service/agent/agent_action_log.dart';
 import '../../service/agent/agent_conversation_store.dart';
 import '../../service/agent/agent_data_source.dart';
@@ -12,12 +16,21 @@ import '../../service/agent/chat_title_generator.dart';
 import '../../service/agent/web_food_search_client.dart';
 import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
+import '../../service/session_controller.dart';
+import '../../service/weigh_in_service.dart';
 
 class HomeBinding extends Bindings {
   @override
   void dependencies() {
     final uid = Get.find<AuthService>().currentUser!.uid;
     Get.lazyPut(HomeController.new);
+    Get.lazyPut(() => TrainingController(uid: uid));
+    Get.lazyPut(() => ProgressController(uid: uid));
+    Get.lazyPut(() => WeighInService(
+          weights: BodyWeightRepository(uid: uid),
+          profiles: ProfileRepository(),
+          session: Get.find<SessionController>(),
+        ));
     Get.lazyPut(
       () => TodayController(uid: uid),
     );

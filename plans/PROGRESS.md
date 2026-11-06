@@ -1,5 +1,19 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 3: navigation and quick actions (2026-11-07)
+
+- Added five always-labelled tabs with `HomeTab` navigation. Nutrition keeps My Meals and Market alive in an `IndexedStack`; Training and Progress have placeholder screens and bound controller stubs.
+- Moved account actions into Me, with a reactive profile summary and goal-weight editor. Added the shared quick-add menu in Today, the weigh-in sheet, and an optional goal-weight field in onboarding.
+- Added four widget tests for shell navigation, Nutrition switching, weight validation, and Me rows. `flutter analyze --no-pub` is clean; all 231 tests pass.
+- `flutter build apk --debug --no-pub` stopped before compilation because the sandbox cannot locate the Android SDK. APK install, screenshots, and logcat are unverified for this phase.
+
+### Deviations
+
+| Decision | Reason |
+|---|---|
+| Goal weight appears as an optional field directly after current weight | The existing onboarding is one profile form; this keeps its persistence flow and gives an explicit skip action. |
+| Widget test seams accept supplied tab children and a weigh-in save callback | Exercises navigation and validation without Firebase writes in widget tests. |
+
 ## Redesign v2 Phase 2: dark neon foundation (2026-11-06)
 
 - Switched the shared palette and Material theme to dark neon, retained all existing palette names, and aligned macro colors across Today, meal editor, food detail, and macro panels.

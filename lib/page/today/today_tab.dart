@@ -10,8 +10,9 @@ import '../../ui/food/food_photo.dart';
 import '../../ui/motion/navigation.dart';
 import '../../ui/theme/app_colors.dart';
 import '../assistant/assistant_tab.dart';
+import '../home/quick_add_sheet.dart';
+import 'add_food_flow.dart';
 import 'edit_entry_sheet.dart';
-import 'quick_add_sheet.dart';
 import 'today_controller.dart';
 import 'today_summary.dart';
 
@@ -19,8 +20,7 @@ class TodayTab extends GetView<TodayController> {
   const TodayTab({super.key});
 
   void _add(BuildContext context) {
-    controller.ensureCurrentDay();
-    if (controller.canEditSelectedDay) QuickAddSheet.show(context, controller);
+    openAddFoodFlow(context, controller);
   }
 
   @override
@@ -142,6 +142,15 @@ class _TodayHeader extends StatelessWidget {
               const Icon(Icons.eco_rounded,
                   color: AppPalette.emerald, size: 22),
             ]),
+          ),
+          PositionedDirectional(
+            start: 0,
+            child: IconButton(
+              tooltip: AppStrings.quickAdd,
+              onPressed: () => HomeQuickAddSheet.show(context),
+              icon: const Icon(Icons.add_circle_rounded,
+                  color: AppPalette.emerald, size: 30),
+            ),
           ),
           PositionedDirectional(
             end: 0,
