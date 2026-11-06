@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 
@@ -21,6 +22,14 @@ import 'ui/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    // Matches AppPalette.ink so the Android gesture/nav bar is not a light
+    // strip under the dark app.
+    systemNavigationBarColor: Color(0xFF0B0F0E),
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseFirestore.instance.settings =
       const Settings(persistenceEnabled: true);
@@ -70,8 +79,8 @@ class HealthakApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        theme: AppTheme.light,
-        themeMode: ThemeMode.light,
+        theme: AppTheme.dark,
+        themeMode: ThemeMode.dark,
         initialRoute: AppRoutes.splash,
         getPages: AppPages.pages,
       );

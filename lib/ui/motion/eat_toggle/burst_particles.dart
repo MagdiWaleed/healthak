@@ -10,7 +10,7 @@ import '../../theme/motion_settings.dart';
 abstract final class EatBurst {
   static OverlayEntry? _active;
 
-  static void show(BuildContext context) {
+  static void show(BuildContext context, {Color color = AppPalette.emerald}) {
     _dismiss();
     final box = context.findRenderObject() as RenderBox?;
     final overlay = Overlay.of(context, rootOverlay: true);
@@ -23,7 +23,7 @@ abstract final class EatBurst {
         top: point.dy - 48,
         child: IgnorePointer(
           child: RepaintBoundary(
-            child: _Burst(onDone: () => _dismiss(entry)),
+            child: _Burst(color: color, onDone: () => _dismiss(entry)),
           ),
         ),
       ),
@@ -49,8 +49,9 @@ abstract final class EatBurst {
 }
 
 class _Burst extends StatefulWidget {
+  final Color color;
   final VoidCallback onDone;
-  const _Burst({required this.onDone});
+  const _Burst({required this.color, required this.onDone});
 
   @override
   State<_Burst> createState() => _BurstState();
@@ -85,6 +86,7 @@ class _BurstState extends State<_Burst> with SingleTickerProviderStateMixin {
           animation: _controller,
           builder: (_, __) => CustomPaint(
             painter: _BurstPainter(
+              color: widget.color,
               progress: MotionSettings.enabled(context) ? _controller.value : 1,
             ),
           ),
@@ -93,8 +95,9 @@ class _BurstState extends State<_Burst> with SingleTickerProviderStateMixin {
 }
 
 class _BurstPainter extends CustomPainter {
+  final Color color;
   final double progress;
-  const _BurstPainter({required this.progress});
+  const _BurstPainter({required this.color, required this.progress});
 
   static final _random = math.Random(2411);
   static final _particles = List.generate(12, (i) {
@@ -105,7 +108,6 @@ class _BurstPainter extends CustomPainter {
       size: 2 + _random.nextDouble() * 2
     );
   });
-  static const _colors = [AppPalette.emerald, AppPalette.mint, Colors.white];
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -120,7 +122,8 @@ class _BurstPainter extends CustomPainter {
         centre.dy + math.sin(particle.angle) * distance + 22 * t * t,
       );
       final paint = Paint()
-        ..color = _colors[i % _colors.length].withValues(alpha: alpha);
+        ..color =
+            (i % 3 == 0 ? AppPalette.text : color).withValues(alpha: alpha);
       if (i % 4 == 0) {
         canvas.drawRect(
             Rect.fromCenter(
@@ -134,5 +137,5 @@ class _BurstPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BurstPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+      oldDelegate.progress != progress || oldDelegate.color != color;
 }

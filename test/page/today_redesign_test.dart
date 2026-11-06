@@ -5,6 +5,7 @@ import 'package:diet_app2/l10n/app_strings.dart';
 import 'package:diet_app2/page/today/today_summary.dart';
 import 'package:diet_app2/page/today/today_tab.dart';
 import 'package:diet_app2/ui/background/reactive_aurora.dart';
+import 'package:diet_app2/ui/background/aurora_background.dart';
 import 'package:diet_app2/ui/glass/glass_scaffold.dart';
 import 'package:diet_app2/ui/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -35,7 +36,8 @@ DayLog _day({bool eaten = false, double target = 2000}) => DayLog(
 Widget _app(Widget child, {double textScale = 1}) => MaterialApp(
     theme: AppTheme.light,
     home: MediaQuery(
-        data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+        data: MediaQueryData(
+            disableAnimations: true, textScaler: TextScaler.linear(textScale)),
         child: Directionality(
             textDirection: TextDirection.rtl,
             child: GlassScaffold(body: SingleChildScrollView(child: child)))));
@@ -152,8 +154,11 @@ void main() {
         textScale: 1.7));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    expect(find.byType(ReactiveAurora), findsNothing);
-    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byType(ReactiveAurora), findsOneWidget);
+    expect(
+        tester.widget<AuroraBackground>(find.byType(AuroraBackground)).animate,
+        isFalse);
+    expect(find.byType(BackdropFilter).evaluate().length, lessThanOrEqualTo(2));
     expect(tester.hasRunningAnimations, isFalse);
   });
 }

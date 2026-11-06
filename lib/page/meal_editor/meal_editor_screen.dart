@@ -324,17 +324,15 @@ class _TotalsHeader extends StatelessWidget {
                   _MacroPill(
                       label: 'ب',
                       value: mealTotals.protein,
-                      color: AppPalette.emerald),
+                      color: AppPalette.protein),
                   const SizedBox(width: 8),
                   _MacroPill(
                       label: 'ك',
                       value: mealTotals.carbs,
-                      color: AppPalette.amber),
+                      color: AppPalette.carbs),
                   const SizedBox(width: 8),
                   _MacroPill(
-                      label: 'د',
-                      value: mealTotals.fat,
-                      color: AppPalette.violet),
+                      label: 'د', value: mealTotals.fat, color: AppPalette.fat),
                 ],
               ),
               if (showDay) ...[
@@ -732,9 +730,9 @@ class _ChipButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .08),
+              color: AppPalette.raised,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: .14)),
+              border: Border.all(color: AppPalette.outline),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,

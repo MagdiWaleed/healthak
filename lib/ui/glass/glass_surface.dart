@@ -42,19 +42,21 @@ class GlassSurface extends StatefulWidget {
 
 class _GlassSurfaceState extends State<GlassSurface> {
   static int _liveInstances = 0;
+  bool _counted = false;
 
   @override
   void initState() {
     super.initState();
     assert(() {
-      _liveInstances++;
-      if (_liveInstances > 2) {
+      if (_liveInstances >= 2) {
         throw FlutterError(
           'At most two GlassSurface instances may be mounted at once '
-          '($_liveInstances are). Use GlassCard for anything that is not the '
+          '(${_liveInstances + 1} are). Use GlassCard for anything that is not the '
           'header or the nav bar -- see lib/ui/glass/glass_card.dart.',
         );
       }
+      _liveInstances++;
+      _counted = true;
       return true;
     }());
   }
@@ -62,7 +64,7 @@ class _GlassSurfaceState extends State<GlassSurface> {
   @override
   void dispose() {
     assert(() {
-      _liveInstances--;
+      if (_counted) _liveInstances--;
       return true;
     }());
     super.dispose();

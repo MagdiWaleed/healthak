@@ -29,7 +29,8 @@ class MacroNumbersPanel extends StatelessWidget {
     super.key,
   });
 
-  bool _hasPlannedExtra(double eaten, double plan) => plan.round() > eaten.round();
+  bool _hasPlannedExtra(double eaten, double plan) =>
+      plan.round() > eaten.round();
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +57,7 @@ class MacroNumbersPanel extends StatelessWidget {
                 const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _FadedDot(color: Colors.white),
+                    _FadedDot(color: AppPalette.muted),
                     SizedBox(width: 4),
                     Text(
                       AppStrings.macroPlanned,
@@ -75,7 +76,7 @@ class MacroNumbersPanel extends StatelessWidget {
             consumed: consumed.protein,
             target: target.protein,
             planned: planned.protein,
-            color: AppPalette.emerald,
+            color: AppPalette.protein,
             arrivalTrigger: arrivalTrigger,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -84,7 +85,7 @@ class MacroNumbersPanel extends StatelessWidget {
             consumed: consumed.carbs,
             target: target.carbs,
             planned: planned.carbs,
-            color: AppPalette.amber,
+            color: AppPalette.carbs,
             arrivalTrigger: arrivalTrigger,
             stagger: const Duration(milliseconds: 60),
           ),
@@ -94,7 +95,7 @@ class MacroNumbersPanel extends StatelessWidget {
             consumed: consumed.fat,
             target: target.fat,
             planned: planned.fat,
-            color: AppPalette.violet,
+            color: AppPalette.fat,
             arrivalTrigger: arrivalTrigger,
             stagger: const Duration(milliseconds: 120),
           ),

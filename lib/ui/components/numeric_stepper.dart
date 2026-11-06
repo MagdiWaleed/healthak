@@ -190,9 +190,9 @@ class _Arrow extends StatelessWidget {
         child: Container(
           width: 32,
           height: 32,
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: .10),
+            color: AppPalette.raised,
           ),
           child: Icon(icon, size: 18, color: AppPalette.text),
         ),

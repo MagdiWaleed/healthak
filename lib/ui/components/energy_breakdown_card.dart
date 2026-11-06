@@ -110,7 +110,8 @@ class EnergyBreakdownCard extends StatelessWidget {
             hero: true,
           ),
           const SizedBox(height: AppSpacing.sm),
-          const Text(AppStrings.energyExplanation, style: AppTypography.whisper),
+          const Text(AppStrings.energyExplanation,
+              style: AppTypography.whisper),
         ],
       ),
     );
@@ -141,7 +142,7 @@ class _EnergyStep extends StatelessWidget {
             Container(
               width: 2,
               height: 42,
-              color: hero ? AppPalette.emerald : Colors.white.withValues(alpha: .18),
+              color: hero ? AppPalette.emerald : AppPalette.outline,
             ),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -158,7 +159,8 @@ class _EnergyStep extends StatelessWidget {
             ),
             TickerNumber(
               value: value.round(),
-              format: (number) => '${signed && number > 0 ? '+' : ''}$number ${AppStrings.kcal}',
+              format: (number) =>
+                  '${signed && number > 0 ? '+' : ''}$number ${AppStrings.kcal}',
               style: (hero
                       ? AppTypography.heroNumber.copyWith(fontSize: 24)
                       : const TextStyle(fontWeight: FontWeight.w800))

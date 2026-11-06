@@ -1,4 +1,5 @@
 import 'package:diet_app2/ui/glass/glass_card.dart';
+import 'package:diet_app2/ui/glass/glass_surface.dart';
 import 'package:diet_app2/ui/glass/specular_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,5 +29,16 @@ void main() {
     await tester.pumpWidget(MaterialApp(
         theme: ThemeData.dark(), home: const GlassCard(child: Text('meal'))));
     expect(find.byType(BackdropFilter), findsNothing);
+  });
+
+  testWidgets('dark glass keeps its two-filter budget', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: ThemeData.dark(),
+      home: const Column(children: [
+        GlassSurface(child: Text('one')),
+        GlassSurface(child: Text('two')),
+      ]),
+    ));
+    expect(find.byType(BackdropFilter), findsNWidgets(2));
   });
 }

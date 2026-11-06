@@ -1,5 +1,19 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 2: dark neon foundation (2026-11-06)
+
+- Switched the shared palette and Material theme to dark neon, retained all existing palette names, and aligned macro colors across Today, meal editor, food detail, and macro panels.
+- Added ActivityRings, StreakChip, StatTile, SectionHeader, CheckTile, NeonButton, ShimmerBox, and shared entrance/pop motion helpers. Ring progress animates from its previous value; reduced motion skips the animations. Reused the existing particle burst through `Celebration.show`.
+- Added `flutter_animate` 4.5.2 through offline pub resolution. Existing glass instance budget and filter-free GlassCard remain intact.
+- Updated old UI tests for the dark theme and reduced-motion mode, and added a two-filter glass test. `flutter analyze --no-pub` is clean and all 227 tests pass. `flutter build apk --debug --no-pub` could not find the Android SDK because this sandbox denies access to `C:\Users\mmmaa\AppData\Local\Android\sdk`; APK install, screenshots, and logcat remain unverified.
+
+### Deviations
+
+| Decision | Reason |
+|---|---|
+| `flutter_animate` added | Requested for shared motion and shimmer; the older no-package animation note is superseded. |
+| Weight chart deferred | Phase 2 request covers the shared visual foundation; Progress chart belongs to the later Progress phase. |
+
 ## Reference-image rebuild and journey pass (2026-10-24)
 
 User asked to make the running app match `output/review/healthak-ui-concept.png`

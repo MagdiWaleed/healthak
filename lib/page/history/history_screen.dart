@@ -196,7 +196,7 @@ class _DayCell extends StatelessWidget {
 
   Color get _tint {
     final a = adherence;
-    if (a == null) return Colors.white.withValues(alpha: .04);
+    if (a == null) return AppPalette.soft;
     if (a > 1.05) return AppPalette.danger.withValues(alpha: .35);
     // Emerald deepens with adherence -- a day at 20% barely tints, a day at
     // or near target reads clearly as "done".

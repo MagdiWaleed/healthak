@@ -32,15 +32,25 @@ class FoodDetailScreen extends StatelessWidget {
                       Text('${food.per100.kcal.round()}',
                           style: Theme.of(context).textTheme.displayMedium),
                       const SizedBox(width: 6),
-                      const Text('سعرة / 100غ', style: TextStyle(color: AppPalette.muted)),
+                      const Text('سعرة / 100غ',
+                          style: TextStyle(color: AppPalette.muted)),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  _MacroRow(label: 'بروتين', grams: food.per100.protein, color: AppPalette.emerald),
+                  _MacroRow(
+                      label: 'بروتين',
+                      grams: food.per100.protein,
+                      color: AppPalette.protein),
                   const SizedBox(height: AppSpacing.sm),
-                  _MacroRow(label: 'كربوهيدرات', grams: food.per100.carbs, color: AppPalette.amber),
+                  _MacroRow(
+                      label: 'كربوهيدرات',
+                      grams: food.per100.carbs,
+                      color: AppPalette.carbs),
                   const SizedBox(height: AppSpacing.sm),
-                  _MacroRow(label: 'دهون', grams: food.per100.fat, color: AppPalette.violet),
+                  _MacroRow(
+                      label: 'دهون',
+                      grams: food.per100.fat,
+                      color: AppPalette.fat),
                 ],
               ),
             ),
@@ -49,7 +59,8 @@ class FoodDetailScreen extends StatelessWidget {
               GlassCard(
                 child: Row(
                   children: [
-                    const Icon(Icons.category_outlined, color: AppPalette.muted),
+                    const Icon(Icons.category_outlined,
+                        color: AppPalette.muted),
                     const SizedBox(width: AppSpacing.sm),
                     Text('التصنيف: ${food.category}'),
                   ],
@@ -61,9 +72,11 @@ class FoodDetailScreen extends StatelessWidget {
               GlassCard(
                 child: Row(
                   children: [
-                    const Icon(Icons.payments_outlined, color: AppPalette.muted),
+                    const Icon(Icons.payments_outlined,
+                        color: AppPalette.muted),
                     const SizedBox(width: AppSpacing.sm),
-                    Text('السعر التقريبي: ${food.pricePer100!.toStringAsFixed(1)} / 100غ'),
+                    Text(
+                        'السعر التقريبي: ${food.pricePer100!.toStringAsFixed(1)} / 100غ'),
                   ],
                 ),
               ),
@@ -74,7 +87,8 @@ class FoodDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('عناصر أخرى', style: Theme.of(context).textTheme.titleMedium),
+                    Text('عناصر أخرى',
+                        style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: AppSpacing.xs),
                     for (final entry in food.micros!.entries)
                       Padding(
@@ -105,7 +119,8 @@ class _MacroRow extends StatelessWidget {
   final double grams;
   final Color color;
 
-  const _MacroRow({required this.label, required this.grams, required this.color});
+  const _MacroRow(
+      {required this.label, required this.grams, required this.color});
 
   @override
   Widget build(BuildContext context) => Row(

@@ -35,3 +35,10 @@ codex exec resume --last -C <repo> -s workspace-write "Fix: <numbered findings>"
 ```
 Hand-edit only small corrections. Commit per phase after the CLI app gate
 (build APK, adb install, drive, screencap, logcat).
+
+## CLI app gate (required every phase)
+```bash
+bash tool/cli_smoke.sh <phase-tag> --build [--define-file ai_secrets.json] "<tab label>" "<button label>" ...
+```
+Taps by accessibility label, screenshots each step to `output/emulator-ux/`, fails on
+Flutter errors in logcat. Read the screenshots — PASS alone does not prove the UI looks right.

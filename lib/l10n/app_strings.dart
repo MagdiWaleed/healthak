@@ -3,6 +3,7 @@
 /// Legacy screens keep their original inline strings until Step 2 replaces
 /// them. New work uses this file so wording does not drift across screens.
 abstract final class AppStrings {
+  static String streakDays(int count) => '$count أيام متتالية';
   static const todayEnergy = 'المأكول اليوم';
   static const remaining = 'المتبقي';
   static const aboveTarget = 'فوق الهدف';

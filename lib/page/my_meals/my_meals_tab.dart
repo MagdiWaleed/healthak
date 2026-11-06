@@ -483,7 +483,7 @@ class _DayDot extends StatelessWidget {
               shape: BoxShape.circle,
               color: selected
                   ? AppPalette.emerald.withValues(alpha: .25)
-                  : Colors.white.withValues(alpha: .06),
+                  : AppPalette.soft,
             ),
             child: Text(label,
                 style: TextStyle(

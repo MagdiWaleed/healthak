@@ -87,7 +87,7 @@ class TodaySummary extends StatelessWidget {
                 value: progress,
                 minHeight: 8,
                 borderRadius: BorderRadius.circular(8),
-                backgroundColor: const Color(0xFFD2E5DB),
+                backgroundColor: AppPalette.outline,
                 color: AppPalette.emerald,
               ),
             ),
@@ -101,19 +101,19 @@ class TodaySummary extends StatelessWidget {
                 icon: Icons.egg_alt_rounded,
                 value: consumed.protein,
                 target: targets.protein,
-                color: const Color(0xFFD87335)),
+                color: AppPalette.protein),
             _MacroProgress(
                 label: AppStrings.carbs,
                 icon: Icons.grain_rounded,
                 value: consumed.carbs,
                 target: targets.carbs,
-                color: const Color(0xFFE3A324)),
+                color: AppPalette.carbs),
             _MacroProgress(
                 label: AppStrings.fat,
                 icon: Icons.water_drop_rounded,
                 value: consumed.fat,
                 target: targets.fat,
-                color: AppPalette.emerald),
+                color: AppPalette.fat),
           ];
           if (constraints.maxWidth < 290 ||
               MediaQuery.textScalerOf(context).scale(14) > 20) {
@@ -186,7 +186,8 @@ class _MacroProgress extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
         decoration: BoxDecoration(
-          color: Color.alphaBlend(color.withValues(alpha: .055), Colors.white),
+          color: Color.alphaBlend(
+              color.withValues(alpha: .08), AppPalette.surface),
           borderRadius: BorderRadius.circular(15),
         ),
         child:

@@ -59,6 +59,10 @@ class _AssistantTabState extends State<AssistantTab> {
   void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !scroll.hasClients) return;
+      if (!MotionSettings.enabled(context)) {
+        scroll.jumpTo(scroll.position.maxScrollExtent);
+        return;
+      }
       scroll.animateTo(
         scroll.position.maxScrollExtent,
         duration: MotionSettings.duration(
@@ -461,7 +465,7 @@ class _SessionListSheet extends StatelessWidget {
               decoration: BoxDecoration(
                 color: active
                     ? AppPalette.emerald.withValues(alpha: .12)
-                    : Colors.white.withValues(alpha: .045),
+                    : AppPalette.soft,
                 borderRadius: BorderRadius.circular(14),
                 border: active
                     ? Border.all(
@@ -977,7 +981,7 @@ class _MarkdownBody extends StatelessWidget {
           fontFamily: 'monospace',
           fontSize: 12.5,
           color: AppPalette.mint,
-          backgroundColor: Colors.white.withValues(alpha: .08),
+          backgroundColor: AppPalette.raised,
         ),
         codeblockDecoration: BoxDecoration(
           color: AppPalette.soft,
@@ -1759,13 +1763,13 @@ class _AgentPulseState extends State<_AgentPulse>
               width: 186,
               height: 186,
               decoration: const BoxDecoration(
-                  color: Color(0xFFF1F7F3), shape: BoxShape.circle),
+                  color: AppPalette.soft, shape: BoxShape.circle),
             ),
             Container(
               width: 158,
               height: 158,
               decoration: const BoxDecoration(
-                  color: Color(0xFFDCEEE4), shape: BoxShape.circle),
+                  color: AppPalette.raised, shape: BoxShape.circle),
             ),
             Container(
               width: 126,

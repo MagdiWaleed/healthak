@@ -112,7 +112,8 @@ class _CalorieRingState extends State<CalorieRing>
     _toConsumed = widget.consumedMacros;
     _fromConsumed = startZero ? Macros.zero : widget.consumedMacros;
     _toPlanned = widget.plannedMacros ?? Macros.zero;
-    _fromPlanned = startZero ? Macros.zero : (widget.plannedMacros ?? Macros.zero);
+    _fromPlanned =
+        startZero ? Macros.zero : (widget.plannedMacros ?? Macros.zero);
   }
 
   @override
@@ -200,8 +201,7 @@ class _CalorieRingState extends State<CalorieRing>
         final smoothPlanned = _lerpMacros(_fromPlanned, _toPlanned, st);
 
         final shownKcal = smoothKcal * consumedFactor;
-        final progress =
-            widget.target <= 0 ? 0.0 : shownKcal / widget.target;
+        final progress = widget.target <= 0 ? 0.0 : shownKcal / widget.target;
         final plannedProgress = (hasPlanned && widget.target > 0)
             ? (smoothPlannedKcal * plannedFactor) / widget.target
             : null;
@@ -270,16 +270,15 @@ class _CalorieRingState extends State<CalorieRing>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _MacroStat(
-                              color: AppPalette.emerald,
-                              grams:
-                                  smoothConsumed.protein * consumedFactor),
+                              color: AppPalette.protein,
+                              grams: smoothConsumed.protein * consumedFactor),
                           const SizedBox(width: 8),
                           _MacroStat(
-                              color: AppPalette.amber,
+                              color: AppPalette.carbs,
                               grams: smoothConsumed.carbs * consumedFactor),
                           const SizedBox(width: 8),
                           _MacroStat(
-                              color: AppPalette.violet,
+                              color: AppPalette.fat,
                               grams: smoothConsumed.fat * consumedFactor),
                         ],
                       ),
@@ -540,7 +539,11 @@ class _RingPainter extends CustomPainter {
     final consumedRatios = [
       for (var i = 0; i < 3; i++)
         _ratio(
-              [consumedMacros.protein, consumedMacros.carbs, consumedMacros.fat][i],
+              [
+                consumedMacros.protein,
+                consumedMacros.carbs,
+                consumedMacros.fat
+              ][i],
               [targetMacros.protein, targetMacros.carbs, targetMacros.fat][i],
             ) *
             _macroStage(i, planned: false),

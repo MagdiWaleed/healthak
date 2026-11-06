@@ -90,7 +90,9 @@ abstract final class AppTypography {
 
   static const heroNumber = TextStyle(
     fontFamily: family,
-    fontWeight: FontWeight.w900,
+    fontSize: 44,
+    fontWeight: FontWeight.w800,
+    color: AppPalette.text,
     letterSpacing: -1,
     fontFeatures: tabular,
   );

@@ -6,6 +6,13 @@ import '../../l10n/app_strings.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/motion_settings.dart';
+import 'eat_toggle/burst_particles.dart';
+
+abstract final class Celebration {
+  static void show(BuildContext context, {Color color = AppPalette.emerald}) {
+    if (MotionSettings.enabled(context)) EatBurst.show(context, color: color);
+  }
+}
 
 /// A contained, ring-local goal moment. The trigger is an incrementing token
 /// from TodayController; a new token restarts rather than stacks the effect.

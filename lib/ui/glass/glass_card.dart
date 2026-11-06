@@ -83,7 +83,7 @@ class GlassCard extends StatelessWidget {
         gradient: GlassDecoration.body(
           top: GlassTokens.topTint(effectiveElevation),
           bottom: GlassTokens.bottomTint(effectiveElevation),
-          color: tint ?? Colors.white,
+          color: tint ?? AppPalette.surface,
         ),
         boxShadow: GlassDecoration.shadowsFor(effectiveElevation),
       ),

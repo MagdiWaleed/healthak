@@ -127,25 +127,27 @@ void main() {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate
         ],
-        home: RepaintBoundary(
-            key: boundary,
-            child: navigation
-                ? GlassScaffold(
-                    body: child,
-                    bottomNavigationBar: NavigationBar(destinations: const [
-                      NavigationDestination(
-                          icon: Icon(Icons.today), label: AppStrings.today),
-                      NavigationDestination(
-                          icon: Icon(Icons.restaurant_menu),
-                          label: AppStrings.myMeals),
-                      NavigationDestination(
-                          icon: Icon(Icons.storefront),
-                          label: AppStrings.market),
-                      NavigationDestination(
-                          icon: Icon(Icons.person_outline),
-                          label: AppStrings.account),
-                    ]))
-                : child),
+        home: MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: RepaintBoundary(
+                key: boundary,
+                child: navigation
+                    ? GlassScaffold(
+                        body: child,
+                        bottomNavigationBar: NavigationBar(destinations: const [
+                          NavigationDestination(
+                              icon: Icon(Icons.today), label: AppStrings.today),
+                          NavigationDestination(
+                              icon: Icon(Icons.restaurant_menu),
+                              label: AppStrings.myMeals),
+                          NavigationDestination(
+                              icon: Icon(Icons.storefront),
+                              label: AppStrings.market),
+                          NavigationDestination(
+                              icon: Icon(Icons.person_outline),
+                              label: AppStrings.account),
+                        ]))
+                    : child)),
       );
 
   Future<void> capture(WidgetTester tester, GlobalKey key, String name) async {
