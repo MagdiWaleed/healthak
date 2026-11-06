@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart';
 
+import '../../domain/day/day_log.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/agent/agent_model_catalog.dart';
 import '../../service/agent/agent_models.dart';
@@ -12,6 +13,7 @@ import '../../service/agent/agent_proposal.dart';
 import '../../service/agent/chat_orchestrator.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
+import '../../ui/format/number_input.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/glass/glass_sheet.dart';
@@ -104,7 +106,9 @@ class _AssistantTabState extends State<AssistantTab> {
                       orchestrator.messages.toList(growable: false);
                   if (messages.isEmpty) {
                     return _EmptyConversation(
-                        active: orchestrator.sending.value);
+                        active: orchestrator.sending.value,
+                        onExample: () =>
+                            _send(AppStrings.assistantExampleRequest));
                   }
                   return ListView.builder(
                     controller: scroll,
@@ -154,38 +158,26 @@ class _AssistantHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _HeaderIconButton(
-              // This directional icon mirrors automatically in Arabic.
               icon: Icons.arrow_back_rounded,
               tooltip: AppStrings.back,
               onTap: () => Navigator.of(context).maybePop(),
             ),
-            const SizedBox(width: 10),
-            const CircleAvatar(
-              backgroundColor: AppPalette.soft,
-              child: Icon(Icons.eco_outlined, color: AppPalette.emerald),
-            ),
-            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // The assistant is the app's most premium surface, so its
-                  // wordmark gets the celebration-gradient treatment the rest
-                  // of the typography reserves for goal moments.
-                  Text(
-                    AppStrings.assistant,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700, color: AppPalette.emerald),
-                  ),
-                  const Text(
-                    AppStrings.assistantPrivacyNote,
-                    style: TextStyle(color: AppPalette.muted, fontSize: 11),
-                  ),
+                  Text(AppStrings.assistantTitle,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppPalette.emerald)),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.eco_rounded,
+                      color: AppPalette.emerald, size: 19),
                 ],
               ),
             ),
@@ -539,28 +531,51 @@ class _SessionListSheet extends StatelessWidget {
 
 class _EmptyConversation extends StatelessWidget {
   final bool active;
-  const _EmptyConversation({required this.active});
+  final VoidCallback onExample;
+  const _EmptyConversation({required this.active, required this.onExample});
 
   @override
   Widget build(BuildContext context) => Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _AgentPulse(active: active),
-              const SizedBox(height: 24),
+              const SizedBox(height: 14),
               Text(
                 AppStrings.assistantHeadline,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700, color: AppPalette.emerald),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 9),
               Text(
                 AppStrings.assistantEmpty,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 26),
+              Material(
+                color: AppPalette.soft,
+                borderRadius: BorderRadius.circular(17),
+                child: InkWell(
+                  onTap: onExample,
+                  borderRadius: BorderRadius.circular(17),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 17, vertical: 15),
+                    child: Row(children: [
+                      Expanded(
+                        child: Text(AppStrings.assistantExampleRequest,
+                            style: TextStyle(
+                                color: AppPalette.text,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      Icon(Icons.north_west_rounded,
+                          color: AppPalette.emerald, size: 19),
+                    ]),
+                  ),
+                ),
               ),
             ],
           ),
@@ -733,8 +748,13 @@ class _Composer extends StatelessWidget {
                   ),
                 ),
               ),
-              Obx(() => Pressable(
-                    onTap: sending.value ? null : onSend,
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (context, value, _) => Obx(() {
+                  final enabled =
+                      value.text.trim().isNotEmpty && !sending.value;
+                  return Pressable(
+                    onTap: enabled ? onSend : null,
                     haptic: true,
                     pressedScale: .90,
                     child: AnimatedContainer(
@@ -746,9 +766,7 @@ class _Composer extends StatelessWidget {
                       height: 42,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: sending.value
-                            ? AppPalette.soft
-                            : AppPalette.emerald,
+                        color: enabled ? AppPalette.emerald : AppPalette.soft,
                       ),
                       child: sending.value
                           ? const Padding(
@@ -758,12 +776,16 @@ class _Composer extends StatelessWidget {
                                 color: AppPalette.violet,
                               ),
                             )
-                          : const Icon(
-                              Icons.arrow_upward_rounded,
-                              color: AppPalette.onAccent,
+                          : Icon(
+                              Icons.send_rounded,
+                              color: enabled
+                                  ? AppPalette.onAccent
+                                  : AppPalette.muted,
                             ),
                     ),
-                  )),
+                  );
+                }),
+              ),
             ],
           ),
         ),
@@ -1056,6 +1078,14 @@ class _ProposalCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (proposal.kind == ProposalKind.logFood) ...[
+                  const SizedBox(height: 8),
+                  _ProposalButton(
+                    label: AppStrings.assistantEdit,
+                    filled: false,
+                    onTap: () => _FoodProposalEditSheet.show(context, message),
+                  ),
+                ],
               ] else if (message.status == ChatMessageStatus.cancelled) ...[
                 const SizedBox(height: 6),
                 const Text(
@@ -1069,6 +1099,126 @@ class _ProposalCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _FoodProposalEditSheet extends StatefulWidget {
+  final ChatMessage message;
+  const _FoodProposalEditSheet(this.message);
+
+  static Future<void> show(BuildContext context, ChatMessage message) =>
+      GlassSheet.show<void>(
+        context,
+        builder: (_) => _FoodProposalEditSheet(message),
+      );
+
+  @override
+  State<_FoodProposalEditSheet> createState() => _FoodProposalEditSheetState();
+}
+
+class _FoodProposalEditSheetState extends State<_FoodProposalEditSheet> {
+  late final TextEditingController grams = TextEditingController(
+    text: (widget.message.proposal?.card['grams'] as num? ?? 100).toString(),
+  );
+  late MealSlot slot = MealSlot.values.firstWhere(
+    (value) => value.labelAr == widget.message.proposal?.card['slot_ar'],
+    orElse: () => MealSlot.snack,
+  );
+  bool saving = false;
+  String? error;
+
+  double? get amount => parseNutritionAmount(grams.text);
+  bool get valid => amount != null && amount! >= 1 && amount! <= 2000;
+
+  @override
+  void dispose() {
+    grams.dispose();
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    if (!valid || saving) return;
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    try {
+      await Get.find<ChatOrchestrator>().reviseFoodProposal(
+        widget.message.id,
+        grams: amount!,
+        slot: slot,
+      );
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          saving = false;
+          error = AppStrings.assistantEditFailed;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => GlassSheet(
+        title: AppStrings.assistantEditFoodTitle,
+        topInset: 100,
+        child: Padding(
+          padding:
+              EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(widget.message.proposal?.card['name']?.toString() ?? ''),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: grams,
+                  enabled: !saving,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.portionGrams,
+                    suffixText: AppStrings.grams,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<MealSlot>(
+                  initialValue: slot,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                      labelText: AppStrings.chooseMealSlot),
+                  items: [
+                    for (final value in MealSlot.values)
+                      DropdownMenuItem(value: value, child: Text(value.labelAr))
+                  ],
+                  onChanged: saving
+                      ? null
+                      : (value) {
+                          if (value != null) setState(() => slot = value);
+                        },
+                ),
+                if (!valid || error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(error ?? AppStrings.invalidPortion,
+                      style: const TextStyle(color: AppPalette.danger)),
+                ],
+                const SizedBox(height: 20),
+                GlassButton(
+                  label:
+                      saving ? AppStrings.saving : AppStrings.assistantSaveEdit,
+                  busy: saving,
+                  onPressed: valid ? save : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
 }
 
 class _ProposalButton extends StatelessWidget {
@@ -1602,16 +1752,42 @@ class _AgentPulseState extends State<_AgentPulse>
 
   @override
   Widget build(BuildContext context) => RepaintBoundary(
-        child: AnimatedBuilder(
-          animation: controller,
-          builder: (context, _) => CustomPaint(
-            size: const Size.square(_AgentPulse._size),
-            painter: _AgentPulsePainter(
-              phase: controller.value,
-              active: widget.active,
-              compact: false,
+        child: SizedBox.square(
+          dimension: 186,
+          child: Stack(alignment: Alignment.center, children: [
+            Container(
+              width: 186,
+              height: 186,
+              decoration: const BoxDecoration(
+                  color: Color(0xFFF1F7F3), shape: BoxShape.circle),
             ),
-          ),
+            Container(
+              width: 158,
+              height: 158,
+              decoration: const BoxDecoration(
+                  color: Color(0xFFDCEEE4), shape: BoxShape.circle),
+            ),
+            Container(
+              width: 126,
+              height: 126,
+              decoration: const BoxDecoration(
+                  color: AppPalette.emerald, shape: BoxShape.circle),
+              child: const Icon(Icons.chat_bubble_outline_rounded,
+                  size: 56, color: AppPalette.onAccent),
+            ),
+            if (widget.active)
+              AnimatedBuilder(
+                animation: controller,
+                builder: (context, _) => CustomPaint(
+                  size: const Size.square(_AgentPulse._size),
+                  painter: _AgentPulsePainter(
+                    phase: controller.value,
+                    active: true,
+                    compact: false,
+                  ),
+                ),
+              ),
+          ]),
         ),
       );
 }

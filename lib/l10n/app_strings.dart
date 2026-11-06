@@ -13,6 +13,15 @@ abstract final class AppStrings {
   static const startWithMeal = 'ابدأ بإضافة وجبة أو مكوّن من طعامك';
   static const backToToday = 'العودة لليوم';
   static const dayRecord = 'سجل اليوم';
+  static const previousLoggedDay = 'اليوم المسجّل السابق';
+  static const nextLoggedDay = 'اليوم المسجّل التالي';
+  static const deleteDayEntryTitle = 'حذف الوجبة من اليوم؟';
+  static const deleteDayEntryBody = 'ستُحذف من سجل هذا اليوم فقط.';
+  static const signOutTitle = 'تسجيل الخروج؟';
+  static const signOutBody = 'يمكنك الدخول مجددًا للوصول إلى بياناتك.';
+  static const signOut = 'تسجيل الخروج';
+  static const removeFromScheduleTitle = 'إزالة الوجبة من الجدول؟';
+  static const removeFromScheduleBody = 'لن تظهر تلقائيًا في الأيام القادمة.';
   static const todaySubtitle = 'كل وجبة خطوة نحو هدفك';
   static const historyReadOnly = 'للتصحيح، اضغط تعديل أولاً';
   static const askAssistant = 'اسأل مساعد صحتك';
@@ -94,13 +103,59 @@ abstract final class AppStrings {
   static const today = 'اليوم';
   static const myMeals = 'وجباتي';
   static const market = 'السوق';
+  static const marketIntro = 'وجبات من المجتمع يمكنك حفظ نسخة مستقلة منها.';
+  static const marketNewest = 'الأحدث';
+  static const marketMostCopied = 'الأكثر استخدامًا';
+  static const marketLoadFailed = 'تعذّر تحميل وجبات السوق.';
+  static const marketEmptyTitle = 'لا توجد وجبات منشورة بعد';
+  static const marketEmptyBody = 'ستظهر هنا الوجبات التي ينشرها المجتمع.';
+  static const marketMore = 'عرض المزيد';
+  static const marketCopies = 'نسخة';
+  static const marketCopyTitle = 'حفظ الوجبة في مكتبتي؟';
+  static const marketCopyBody =
+      'ستُحفظ نسخة خاصة يمكنك تعديلها دون تغيير وجبة الناشر.';
+  static const marketCopy = 'حفظ في مكتبتي';
+  static const marketCopied = 'حُفظت في مكتبتي';
+  static const marketCopyFailed = 'تعذّر حفظ الوجبة. حاول مرة أخرى.';
+  static const marketIngredients = 'المكونات';
+  static const marketResetWeights = 'استعادة الأوزان الأصلية';
+  static const marketInvalidWeights = 'أدخل كمية بين 1 و2000 ج لكل مكوّن.';
+  static const marketAddToday = 'أضف لليوم';
+  static String marketAddTodayBody(String name, String slot) =>
+      'ستُضاف "$name" إلى $slot اليوم بالكميات التي اخترتها.';
+  static const marketAddedToday = 'أُضيفت الوجبة إلى اليوم.';
+  static const marketAddFailed = 'تعذّر إضافة الوجبة إلى اليوم.';
+  static const marketAddSchedule = 'أضف لجدولي';
+  static const marketScheduleDays = 'أيام التكرار';
+  static const marketScheduleBody =
+      'ستُحفظ نسخة خاصة من الوجبة وتُضاف إلى جدولك في الأيام المختارة.';
+  static const marketInvalidSchedule = 'اختر يومًا واحدًا على الأقل.';
+  static const marketScheduled = 'أُضيفت الوجبة إلى جدولك.';
+  static const marketScheduleFailed = 'تعذّر إضافة الوجبة إلى الجدول.';
+  static const marketPublish = 'نشر في السوق';
+  static const marketUnpublish = 'إلغاء النشر';
+  static const marketUnpublishBody =
+      'ستختفي الوجبة من السوق، وستبقى النسخ التي حفظها الآخرون مستقلة.';
+  static const marketUnpublishFailed = 'تعذّر إلغاء نشر الوجبة.';
+  static const marketRepublish = 'تحديث الوجبة المنشورة';
+  static const marketPublishReview = 'راجع ما سيظهر للآخرين قبل النشر.';
+  static const marketPublishFailed =
+      'تعذّر نشر الوجبة. راجع بياناتها وحاول مرة أخرى.';
+  static const marketAuthorFallback = 'مستخدم صحتك';
+  static const marketName = 'اسم الوجبة';
+  static const marketDescription = 'الوصف';
+  static const marketTags = 'وسوم مفصولة بفاصلة';
+  static const calories = 'سعرة';
+  static const explore = 'اكتشف';
   static const account = 'حسابي';
   static const assistant = 'المساعد';
+  static const assistantTitle = 'مساعد صحتك';
   static const back = 'رجوع';
-  static const assistantHeadline = 'أفهم يومك من بياناتك، ولا أخمّن';
+  static const assistantHeadline = 'بماذا أساعدك؟';
   static const assistantEmpty =
-      'اسألني عن طعامك وأهدافك. تعتمد إجابتي على بياناتك الصحية الفعلية.';
-  static const assistantComposerHint = 'اكتب للمساعد…';
+      'اكتب ما أكلت أو اسأل عن يومك. راجع أي إضافة قبل حفظها.';
+  static const assistantExampleRequest = 'أضف ١٥٠ جرام دجاج للغداء';
+  static const assistantComposerHint = 'اكتب طلبك هنا…';
   static const assistantDisclosureTitle = 'قبل أول سؤال';
   static const assistantDisclosureBody =
       'عندما تسأل، نرسل إلى المساعد البيانات اللازمة للإجابة فقط، مثل هدفك وملخص يومك. تمر البيانات عبر خادم صحتك إلى xAI، ولا نحفظ محادثتك في Firestore.';
@@ -119,6 +174,10 @@ abstract final class AppStrings {
   static const assistantRetry = 'حاول مجددًا';
   static const assistantModelPickerTooltip = 'اختر نموذج المساعد';
   static const assistantConfirm = 'تأكيد';
+  static const assistantEdit = 'تعديل';
+  static const assistantEditFoodTitle = 'راجع كمية الطعام';
+  static const assistantEditFailed = 'تعذّر تعديل الاقتراح. حاول مرة أخرى.';
+  static const assistantSaveEdit = 'حفظ التعديل';
   static const assistantCancel = 'إلغاء';
   static const assistantUndo = 'تراجع';
   static const assistantCancelled = 'أُلغي الاقتراح';

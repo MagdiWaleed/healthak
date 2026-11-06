@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../data/repositories/day_repository.dart';
 import '../../data/repositories/meal_repository.dart';
+import '../../data/repositories/market_repository.dart';
 import '../../data/repositories/schedule_repository.dart';
 import '../../domain/day/day_log.dart';
 import '../../domain/meal/meal_definition.dart';
@@ -15,6 +16,7 @@ import '../../service/session_controller.dart';
 class MyMealsController extends GetxController {
   final String uid;
   final MealRepository _meals;
+  final MarketRepository? _market;
   final ScheduleRepository _schedule;
   final DayRepository _days;
   final SessionController _session;
@@ -23,11 +25,13 @@ class MyMealsController extends GetxController {
   MyMealsController({
     required this.uid,
     MealRepository? meals,
+    MarketRepository? market,
     ScheduleRepository? schedule,
     DayRepository? days,
     SessionController? session,
     Uuid uuid = const Uuid(),
   })  : _meals = meals ?? MealRepository(uid: uid),
+        _market = market,
         _schedule = schedule ?? ScheduleRepository(uid: uid),
         _days = days ?? DayRepository(uid: uid),
         _session = session ?? Get.find<SessionController>(),
@@ -115,9 +119,15 @@ class MyMealsController extends GetxController {
   /// next tick reconciles either way.
   Future<void> deleteMeal(String id) async {
     final previous = library;
+    final meal = previous.firstWhere((candidate) => candidate.id == id);
     library.value = previous.where((m) => m.id != id).toList();
     try {
-      await _meals.delete(id);
+      if (meal.isPublished) {
+        await (_market ?? MarketRepository())
+            .unpublish(meal, deleteSource: true);
+      } else {
+        await _meals.delete(id);
+      }
     } catch (_) {
       library.value = previous; // roll back; the row reappears
     }

@@ -49,6 +49,7 @@ class ChatMessage {
   ChatMessage copyWith({
     ChatMessageStatus? status,
     String? text,
+    Proposal? proposal,
   }) =>
       ChatMessage(
         id: id,
@@ -57,7 +58,7 @@ class ChatMessage {
         text: text ?? this.text,
         toolName: toolName,
         createdAt: createdAt,
-        proposal: proposal,
+        proposal: proposal ?? this.proposal,
         receipt: receipt,
       );
 }

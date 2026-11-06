@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../domain/day/day_log.dart';
 import 'agent_action_log.dart';
 import 'agent_conversation_store.dart';
 import 'agent_models.dart';
@@ -344,6 +345,28 @@ class ChatOrchestrator extends GetxController {
     final message = messages[index];
     if (message.status != ChatMessageStatus.pendingConfirm) return;
     messages[index] = message.copyWith(status: ChatMessageStatus.cancelled);
+    await _saveConversation();
+  }
+
+  /// Revises one pending food card without writing to the day or affecting
+  /// other proposals in the conversation.
+  Future<void> reviseFoodProposal(
+    String proposalMessageId, {
+    required double grams,
+    required MealSlot slot,
+  }) async {
+    final index =
+        messages.indexWhere((message) => message.id == proposalMessageId);
+    if (index == -1) throw StateError('proposal_missing');
+    final message = messages[index];
+    final proposal = message.proposal;
+    if (proposal == null ||
+        message.status != ChatMessageStatus.pendingConfirm) {
+      throw StateError('proposal_not_pending');
+    }
+    final revised = _tools.reviseLogFood(proposal, grams: grams, slot: slot);
+    messages[index] =
+        message.copyWith(text: revised.titleAr, proposal: revised);
     await _saveConversation();
   }
 

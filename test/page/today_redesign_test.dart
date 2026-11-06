@@ -44,13 +44,12 @@ void main() {
   testWidgets('planned food does not appear as eaten; plan remains accessible',
       (tester) async {
     await tester.pumpWidget(_app(TodaySummary(day: _day())));
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('2000'), findsOneWidget);
+    expect(find.text('0 / 2000'), findsOneWidget);
     await tester.tap(find.text(AppStrings.plannedDetails));
     await tester.pumpAndSettle();
     expect(find.text(AppStrings.plannedSummary(156, 30, 0, 4)), findsOneWidget);
     await tester.pumpWidget(_app(TodaySummary(day: _day(eaten: true))));
-    expect(find.text('156'), findsOneWidget);
+    expect(find.text('156 / 2000'), findsOneWidget);
     expect(find.text('1844'), findsOneWidget);
   });
 
@@ -89,6 +88,34 @@ void main() {
     expect(deletes, 0);
   });
 
+  testWidgets('deleting a day entry requires confirmation', (tester) async {
+    var deletes = 0;
+    await tester.pumpWidget(_app(TodayEntryCard(
+      entry: _entry,
+      readOnly: false,
+      onToggle: () {},
+      onEdit: () {},
+      onDelete: () => deletes++,
+    )));
+    await tester.tap(find.byTooltip(AppStrings.mealActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(AppStrings.delete));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.deleteDayEntryTitle), findsOneWidget);
+    expect(deletes, 0);
+    await tester.tap(find.text(AppStrings.assistantCancel));
+    await tester.pumpAndSettle();
+    expect(deletes, 0);
+
+    await tester.tap(find.byTooltip(AppStrings.mealActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(AppStrings.delete));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(AppStrings.delete).last);
+    await tester.pumpAndSettle();
+    expect(deletes, 1);
+  });
+
   testWidgets('history card exposes no controls until explicitly unlocked',
       (tester) async {
     var writes = 0;
@@ -101,7 +128,7 @@ void main() {
     expect(find.byType(Checkbox), findsNothing);
     expect(find.byType(PopupMenuButton<String>), findsNothing);
     await tester.longPress(find.text(_entry.name));
-    await tester.drag(find.byType(Dismissible), const Offset(400, 0));
+    await tester.drag(find.byType(TodayEntryCard), const Offset(400, 0));
     await tester.pumpAndSettle();
     expect(writes, 0);
   });

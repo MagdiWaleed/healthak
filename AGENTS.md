@@ -38,6 +38,15 @@ flutter build apk --debug
 flutter run -d emulator-5554
 ```
 
+For interactive emulator runs, launch `Pixel_4` with a visible window:
+
+```powershell
+Start-Process -FilePath "$env:LOCALAPPDATA/Android/sdk/emulator/emulator.exe" -ArgumentList @('-avd', 'Pixel_4', '-gpu', 'swiftshader', '-memory', '2048', '-cores', '2') -WindowStyle Normal
+```
+
+Do not pass `-no-window` or launch it with a hidden window unless the user
+explicitly requests headless testing. The default Android emulator launch is visible.
+
 `adb` is not on PATH: `~/AppData/Local/Android/sdk/platform-tools/adb.exe`
 
 Tooling scripts (Node, not part of the Flutter build):

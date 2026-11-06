@@ -342,6 +342,39 @@ class AgentToolRegistry {
     }
   }
 
+  /// Rebuilds a pending food proposal from its resolved catalog food.
+  /// The original card and every other pending proposal stay untouched.
+  Proposal reviseLogFood(
+    Proposal original, {
+    required double grams,
+    required MealSlot slot,
+  }) {
+    if (original.kind != ProposalKind.logFood ||
+        original.execArgs is! _LogFoodArgs ||
+        !grams.isFinite ||
+        grams < 1 ||
+        grams > 2000) {
+      throw const FormatException('invalid_food_proposal_edit');
+    }
+    final food = (original.execArgs as _LogFoodArgs).food;
+    return Proposal(
+      id: _uuid.v4(),
+      toolCallId: original.toolCallId,
+      kind: ProposalKind.logFood,
+      dateKey: original.dateKey,
+      titleAr: 'تسجيل ${food.name} (${_fmt(grams)} جم) في ${slot.labelAr}',
+      card: {
+        'name': food.name,
+        'grams': grams,
+        'slot_ar': slot.labelAr,
+        'macros': _macrosJson(food.per100.forGrams(grams)),
+        if (original.dateKey != null) 'date': original.dateKey,
+      },
+      modelSummary: original.modelSummary,
+      execArgs: _LogFoodArgs(food: food, grams: grams, slot: slot),
+    );
+  }
+
   /// Undoing a receipt is just confirming its inverse chain, in order.
   /// Returns every step's own receipt (swap's inverse is two real writes,
   /// everything else is one) -- Phase 5C's audit log records each one as its

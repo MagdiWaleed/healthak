@@ -19,18 +19,60 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test(
+      'editing one food proposal preserves other pending cards and writes only on confirm',
+      () async {
+    final data = _FoodOnlyData();
+    final orchestrator = ChatOrchestrator(
+      client: _MultipleProposalsClient(),
+      tools: AgentToolRegistry(data: data),
+    );
+    await orchestrator.send('أضف مكونين');
+    final before = orchestrator.messages
+        .where((message) => message.kind == ChatMessageKind.proposal)
+        .toList();
+    expect(before, hasLength(2));
+    final untouchedId = before.last.proposal!.id;
+
+    await orchestrator.reviseFoodProposal(
+      before.first.id,
+      grams: 175,
+      slot: MealSlot.lunch,
+    );
+
+    final revised = orchestrator.messages
+        .firstWhere((message) => message.id == before.first.id);
+    final untouched = orchestrator.messages
+        .firstWhere((message) => message.id == before.last.id);
+    expect(revised.proposal!.card['grams'], 175);
+    expect(revised.proposal!.card['slot_ar'], MealSlot.lunch.labelAr);
+    expect(revised.proposal!.id, isNot(before.first.proposal!.id));
+    expect(untouched.proposal!.id, untouchedId);
+    expect(untouched.status, ChatMessageStatus.pendingConfirm);
+    expect(data._day, isNull);
+
+    await orchestrator.confirmProposal(revised.id);
+    expect(data._day!.entries.single.items.single.grams, 175);
+    expect(data._day!.entries.single.slot, MealSlot.lunch);
+    expect(untouched.status, ChatMessageStatus.pendingConfirm);
+  });
+
   test('mixed saved meals and components all confirm independently', () async {
     final data = _FoodOnlyData();
     final orchestrator = ChatOrchestrator(
-      client: _MultipleProposalsClient(mixed: true, count: 4),
-      tools: AgentToolRegistry(data: data));
+        client: _MultipleProposalsClient(mixed: true, count: 4),
+        tools: AgentToolRegistry(data: data));
     await orchestrator.send('أضف وجبتين ومكوّنين');
-    final proposals = orchestrator.messages.where(
-      (m) => m.kind == ChatMessageKind.proposal).toList();
+    final proposals = orchestrator.messages
+        .where((m) => m.kind == ChatMessageKind.proposal)
+        .toList();
     expect(proposals, hasLength(4));
     expect(proposals.map((m) => m.proposal!.kind), [
-      ProposalKind.logFood, ProposalKind.logMeal,
-      ProposalKind.logFood, ProposalKind.logMeal]);
+      ProposalKind.logFood,
+      ProposalKind.logMeal,
+      ProposalKind.logFood,
+      ProposalKind.logMeal
+    ]);
     for (final proposal in proposals) {
       await orchestrator.confirmProposal(proposal.id);
     }
@@ -382,7 +424,8 @@ class _MultipleProposalsClient implements AiClient {
   final int count;
   int calls = 0;
   List<Map<String, dynamic>> context = [];
-  _MultipleProposalsClient({this.sequential = false, this.count = 2, this.mixed = false});
+  _MultipleProposalsClient(
+      {this.sequential = false, this.count = 2, this.mixed = false});
   @override
   Stream<AgentChunk> agentTurn(
       {required String turnId,
@@ -400,8 +443,9 @@ class _MultipleProposalsClient implements AiClient {
         yield AgentToolCallChunk(AgentToolCall(
             id: 'call-$i',
             name: mixed && i.isOdd ? 'propose_log_meal' : 'propose_log_food',
-            arguments: mixed && i.isOdd ? {'meal_id': 'meal-1'} :
-              {'food_id': 'food-1', 'grams': (i + 1) * 100}));
+            arguments: mixed && i.isOdd
+                ? {'meal_id': 'meal-1'}
+                : {'food_id': 'food-1', 'grams': (i + 1) * 100}));
       }
     } else {
       yield const AgentTextDelta('الاقتراحات بانتظار التأكيد.');
@@ -486,12 +530,23 @@ class _FoodOnlyData implements AgentDataSource {
       draft.withId('personal-1');
 
   @override
-  Future<MealDefinition?> getMealById(String id) async => id != 'meal-1' ? null :
-    MealDefinition(id: id, ownerUid: uid, name: 'وجبة دجاج',
-      createdAt: DateTime(2026), updatedAt: DateTime(2026), entries: [
-        FoodEntry(localId: 'entry-1', foodId: _food.id, name: _food.name,
-          per100: _food.per100, grams: 150, order: 0),
-      ]);
+  Future<MealDefinition?> getMealById(String id) async => id != 'meal-1'
+      ? null
+      : MealDefinition(
+          id: id,
+          ownerUid: uid,
+          name: 'وجبة دجاج',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+          entries: [
+              FoodEntry(
+                  localId: 'entry-1',
+                  foodId: _food.id,
+                  name: _food.name,
+                  per100: _food.per100,
+                  grams: 150,
+                  order: 0),
+            ]);
 
   @override
   Future<MealDefinition> saveMeal(MealDefinition draft) async => draft;

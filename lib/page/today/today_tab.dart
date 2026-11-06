@@ -33,9 +33,9 @@ class TodayTab extends GetView<TodayController> {
         final error = controller.error.value;
         final sections = <Widget>[
           _TodayHeader(controller: controller),
-          const SizedBox(height: 18),
+          const SizedBox(height: 9),
           _WeekStrip(controller: controller),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           if (loading && day == null)
             const Padding(
                 padding: EdgeInsets.all(40),
@@ -51,8 +51,11 @@ class TodayTab extends GetView<TodayController> {
                   message: AppStrings.emptyDay),
             )
           else ...[
-            TodaySummary(key: ValueKey('summary-${day.dateKey}'), day: day),
-            const SizedBox(height: 14),
+            TodaySummary(
+                key: ValueKey('summary-${day.dateKey}'),
+                day: day,
+                showPlannedDetails: false),
+            const SizedBox(height: 8),
             Row(children: [
               Expanded(
                   child: Text(AppStrings.todayMeals,
@@ -90,6 +93,7 @@ class TodayTab extends GetView<TodayController> {
             ],
             const SizedBox(height: 14),
             _AssistantEntry(),
+            TodayPlannedDetails(day: day),
           ],
         ];
         final indexes = <Key, int>{
@@ -98,7 +102,7 @@ class TodayTab extends GetView<TodayController> {
         };
         return ListView.builder(
           key: PageStorageKey('today-${DayLog.keyFor(date)}'),
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           itemCount: sections.length,
           findChildIndexCallback: (key) => indexes[key],
           itemBuilder: (context, index) => sections[index],
@@ -111,78 +115,101 @@ class _TodayHeader extends StatelessWidget {
   const _TodayHeader({required this.controller});
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.eco_outlined, color: AppPalette.emerald, size: 26),
-            const SizedBox(width: 8),
-            Text(AppStrings.appName,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(color: AppPalette.emerald)),
-            const Spacer(),
-            IconButton(
+  Widget build(BuildContext context) {
+    final selected = controller.selectedDate.value;
+    final today = controller.today.value;
+    final available = controller.loggedDayKeys.value
+        .map(DateTime.tryParse)
+        .whereType<DateTime>()
+        .toList()
+      ..add(today)
+      ..sort();
+    final previous =
+        available.where((date) => date.isBefore(selected)).lastOrNull;
+    final next = available.where((date) => date.isAfter(selected)).firstOrNull;
+    return Column(children: [
+      SizedBox(
+        height: 44,
+        child: Stack(children: [
+          Center(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(AppStrings.appName,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppPalette.emerald,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 23)),
+              const SizedBox(width: 5),
+              const Icon(Icons.eco_rounded,
+                  color: AppPalette.emerald, size: 22),
+            ]),
+          ),
+          PositionedDirectional(
+            end: 0,
+            child: IconButton(
               tooltip: AppStrings.askAssistant,
               onPressed: () => pushHealthak(() => const AssistantTab()),
               icon: const Icon(Icons.chat_bubble_outline_rounded,
-                  color: AppPalette.emerald),
+                  color: AppPalette.emerald, size: 21),
             ),
-            if (controller.isViewingToday)
-              Text(AppStrings.today,
-                  style: Theme.of(context).textTheme.titleMedium),
-            if (!controller.isViewingToday)
-              TextButton.icon(
-                onPressed: () => controller.selectDate(controller.today.value),
-                icon: const Icon(Icons.today_outlined, size: 18),
-                label: const Text(AppStrings.backToToday),
-              ),
-          ]),
-          const SizedBox(height: 6),
-          if (!controller.isViewingToday)
-            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-              Expanded(
-                  child: Text(
-                      controller.isViewingToday
-                          ? AppStrings.today
-                          : AppStrings.dayRecord,
-                      style: Theme.of(context).textTheme.headlineMedium)),
-              if (!controller.isViewingToday)
-                TextButton.icon(
-                  onPressed: controller.toggleEditingPast,
-                  icon: Icon(
-                      controller.editingPast.value
-                          ? Icons.lock_open_outlined
-                          : Icons.edit_outlined,
-                      size: 18),
-                  label: Text(controller.editingPast.value
-                      ? AppStrings.done
-                      : AppStrings.edit),
-                ),
-            ]),
-          if (!controller.isViewingToday)
-            Text(AppStrings.historyReadOnly,
-                style: Theme.of(context).textTheme.bodyMedium),
-        ],
-      );
+          ),
+        ]),
+      ),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        IconButton(
+          tooltip: AppStrings.previousLoggedDay,
+          onPressed:
+              previous == null ? null : () => controller.selectDate(previous),
+          icon: const Icon(Icons.chevron_right_rounded),
+        ),
+        Text(
+          controller.isViewingToday
+              ? AppStrings.today
+              : '${AppStrings.weekdays[selected.weekday - 1]} ${selected.day}/${selected.month}',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(color: AppPalette.text, fontWeight: FontWeight.w800),
+        ),
+        IconButton(
+          tooltip: AppStrings.nextLoggedDay,
+          onPressed: next == null ? null : () => controller.selectDate(next),
+          icon: const Icon(Icons.chevron_left_rounded),
+        ),
+      ]),
+      if (!controller.isViewingToday)
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          TextButton(
+            onPressed: () => controller.selectDate(today),
+            child: const Text(AppStrings.backToToday),
+          ),
+          TextButton.icon(
+            onPressed: controller.toggleEditingPast,
+            icon: Icon(
+                controller.editingPast.value
+                    ? Icons.lock_open_outlined
+                    : Icons.edit_outlined,
+                size: 17),
+            label: Text(controller.editingPast.value
+                ? AppStrings.done
+                : AppStrings.edit),
+          ),
+        ]),
+    ]);
+  }
 }
 
 class _AssistantEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
         color: AppPalette.emerald,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         child: InkWell(
           key: const ValueKey('today-assistant'),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           onTap: () => pushHealthak(() => const AssistantTab()),
           child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
             child: Row(children: [
-              Icon(Icons.chat_bubble_outline_rounded,
-                  color: AppPalette.onAccent, size: 25),
-              SizedBox(width: 12),
               Expanded(
                   child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,15 +218,20 @@ class _AssistantEntry extends StatelessWidget {
                       style: TextStyle(
                           color: AppPalette.onAccent,
                           fontWeight: FontWeight.w700,
-                          fontSize: 14)),
-                  SizedBox(height: 3),
+                          fontSize: 15)),
+                  SizedBox(height: 1),
                   Text(AppStrings.assistantEntryHint,
                       style:
                           TextStyle(color: AppPalette.onAccent, fontSize: 11)),
                 ],
               )),
-              SizedBox(width: 8),
-              Icon(Icons.chevron_right_rounded, color: AppPalette.onAccent),
+              SizedBox(width: 10),
+              CircleAvatar(
+                radius: 23,
+                backgroundColor: Color(0x2EFFFFFF),
+                child: Icon(Icons.chat_bubble_outline_rounded,
+                    color: AppPalette.onAccent, size: 23),
+              ),
             ]),
           ),
         ),
@@ -214,27 +246,30 @@ class _WeekStrip extends StatelessWidget {
   Widget build(BuildContext context) => Obx(() {
         final today = controller.today.value;
         final selected = controller.selectedDate.value;
-        final monday = today.subtract(Duration(days: today.weekday - 1));
+        final monday = selected.subtract(Duration(days: selected.weekday - 1));
         final logged = controller.loggedDayKeys.value;
         final days = [
           for (var i = 0; i < 7; i++) monday.add(Duration(days: i))
         ];
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(children: [
-            for (final date in days) ...[
+        return LayoutBuilder(builder: (context, constraints) {
+          const gap = 3.0;
+          final chipWidth = (constraints.maxWidth - gap * 6) / 7;
+          return Row(children: [
+            for (var i = 0; i < days.length; i++) ...[
+              if (i > 0) const SizedBox(width: gap),
               DayChip(
-                date: date,
-                selected: DayLog.keyFor(date) == DayLog.keyFor(selected),
-                onTap: DayLog.keyFor(date) == DayLog.keyFor(today) ||
-                        logged.contains(DayLog.keyFor(date))
-                    ? () => controller.selectDate(date)
+                date: days[i],
+                width: chipWidth,
+                selected: DayLog.keyFor(days[i]) == DayLog.keyFor(selected),
+                onTap: DayLog.keyFor(days[i]) == DayLog.keyFor(today) ||
+                        DayLog.keyFor(days[i]) == DayLog.keyFor(selected) ||
+                        logged.contains(DayLog.keyFor(days[i]))
+                    ? () => controller.selectDate(days[i])
                     : null,
               ),
-              const SizedBox(width: 6),
             ],
-          ]),
-        );
+          ]);
+        });
       });
 }
 
@@ -261,24 +296,24 @@ class DayChip extends StatelessWidget {
             '${AppStrings.weekdays[date.weekday - 1]} ${date.day}/${date.month}',
         child: Material(
           color: selected ? AppPalette.emerald : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             child: Container(
               width: width,
-              constraints: const BoxConstraints(minHeight: 58),
-              padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
+              constraints: const BoxConstraints(minHeight: 53),
+              padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 1),
               child: Column(children: [
                 Text(AppStrings.weekdayShort[date.weekday - 1],
                     style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9,
                         color:
                             selected ? AppPalette.onAccent : AppPalette.muted)),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text('${date.day}',
                     style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: selected
                             ? AppPalette.onAccent
@@ -309,91 +344,101 @@ class TodayEntryCard extends StatelessWidget {
       required this.onDelete,
       super.key});
 
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(AppStrings.deleteDayEntryTitle),
+        content: const Text(AppStrings.deleteDayEntryBody),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(AppStrings.assistantCancel)),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(AppStrings.delete)),
+        ],
+      ),
+    );
+    if (confirmed == true) onDelete();
+  }
+
   @override
-  Widget build(BuildContext context) => Dismissible(
-        key: ValueKey(entry.entryId),
-        direction:
-            readOnly ? DismissDirection.none : DismissDirection.endToStart,
-        background: Container(
-          alignment: AlignmentDirectional.centerEnd,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-              color: AppPalette.danger.withValues(alpha: .1),
-              borderRadius: BorderRadius.circular(20)),
-          child: const Icon(Icons.delete_outline, color: AppPalette.danger),
-        ),
-        onDismissed: (_) => onDelete(),
-        child: GlassCard(
-          padding: const EdgeInsets.all(10),
-          onLongPress: readOnly ? null : onEdit,
-          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-            FoodPhoto(
-              asset: FoodPhoto.forMeal(
-                  entry.name, entry.items.map((item) => item.name)),
-              fallbackIcon: switch (entry.slot) {
-                MealSlot.breakfast => Icons.breakfast_dining_outlined,
-                MealSlot.lunch => Icons.rice_bowl_outlined,
-                MealSlot.dinner => Icons.dinner_dining_outlined,
-                MealSlot.snack => Icons.local_cafe_outlined,
-              },
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(entry.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium),
-                  Text(entry.slot.labelAr,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppPalette.emerald)),
-                  const SizedBox(height: 3),
-                  Text(
-                      entry.items
-                          .map((item) =>
-                              '${item.name} ${item.grams.round()} ${AppStrings.grams}')
-                          .join('، '),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppPalette.muted)),
-                  const SizedBox(height: 5),
-                  Text(
-                      AppStrings.entryNutrition(
-                          entry.kcal.round(), entry.totals.protein.round()),
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppPalette.emerald,
-                          fontWeight: FontWeight.w600)),
-                ])),
-            const SizedBox(width: 2),
-            Column(children: [
+  Widget build(BuildContext context) => GlassCard(
+        padding: const EdgeInsets.all(9),
+        borderRadius: BorderRadius.circular(17),
+        onLongPress: readOnly ? null : onEdit,
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          FoodPhoto(
+            asset: FoodPhoto.forMeal(
+                entry.name, entry.items.map((item) => item.name)),
+            size: 74,
+            fallbackIcon: switch (entry.slot) {
+              MealSlot.breakfast => Icons.breakfast_dining_outlined,
+              MealSlot.lunch => Icons.rice_bowl_outlined,
+              MealSlot.dinner => Icons.dinner_dining_outlined,
+              MealSlot.snack => Icons.local_cafe_outlined,
+            },
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(entry.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              Text(entry.slot.labelAr,
+                  style:
+                      const TextStyle(fontSize: 10, color: AppPalette.emerald)),
+              Text(
+                entry.items
+                    .map((item) =>
+                        '${item.name} ${item.grams.round()} ${AppStrings.grams}')
+                    .join('، '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, color: AppPalette.muted),
+              ),
+              Text(
+                AppStrings.entryNutrition(
+                    entry.kcal.round(), entry.totals.protein.round()),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 11,
+                    color: AppPalette.emerald,
+                    fontWeight: FontWeight.w700),
+              ),
+            ]),
+          ),
+          SizedBox(
+            width: 46,
+            child: Column(children: [
               if (!readOnly)
                 SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Checkbox(
-                      value: entry.eaten,
-                      semanticLabel: AppStrings.eatenLabel(entry.name),
-                      shape: const CircleBorder(),
-                      onChanged: (_) => onToggle(),
-                    ))
+                  width: 42,
+                  height: 42,
+                  child: Checkbox(
+                    value: entry.eaten,
+                    semanticLabel: AppStrings.eatenLabel(entry.name),
+                    shape: const CircleBorder(),
+                    onChanged: (_) => onToggle(),
+                  ),
+                )
               else
-                Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Icon(
-                        entry.eaten ? Icons.check_circle : Icons.lock_outline,
-                        color: AppPalette.muted,
-                        size: 20)),
+                Icon(entry.eaten ? Icons.check_circle : Icons.lock_outline,
+                    color: AppPalette.muted, size: 21),
               if (!readOnly)
                 PopupMenuButton<String>(
                   tooltip: AppStrings.mealActions,
                   icon: const Icon(Icons.more_horiz,
-                      size: 20, color: AppPalette.muted),
+                      size: 19, color: AppPalette.muted),
                   onSelected: (value) =>
-                      value == 'edit' ? onEdit() : onDelete(),
+                      value == 'edit' ? onEdit() : _confirmDelete(context),
                   itemBuilder: (_) => const [
                     PopupMenuItem(value: 'edit', child: Text(AppStrings.edit)),
                     PopupMenuItem(
@@ -401,7 +446,7 @@ class TodayEntryCard extends StatelessWidget {
                   ],
                 ),
             ]),
-          ]),
-        ),
+          ),
+        ]),
       );
 }

@@ -3,7 +3,7 @@
 **Goal:** publish meals, discover other people's, and add them to your day or your schedule with
 independently customizable weights.
 
-**Status:** not started
+**Status:** in progress — browse, private copy, and publish/republish are implemented; see `PROGRESS.md` for verification limits
 
 **Depends on:** Step 2 (`MealDefinition`, `DayLog`, `ScheduleItem` must be final)
 **Blocks:** nothing
@@ -16,20 +16,20 @@ anyone's diet.
 
 ## 3.1 Repository — `lib/data/repositories/market_repository.dart`
 
-- [ ] `publish(MealDefinition)` → flatten to `items` + `groups`, write `marketMeals/{id}`,
+- [x] `publish(MealDefinition)` → flatten to `items` + `groups`, write `marketMeals/{id}`,
       store the returned id back on the source meal as `publishedMarketMealId`
       *(the old code wrote a literal `id: "newMeal"` and never reconciled it with
       `document.id` — `create_single_meal_details_controller.dart:117`)*
-- [ ] `unpublish(id)` → set `status: 'removed'`. Never hard-delete: other users hold copies
+- [x] `unpublish(id)` → set `status: 'removed'`. Never hard-delete: other users hold copies
       whose `source` points here.
-- [ ] `updatePublished(id, meal)` → bump `version`
+- [x] `updatePublished(id, meal)` → bump `version`
 - [ ] `browse({sort, tags, cursor})` → paginated `limit(20)` + `startAfterDocument`.
       Sorts: newest (`createdAt DESC`), most copied (`copyCount DESC`)
 - [ ] `search(query)` → over `tags` and name tokens
 - [ ] `myPublished()` → `where('authorUid', ==, uid)`
-- [ ] `copyToLibrary(marketMeal)` → write `users/{uid}/meals/{newId}` with fresh ids,
+- [x] `copyToLibrary(marketMeal)` → write `users/{uid}/meals/{newId}` with fresh ids,
       `origin: copiedFromMarket`, and full `source` provenance
-- [ ] `incrementCopyCount(id)` → a single-field update. The security rule permits any signed-in
+- [x] `incrementCopyCount(id)` → a single-field update. The security rule permits any signed-in
       user to increment it by **exactly 1** and change nothing else, which is what avoids
       needing Cloud Functions and therefore a Blaze plan.
 - [ ] `like` / `unlike` → write/delete `marketMeals/{id}/likes/{uid}`. One doc per like avoids

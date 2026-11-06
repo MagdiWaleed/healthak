@@ -5,10 +5,12 @@ import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/repositories/day_repository.dart';
+import '../../data/repositories/market_repository.dart';
 import '../../domain/day/day_log.dart';
 import '../../domain/food/food_item.dart';
 import '../../domain/meal/meal_definition.dart';
 import '../../domain/meal/meal_math.dart';
+import '../../domain/market/market_meal.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../domain/nutrition/macros.dart';
 import '../../domain/profile/user_profile.dart';
@@ -291,9 +293,8 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     _watchSub = _days.watch(date).listen((value) {
       if (epoch != _selectionEpoch) return;
       // Skip an echo that carries nothing new -- see `_daySig`.
-      final unchanged = value != null &&
-          day.value != null &&
-          _daySig == _sigOf(value);
+      final unchanged =
+          value != null && day.value != null && _daySig == _sigOf(value);
       // A null while today's document is still being written is a
       // not-yet, not an answer. Any other null is the real, final state of
       // a past day that was never opened.
@@ -366,7 +367,8 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
   Future<void> toggleEaten(String entryId) async {
     final current = day.value;
-    if (current == null) return;
+    if (current == null || !canEditSelectedDay) return;
+    error.value = null;
     // Optimistic: flip locally first so the ring re-tweens immediately, then
     // reconcile with what the transaction actually wrote.
     final entry =
@@ -395,16 +397,10 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
   Future<void> deleteEntry(String entryId) async {
     final current = day.value;
-    if (current == null) return;
-    // Optimistic, for the same reason as toggleEaten -- but here it's load
-    // bearing, not just responsive: the swipe-to-delete `Dismissible` plays
-    // its own removal animation and then expects the item gone from the very
-    // next build. Without removing it from `day.value` immediately, the
-    // Firestore round trip finishes a beat later; if *any* other change
-    // rebuilds the list in that window (an eat-toggle on another row, the
-    // stream ticking), the just-dismissed item's key reappears in the tree
-    // after `Dismissible` already reported it gone, which Flutter throws on:
-    // "A dismissed Dismissible widget is still part of the tree."
+    if (current == null || !canEditSelectedDay) return;
+    error.value = null;
+    // Remove immediately after confirmation, then roll back if the write
+    // fails. This keeps the day summary and meal list in sync.
     _publishDay(current.withoutEntry(entryId));
     _syncMood(day.value);
     try {
@@ -422,7 +418,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   /// actually logged.
   Future<void> updateEntryItems(String entryId, List<FrozenItem> items) async {
     final current = day.value;
-    if (current == null) return;
+    if (current == null || !canEditSelectedDay) return;
     final entry =
         current.entries.where((e) => e.entryId == entryId).firstOrNull;
     if (entry == null) return;
@@ -508,6 +504,38 @@ class TodayController extends GetxController with WidgetsBindingObserver {
         items: [for (final f in flat) FrozenItem.fromFlat(f)],
       ),
     );
+  }
+
+  /// Adds a frozen, one-day copy of a public meal. Later changes to the
+  /// public recipe cannot rewrite what was logged today.
+  Future<void> addMarketMeal(
+    MarketMeal market, {
+    required List<double> grams,
+    required MealSlot slot,
+  }) async {
+    if (grams.length != market.items.length ||
+        grams.any((value) => !value.isFinite || value < 1 || value > 2000)) {
+      throw const FormatException('invalid_market_weights');
+    }
+    final profile = _session.profile.value;
+    if (profile == null) throw StateError('profile_missing');
+    final date = DateTime.now();
+    final current = await _days.ensureDay(date: date, targets: profile.targets);
+    await _days.upsertEntry(
+      current.dateKey,
+      DayEntry(
+        entryId: _uuid.v4(),
+        origin: DayEntryOrigin.oneShot,
+        name: market.name,
+        slot: slot,
+        order: current.entries.length,
+        items: [
+          for (var i = 0; i < market.items.length; i++)
+            market.items[i].withGrams(grams[i]),
+        ],
+      ),
+    );
+    await MarketRepository().incrementCopyCountBestEffort(market.id);
   }
 
   MealSlot _inferSlot() {

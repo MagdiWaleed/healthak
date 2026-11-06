@@ -1,5 +1,58 @@
 # PROGRESS — handoff
 
+## Reference-image rebuild and journey pass (2026-10-24)
+
+User asked to make the running app match `output/review/healthak-ui-concept.png`
+and improve the end-to-end journey. Clarified that the assistant should match
+the layout while remaining text based; voice capture and playback are deferred.
+
+- Rebuilt Today around the reference hierarchy: centered brand/date, seven-day
+  strip, compact consumed/remaining summary, three macro cards, meal rows, and
+  assistant banner. Kept meal logging behind the portion review confirmation.
+- Reworked the assistant empty state and composer for text, and added a working
+  Edit action for pending catalog-food proposals. Editing grams or meal slot
+  rebuilds only that proposal; it writes nothing until Confirm. A focused test
+  verifies a second pending proposal survives untouched.
+- Removed swipe-to-delete from Today and added an explicit delete confirmation.
+  Historical-day actions still respect the existing unlock guard. My Meals now
+  exposes create in its header and confirms schedule removal. Sign-out confirms.
+- Replaced the market placeholder with a Firestore-backed browse page (newest /
+  most copied, 20 per page), detail view, editable component weights, and a
+  confirmed private copy into My Meals with fresh ids and source provenance.
+  A failed copy-count increment cannot undo a successful private copy. Added
+  publish/republish from My Meals; it flattens nested meals and batches the
+  public snapshot with the source meal's published id. Market detail now also
+  offers explicit one-shot add to Today and a recurring schedule add; both use
+  the edited weights and meal slot, while schedule add saves the private meal
+  and frozen schedule snapshot in one batch.
+  Published meals can now be soft-unpublished from their library menu; deleting
+  a published library meal soft-removes its public listing and deletes the
+  private source in one batch.
+- Rendered comparison screenshots in `output/review/`: `today-implemented.png`,
+  `assistant-implemented.png`, and `assistant-proposal-implemented.png`.
+  `flutter analyze --no-pub` is clean, all 209 tests pass, and the debug APK
+  builds. The final build was installed and opened on the visible Pixel_4;
+  Today showed real saved meals/photos, the market query returned its real empty
+  state, and My Meals opened the publish review sheet. The final Today/schedule
+  additions were built and unit-tested but not live-exercised against a public
+  meal. Screenshots: gitignored
+  `output/emulator-ux/healthak-current.png`, `healthak-market.png`,
+  `healthak-my-meals.png`, and `healthak-publish-sheet.png`. No publish action
+  was submitted, so the two-account flow remains unverified.
+
+**Remaining Step 3 work:** search and tag filters, likes, my-published
+stats, and two-account live verification. The current weight
+editor is on market detail and feeds all three add paths; moving it into the
+shared customize sheet in `plans/step3.md` is still outstanding. Do not treat
+the market as complete.
+
+## Visible Pixel emulator (2026-10-24)
+
+Stopped the previous `Pixel_4` instance launched with `-no-window` and relaunched
+it visibly. Verified the `Android Emulator - Pixel_4:5554` window exists and ADB
+reports `emulator-5554` as a connected device. Future interactive runs should
+use the visible launch command in `AGENTS.md`; headless mode is opt-in only.
+
 ## CLI emulator journey and quick-food confirmation (2026-10-24)
 
 Installed the new debug APK on headless Pixel_4 (`emulator-5554`) and walked
@@ -1862,6 +1915,7 @@ sensitivity to edits/adds/removes in `test/domain/schedule_version_test.dart`.
 | Living Glass default with repeated arrival/scroll effects | Light opaque surfaces, compact Today and stable labelled controls | User explicitly requested implementing the reviewed new UI on cline-UI (2026-10-23). Domain, storage and confirmation semantics preserved; voice remains separate. |
 | UI refresh used slot icons while real food media was absent | Bundle generated dish and catalog photos with exact name/ingredient matching, retain icon for unknown foods | User explicitly requested original food images matching the first mockup. Local assets keep the current frozen-day and Firestore schemas intact. |
 | Catalog quick-add selected a food and immediately logged 100 g | Add an editable portion and meal-slot review before creating the day entry | CLI emulator walk exposed an accidental-log path; user requested improving the journey after testing. |
+| Prior UI refresh stopped at a partial visual interpretation; marketplace stayed a placeholder | Rebuild Today and assistant to the approved image, and begin Step 3 with real browse and private copy | User explicitly requested a new app feel and improved journey matching the image; the text assistant boundary was clarified on 2026-10-24. |
 | `tool/migrate_foods.dart` | `tool/migrate_foods.js` (Node + `firebase-admin`) | The Admin SDK bypasses security rules, so `foods` stays client-read-only and no weakened ruleset ever gets deployed. A Dart script would have needed a Flutter runtime *and* a temporary permissive rule. |
 | Generate `asset/image/noise.png` | Deferred to Step 1 as `lib/ui/background/grain_texture.dart` | Procedural generation — a seeded `Random` painted once into a `ui.Image` and tiled via `ImageShader`. No binary asset in git, tunable at runtime, one-time cost. |
 | TFLite caller "stubbed out" | Replaced with a working proportional-scale solver | ~15 lines, and strictly better than the broken model. Kept the legacy screen functional until Step 2 deleted it (now moot — the screen is deleted). |

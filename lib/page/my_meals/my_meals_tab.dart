@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import '../../domain/day/day_log.dart';
 import '../../domain/meal/meal_definition.dart';
 import '../../domain/schedule/schedule_item.dart';
+import '../../data/repositories/market_repository.dart';
+import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
@@ -16,6 +18,7 @@ import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/glass_tokens.dart';
 import '../meal_editor/meal_editor_screen.dart';
+import '../marketplace/publish_sheet.dart';
 import 'my_meals_controller.dart';
 
 const _weekdayLabels = ['ن', 'ث', 'ر', 'خ', 'ج', 'س', 'ح'];
@@ -61,24 +64,40 @@ class _MyMealsTabState extends State<MyMealsTab> {
   @override
   Widget build(BuildContext context) => DefaultTabController(
         length: 2,
-        child: Column(
-          children: [
-            const SizedBox(height: 56),
-            const TabBar(
-              tabs: [Tab(text: 'مكتبتي'), Tab(text: 'جدولي')],
-              indicatorColor: AppPalette.emerald,
-              labelColor: AppPalette.text,
-              unselectedLabelColor: AppPalette.muted,
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _LibraryView(controller: controller, onOpen: _openEditor),
-                  _ScheduleView(controller: controller),
-                ],
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 9),
+                child: Row(children: [
+                  Text(AppStrings.myMeals,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppPalette.text, fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  OutlinedButton.icon(
+                    onPressed: () => _openEditor(),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text(AppStrings.newMeal),
+                  ),
+                ]),
               ),
-            ),
-          ],
+              const TabBar(
+                tabs: [Tab(text: 'مكتبتي'), Tab(text: 'جدولي')],
+                indicatorColor: AppPalette.emerald,
+                labelColor: AppPalette.text,
+                unselectedLabelColor: AppPalette.muted,
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _LibraryView(controller: controller, onOpen: _openEditor),
+                    _ScheduleView(controller: controller),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       );
 }
@@ -119,7 +138,7 @@ class _LibraryView extends StatelessWidget {
         }
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.md, AppSpacing.md, 120),
+              AppSpacing.md, AppSpacing.md, AppSpacing.md, 28),
           itemCount: meals.length,
           separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
           itemBuilder: (context, index) {
@@ -179,6 +198,34 @@ class _MealCard extends StatelessWidget {
     required this.specularIndex,
   });
 
+  Future<void> _unpublish(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(AppStrings.marketUnpublish),
+        content: const Text(AppStrings.marketUnpublishBody),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text(AppStrings.assistantCancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(AppStrings.marketUnpublish)),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await MarketRepository().unpublish(meal);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.marketUnpublishFailed)),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => GlassCard(
         specularAngleOffset: specularIndex * GlassTokens.listSpecularStepDeg,
@@ -218,7 +265,29 @@ class _MealCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_left_rounded, color: AppPalette.muted),
+            PopupMenuButton<String>(
+              tooltip: AppStrings.marketPublish,
+              onSelected: (value) {
+                if (value == 'unpublish') {
+                  _unpublish(context);
+                } else {
+                  PublishSheet.show(context, meal);
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  value: 'publish',
+                  child: Text(meal.isPublished
+                      ? AppStrings.marketRepublish
+                      : AppStrings.marketPublish),
+                ),
+                if (meal.isPublished)
+                  const PopupMenuItem(
+                    value: 'unpublish',
+                    child: Text(AppStrings.marketUnpublish),
+                  ),
+              ],
+            ),
           ],
         ),
       );
@@ -252,7 +321,7 @@ class _ScheduleView extends StatelessWidget {
         var specularIndex = 0;
         return ListView(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.md, AppSpacing.md, 120),
+              AppSpacing.md, AppSpacing.md, AppSpacing.md, 28),
           children: [
             for (final slot in slots) ...[
               Padding(
@@ -357,7 +426,29 @@ class _ScheduleCard extends StatelessWidget {
                   label: const Text('أضف لليوم'),
                 ),
                 IconButton(
-                  onPressed: () => controller.deleteScheduleItem(item.id),
+                  tooltip: AppStrings.removeFromScheduleTitle,
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text(AppStrings.removeFromScheduleTitle),
+                        content: const Text(AppStrings.removeFromScheduleBody),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text(AppStrings.assistantCancel),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text(AppStrings.delete),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await controller.deleteScheduleItem(item.id);
+                    }
+                  },
                   icon: const Icon(Icons.delete_outline,
                       size: 18, color: AppPalette.danger),
                 ),
@@ -377,24 +468,30 @@ class _DayDot extends StatelessWidget {
       {required this.label, required this.selected, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 26,
-          height: 26,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: selected
-                ? AppPalette.emerald.withValues(alpha: .25)
-                : Colors.white.withValues(alpha: .06),
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected
+                  ? AppPalette.emerald.withValues(alpha: .25)
+                  : Colors.white.withValues(alpha: .06),
+            ),
+            child: Text(label,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: selected ? AppPalette.emerald : AppPalette.muted,
+                  fontWeight: FontWeight.w700,
+                )),
           ),
-          child: Text(label,
-              style: TextStyle(
-                fontSize: 11,
-                color: selected ? AppPalette.emerald : AppPalette.muted,
-                fontWeight: FontWeight.w700,
-              )),
         ),
       );
 }

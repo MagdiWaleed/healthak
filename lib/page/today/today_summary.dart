@@ -2,208 +2,218 @@ import 'package:flutter/material.dart';
 
 import '../../domain/day/day_log.dart';
 import '../../l10n/app_strings.dart';
-import '../../ui/glass/glass_card.dart';
 import '../../ui/theme/app_colors.dart';
 
-/// A compact daily overview. Planned amounts remain available on demand;
-/// eating progress is always calculated from the frozen day record.
+/// One glance for eaten energy and macros. Planned totals stay one tap away.
 class TodaySummary extends StatelessWidget {
   final DayLog day;
+  final bool showPlannedDetails;
 
-  const TodaySummary({required this.day, super.key});
+  const TodaySummary(
+      {required this.day, this.showPlannedDetails = true, super.key});
 
   @override
   Widget build(BuildContext context) {
     final target = day.targets.kcal;
-    final difference = target - day.consumedKcal;
-    final progress =
-        target <= 0 ? 0.0 : (day.consumedKcal / target).clamp(0.0, 1.0);
+    final eaten = day.consumedKcal;
+    final difference = target - eaten;
+    final progress = target <= 0 ? 0.0 : (eaten / target).clamp(0.0, 1.0);
     final consumed = day.consumedTotals;
     final targets = day.targets.macros;
+    final remainingLabel =
+        difference < 0 ? AppStrings.aboveTarget : AppStrings.remaining;
+    final remainingColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(remainingLabel,
+            style: const TextStyle(color: AppPalette.muted, fontSize: 12)),
+        Text('${difference.abs().round()}',
+            style: Theme.of(context)
+                .textTheme
+                .headlineMedium
+                ?.copyWith(color: AppPalette.emerald)),
+        const Text(AppStrings.kcal,
+            style: TextStyle(color: AppPalette.muted, fontSize: 11)),
+      ],
+    );
+    final consumedColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(AppStrings.todayEnergy,
+            style: TextStyle(color: AppPalette.muted, fontSize: 12)),
+        Text('${eaten.round()} / ${target.round()}',
+            textDirection: TextDirection.ltr,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                color: AppPalette.text,
+                fontWeight: FontWeight.w800,
+                fontSize: 25)),
+        const Text(AppStrings.kcal,
+            style: TextStyle(color: AppPalette.muted, fontSize: 11)),
+      ],
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GlassCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(AppStrings.todayEnergy,
-                            style: TextStyle(
-                                color: AppPalette.muted,
-                                fontSize: 12,
-                                height: 1.3)),
-                        const SizedBox(height: 6),
-                        Text('${day.consumedKcal.round()}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .displayMedium
-                                ?.copyWith(fontSize: 30, height: 1.2)),
-                        Text(AppStrings.outOfKcal(target.round()),
-                            style: const TextStyle(
-                                fontSize: 12,
-                                height: 1.4,
-                                color: AppPalette.muted)),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppPalette.soft,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                            difference < 0
-                                ? AppStrings.aboveTarget
-                                : AppStrings.remaining,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                height: 1.3,
-                                color: AppPalette.emerald)),
-                        Text('${difference.abs().round()}',
-                            style: const TextStyle(
-                                fontSize: 24,
-                                height: 1.3,
-                                fontWeight: FontWeight.w800,
-                                color: AppPalette.emerald)),
-                        const Text(AppStrings.kcal,
-                            style: TextStyle(
-                                fontSize: 10,
-                                height: 1.3,
-                                color: AppPalette.emerald)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Semantics(
-                label: AppStrings.todayEnergy,
-                value: AppStrings.energyProgress(
-                    day.consumedKcal.round(), target.round()),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(8),
-                  backgroundColor: AppPalette.soft,
-                  color: AppPalette.emerald,
-                ),
-              ),
-            ],
+        Container(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          decoration: BoxDecoration(
+            color: AppPalette.soft,
+            borderRadius: BorderRadius.circular(18),
           ),
+          child: Column(children: [
+            LayoutBuilder(builder: (context, constraints) {
+              if (constraints.maxWidth < 300 ||
+                  MediaQuery.textScalerOf(context).scale(14) > 20) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    consumedColumn,
+                    const SizedBox(height: 8),
+                    remainingColumn
+                  ],
+                );
+              }
+              return Row(children: [
+                consumedColumn,
+                Expanded(child: remainingColumn),
+              ]);
+            }),
+            const SizedBox(height: 13),
+            Semantics(
+              label: AppStrings.todayEnergy,
+              value: AppStrings.energyProgress(eaten.round(), target.round()),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(8),
+                backgroundColor: const Color(0xFFD2E5DB),
+                color: AppPalette.emerald,
+              ),
+            ),
+          ]),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 9),
         LayoutBuilder(builder: (context, constraints) {
-          final items = [
+          final cards = [
             _MacroProgress(
                 label: AppStrings.protein,
+                icon: Icons.egg_alt_rounded,
                 value: consumed.protein,
                 target: targets.protein,
-                color: AppPalette.emerald),
+                color: const Color(0xFFD87335)),
             _MacroProgress(
                 label: AppStrings.carbs,
+                icon: Icons.grain_rounded,
                 value: consumed.carbs,
                 target: targets.carbs,
-                color: AppPalette.amber),
+                color: const Color(0xFFE3A324)),
             _MacroProgress(
                 label: AppStrings.fat,
+                icon: Icons.water_drop_rounded,
                 value: consumed.fat,
                 target: targets.fat,
-                color: AppPalette.violet),
+                color: AppPalette.emerald),
           ];
-          // Large accessibility text gets a vertical layout rather than being
-          // scaled down to fit a decorative three-column row.
-          final stacked = constraints.maxWidth < 290 ||
-              MediaQuery.textScalerOf(context).scale(14) > 20;
-          if (stacked) {
+          if (constraints.maxWidth < 290 ||
+              MediaQuery.textScalerOf(context).scale(14) > 20) {
             return Column(children: [
-              for (final item in items)
-                Padding(padding: const EdgeInsets.only(bottom: 8), child: item),
+              for (final card in cards)
+                Padding(padding: const EdgeInsets.only(bottom: 8), child: card),
             ]);
           }
-          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            for (var i = 0; i < items.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8),
-              Expanded(child: items[i]),
+          return Row(children: [
+            for (var i = 0; i < cards.length; i++) ...[
+              if (i > 0) const SizedBox(width: 7),
+              Expanded(child: cards[i]),
             ],
           ]);
         }),
-        Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            key: PageStorageKey('planned-${day.dateKey}'),
-            tilePadding: const EdgeInsets.symmetric(horizontal: 4),
-            childrenPadding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-            dense: true,
-            minTileHeight: 40,
-            title: const Text(AppStrings.plannedDetails,
-                style: TextStyle(fontSize: 12, color: AppPalette.muted)),
-            children: [
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                    AppStrings.plannedSummary(
-                        day.plannedKcal.round(),
-                        day.plannedTotals.protein.round(),
-                        day.plannedTotals.carbs.round(),
-                        day.plannedTotals.fat.round()),
-                    style: Theme.of(context).textTheme.bodyMedium),
-              ),
-            ],
-          ),
-        ),
+        if (showPlannedDetails) TodayPlannedDetails(day: day),
       ],
     );
   }
 }
 
+class TodayPlannedDetails extends StatelessWidget {
+  final DayLog day;
+
+  const TodayPlannedDetails({required this.day, super.key});
+
+  @override
+  Widget build(BuildContext context) => Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: PageStorageKey('planned-${day.dateKey}'),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+          childrenPadding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+          dense: true,
+          minTileHeight: 34,
+          title: const Text(AppStrings.plannedDetails,
+              style: TextStyle(fontSize: 11, color: AppPalette.muted)),
+          children: [
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                  AppStrings.plannedSummary(
+                      day.plannedKcal.round(),
+                      day.plannedTotals.protein.round(),
+                      day.plannedTotals.carbs.round(),
+                      day.plannedTotals.fat.round()),
+                  style: Theme.of(context).textTheme.bodyMedium),
+            ),
+          ],
+        ),
+      );
+}
+
 class _MacroProgress extends StatelessWidget {
   final String label;
+  final IconData icon;
   final double value;
   final double target;
   final Color color;
 
-  const _MacroProgress(
-      {required this.label,
-      required this.value,
-      required this.target,
-      required this.color});
+  const _MacroProgress({
+    required this.label,
+    required this.icon,
+    required this.value,
+    required this.target,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
         decoration: BoxDecoration(
           color: Color.alphaBlend(color.withValues(alpha: .055), Colors.white),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(15),
         ),
         child:
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 12, height: 1.4, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
+          Row(children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 11, fontWeight: FontWeight.w700)),
+            ),
+          ]),
+          const SizedBox(height: 5),
           Text(AppStrings.macroAmount(value.round(), target.round()),
-              style: const TextStyle(
-                  fontSize: 11, height: 1.4, color: AppPalette.muted)),
-          const SizedBox(height: 8),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10, color: AppPalette.muted)),
+          const SizedBox(height: 7),
           LinearProgressIndicator(
             value: target <= 0 ? 0 : (value / target).clamp(0.0, 1.0),
             color: color,
             minHeight: 4,
             borderRadius: BorderRadius.circular(4),
-            backgroundColor: color.withValues(alpha: .1),
+            backgroundColor: color.withValues(alpha: .12),
           ),
         ]),
       );

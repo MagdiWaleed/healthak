@@ -7,28 +7,22 @@ import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
-import '../../ui/motion/navigation.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/glass_tokens.dart';
-import '../meal_editor/meal_editor_screen.dart';
 import '../my_meals/my_meals_tab.dart';
+import '../marketplace/marketplace_tab.dart';
 import '../today/today_tab.dart';
 import 'home_controller.dart';
-
-/// Stable identity for the library's create-meal action.
-abstract final class HomeShellKeys {
-  static const quickAddFab = ValueKey('quick-add-fab');
-}
 
 class HomeShell extends GetView<HomeController> {
   const HomeShell({super.key});
 
   // The assistant is reached through Today's labelled action.
   static const _destinations = [
-    (Icons.today_rounded, Icons.today_outlined, AppStrings.today),
-    (Icons.restaurant_menu, Icons.restaurant_menu, AppStrings.myMeals),
-    (Icons.storefront_rounded, Icons.storefront_outlined, AppStrings.market),
+    (Icons.home_rounded, Icons.home_outlined, AppStrings.today),
+    (Icons.restaurant_rounded, Icons.restaurant_outlined, AppStrings.myMeals),
+    (Icons.explore_rounded, Icons.explore_outlined, AppStrings.explore),
     (Icons.person_rounded, Icons.person_outline, AppStrings.account),
   ];
 
@@ -47,10 +41,8 @@ class HomeShell extends GetView<HomeController> {
           children: [
             const TodayTab(),
             const MyMealsTab(),
-            const _Placeholder(
-                title: AppStrings.market, icon: Icons.storefront_outlined),
+            const MarketplaceTab(),
             _AccountTab(
-              onGallery: () => Get.toNamed(AppRoutes.gallery),
               onSignOut: () async {
                 await Get.find<AuthService>().signOut();
                 await Get.find<PrefsService>().clearProfile();
@@ -64,6 +56,7 @@ class HomeShell extends GetView<HomeController> {
             border: Border(top: BorderSide(color: AppPalette.outline)),
           ),
           child: NavigationBar(
+            height: 68,
             selectedIndex: index,
             onDestinationSelected: controller.selectTab,
             destinations: [
@@ -76,43 +69,33 @@ class HomeShell extends GetView<HomeController> {
             ],
           ),
         ),
-        floatingActionButton: index == 1
-            ? FloatingActionButton.extended(
-                key: HomeShellKeys.quickAddFab,
-                onPressed: () => pushHealthak(() => const MealEditorScreen()),
-                backgroundColor: AppPalette.emerald,
-                foregroundColor: AppPalette.onAccent,
-                elevation: 0,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text(AppStrings.newMeal),
-              )
-            : null,
       );
     });
   }
 }
 
-class _Placeholder extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  const _Placeholder({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 58, color: AppPalette.muted),
-          const SizedBox(height: 14),
-          Text(title, style: Theme.of(context).textTheme.headlineMedium),
-          Text(AppStrings.comingNext,
-              style: Theme.of(context).textTheme.bodyMedium),
-        ]),
-      );
-}
-
 class _AccountTab extends StatelessWidget {
-  final VoidCallback onGallery;
   final Future<void> Function() onSignOut;
-  const _AccountTab({required this.onGallery, required this.onSignOut});
+  const _AccountTab({required this.onSignOut});
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(AppStrings.signOutTitle),
+        content: const Text(AppStrings.signOutBody),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(AppStrings.assistantCancel)),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(AppStrings.signOut)),
+        ],
+      ),
+    );
+    if (confirmed == true) await onSignOut();
+  }
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -120,11 +103,11 @@ class _AccountTab extends StatelessWidget {
         // still refracts the shared glass edge instead of doing nothing.
         physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics()),
-        padding: const EdgeInsets.fromLTRB(22, 88, 22, 120),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           Text(AppStrings.account,
               style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.sm),
           _AccountRow(
             specularIndex: 0,
             icon: Icons.person_outline,
@@ -153,19 +136,13 @@ class _AccountTab extends StatelessWidget {
             onTap: () => Get.toNamed(AppRoutes.cost),
           ),
           const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           _AccountRow(
             specularIndex: 4,
-            icon: Icons.palette_outlined,
-            label: 'معرض التصميم',
-            onTap: onGallery,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          _AccountRow(
-            specularIndex: 5,
             icon: Icons.logout,
-            label: 'تسجيل الخروج',
+            label: AppStrings.signOut,
             danger: true,
-            onTap: onSignOut,
+            onTap: () => _confirmSignOut(context),
           ),
         ],
       );
