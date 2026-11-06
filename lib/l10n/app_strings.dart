@@ -24,6 +24,13 @@ abstract final class AppStrings {
   static const quickAdd = 'إضافة سريعة';
   static const logFood = 'تسجيل طعام';
   static const logWeight = 'تسجيل وزن';
+  static const logWeightToday = 'سجّل وزنك';
+  static const todayWorkout = 'تمرين اليوم';
+  static const restDay = 'يوم راحة';
+  static const viewFullWorkout = 'عرض التمرين كاملًا';
+  static String setsReps(int sets, int reps) => '$sets × $reps';
+  static String weightDelta7(double delta) =>
+      '${delta >= 0 ? '↑' : '↓'} ${delta.abs().toStringAsFixed(1)} كجم خلال 7 أيام';
   static const startWorkout = 'ابدأ التمرين';
   static const weightDate = 'تاريخ الوزن';
   static const weightSaved = 'تم حفظ الوزن';

@@ -1,5 +1,19 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 4: Today hero (2026-11-07)
+
+- Replaced Today's summary section with calorie/training/protein activity rings, a remaining-kcal ticker, macro cards, a weigh-in card, and a four-item workout checklist. Kept the keyed meal list, portion and edit/delete flows, history unlock, assistant entries, planned details, and per-day scroll key.
+- TodayController now watches the selected day's training and recent weights, the workout plan, and a bounded 30-day calorie-streak range. It materializes training only for the real current day and fires the first completed-ring celebration once per dateKey.
+- Added dashboard widget and controller celebration tests; updated the screenshot test's scroll finders for the taller layout. Captured and inspected a temporary Today render at 390px. `flutter analyze --no-pub` is clean and all 242 tests pass.
+- `flutter build apk --debug --no-pub` could not start because this sandbox cannot locate the Android SDK. APK install, emulator interaction, and logcat are unverified.
+
+### Deviations
+
+| Decision | Reason |
+|---|---|
+| Calorie streak uses a separate bounded 30-day day-log watch | The seven-day strip must retain its own range and logged-day behavior. |
+| Historical training toggles follow Today's existing unlock state | This preserves the requested past-day correction guard. |
+
 ## Redesign v2 Phase 3: navigation and quick actions (2026-11-07)
 
 - Added five always-labelled tabs with `HomeTab` navigation. Nutrition keeps My Meals and Market alive in an `IndexedStack`; Training and Progress have placeholder screens and bound controller stubs.

@@ -5,6 +5,13 @@ import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/repositories/day_repository.dart';
+import '../../data/repositories/body_weight_repository.dart';
+import '../../data/repositories/training_day_repository.dart';
+import '../../data/repositories/workout_plan_repository.dart';
+import '../../domain/body/body_weight.dart';
+import '../../domain/progress/streaks.dart';
+import '../../domain/training/training_day.dart';
+import '../../domain/training/workout_plan_item.dart';
 import '../../data/repositories/market_repository.dart';
 import '../../domain/day/day_log.dart';
 import '../../domain/food/food_item.dart';
@@ -28,15 +35,24 @@ import '../../ui/theme/mood_palette.dart';
 class TodayController extends GetxController with WidgetsBindingObserver {
   final String uid;
   final DayRepository _days;
+  final BodyWeightRepository _weights;
+  final TrainingDayRepository _trainingDays;
+  final WorkoutPlanRepository _plans;
   final SessionController _session;
   final Uuid _uuid;
 
   TodayController({
     required this.uid,
     DayRepository? days,
+    BodyWeightRepository? weights,
+    TrainingDayRepository? trainingDays,
+    WorkoutPlanRepository? plans,
     SessionController? session,
     Uuid uuid = const Uuid(),
   })  : _days = days ?? DayRepository(uid: uid),
+        _weights = weights ?? BodyWeightRepository(uid: uid),
+        _trainingDays = trainingDays ?? TrainingDayRepository(uid: uid),
+        _plans = plans ?? WorkoutPlanRepository(uid: uid),
         _session = session ?? Get.find<SessionController>(),
         _uuid = uuid;
 
@@ -44,6 +60,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   /// the quick-add sheet (only meaningful while today, not some other browsed
   /// day, is selected).
   bool get isViewingToday => _isToday(selectedDate.value);
+  double? get goalWeightKg => _session.profile.value?.goalWeightKg;
 
   /// The real current date, as a **reactive** value rather than a bare
   /// `DateTime.now()` read at build time.
@@ -78,6 +95,11 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
   final selectedDate = DateTime.now().obs;
   final day = Rxn<DayLog>();
+  final trainingDay = Rxn<TrainingDay>();
+  final weightToday = Rxn<BodyWeightEntry>();
+  final weightTrend = Rxn<WeightTrend>();
+  final calorieStreak = 0.obs;
+  final workoutPlan = <WorkoutPlanItem>[].obs;
   final loading = true.obs;
   final error = RxnString();
   final progress = 0.0.obs;
@@ -113,6 +135,11 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
   StreamSubscription<DayLog?>? _watchSub;
   StreamSubscription<List<DayLog>>? _weekSub;
+  StreamSubscription<List<DayLog>>? _streakSub;
+  StreamSubscription<TrainingDay?>? _trainingSub;
+  StreamSubscription<List<BodyWeightEntry>>? _weightSub;
+  StreamSubscription<List<WorkoutPlanItem>>? _planSub;
+  bool _planHasEmitted = false;
   int _selectionEpoch = 0;
 
   /// True whenever the current selection is "today", not some other day the
@@ -159,12 +186,88 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
   DateTime? _weekStart;
 
+  DateTime? _streakEnd;
+  void _watchStreak() {
+    final end = today.value;
+    if (_streakEnd == end) return;
+    _streakEnd = end;
+    _streakSub?.cancel();
+    _streakSub = _days
+        .watchRange(end.subtract(const Duration(days: 29)), end)
+        .listen((days) {
+      final hits = <String>{
+        for (final day in days)
+          if (isCalorieHit(day)) day.dateKey,
+      };
+      calorieStreak.value = computeStreak(hits, end).current;
+    });
+  }
+
+  Future<void> _ensureTrainingDay(
+      DateTime date, List<WorkoutPlanItem> plan, int epoch) async {
+    if (!_isToday(date) || epoch != _selectionEpoch) return;
+    try {
+      await _trainingDays.ensureTrainingDay(date, plan);
+    } catch (e) {
+      if (epoch == _selectionEpoch) error.value = e.toString();
+    }
+  }
+
+  /// Returns true exactly once for the first completed ring on each date.
+  bool checkRingCelebration() {
+    final current = day.value;
+    if (current == null || _celebratedDateKeys.contains(current.dateKey)) {
+      return false;
+    }
+    final kcal = current.targets.kcal > 0 &&
+        current.consumedKcal >= current.targets.kcal;
+    final protein = current.targets.macros.protein > 0 &&
+        current.consumedTotals.protein >= current.targets.macros.protein;
+    final training = trainingDay.value?.isComplete ?? false;
+    if (!kcal && !protein && !training) return false;
+    _celebratedDateKeys.add(current.dateKey);
+    goalCelebratedToday.value = true;
+    goalCelebration.value++;
+    unawaited(HapticPhrase.play(AppHaptics.goal));
+    return true;
+  }
+
+  /// Armed only by the user's own toggle on today. Loading a day that is
+  /// already complete (app restart, browsing history, a Firestore echo)
+  /// must never replay the celebration.
+  bool _celebrationArmed = false;
+
+  void _checkRingCelebration() {
+    if (!_celebrationArmed || !isViewingToday) return;
+    checkRingCelebration();
+  }
+
+  Future<void> toggleTraining(String localId) async {
+    if (!canEditSelectedDay || trainingDay.value == null) return;
+    // The training stream's next emission checks (and disarms) it.
+    _celebrationArmed = true;
+    try {
+      await _trainingDays.toggle(selectedDate.value, localId);
+    } catch (e) {
+      error.value = e.toString();
+    }
+  }
+
   @override
   void onInit() {
     super.onInit();
     WidgetsBinding.instance.addObserver(this);
     _scheduleRollover();
     _watchWeek();
+    _watchStreak();
+    _planSub = _plans.watchAll().listen((plan) {
+      _planHasEmitted = true;
+      workoutPlan.assignAll(plan);
+      if (isViewingToday) {
+        unawaited(
+            _ensureTrainingDay(selectedDate.value, plan, _selectionEpoch));
+      }
+    }, onError: (Object e) => error.value = e.toString());
     // A target saved on the profile screen has to reach today's ring now,
     // not at the next midnight. Today's document holds a frozen copy of the
     // targets (so that editing a goal never rewrites history), and only
@@ -179,6 +282,10 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _watchSub?.cancel();
     _weekSub?.cancel();
+    _streakSub?.cancel();
+    _trainingSub?.cancel();
+    _weightSub?.cancel();
+    _planSub?.cancel();
     super.onClose();
   }
 
@@ -204,6 +311,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     final current = _dateOnly(DateTime.now());
     if (current != today.value) today.value = current;
     _watchWeek();
+    _watchStreak();
     ensureCurrentDay();
   }
 
@@ -280,6 +388,9 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     // Do not leave a previous day's content visible while the new local
     // Firestore snapshot is arriving.
     _publishDay(null);
+    trainingDay.value = null;
+    weightToday.value = null;
+    weightTrend.value = null;
     // Stay in the loading state until the first snapshot for the new day
     // actually arrives. Clearing it eagerly left a few frames of
     // `loading == false && day == null` -- the exact signature of "this day
@@ -289,6 +400,28 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     error.value = null;
     _materializing = _isToday(date);
     await _watchSub?.cancel();
+    await _trainingSub?.cancel();
+    await _weightSub?.cancel();
+
+    _trainingSub = _trainingDays.watch(date).listen((value) {
+      if (epoch != _selectionEpoch) return;
+      trainingDay.value = value;
+      _checkRingCelebration();
+      _celebrationArmed = false;
+    }, onError: (Object e) {
+      if (epoch == _selectionEpoch) error.value = e.toString();
+    });
+    _weightSub = _weights
+        .watchRange(date.subtract(const Duration(days: 30)), date)
+        .listen((entries) {
+      if (epoch != _selectionEpoch) return;
+      weightToday.value = entries
+          .where((entry) => entry.dateKey == DayLog.keyFor(date))
+          .firstOrNull;
+      weightTrend.value = WeightTrend(entries);
+    }, onError: (Object e) {
+      if (epoch == _selectionEpoch) error.value = e.toString();
+    });
 
     _watchSub = _days.watch(date).listen((value) {
       if (epoch != _selectionEpoch) return;
@@ -302,6 +435,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
       if (unchanged) return;
       _publishDay(value);
       _syncMood(value);
+      _checkRingCelebration();
       goalCelebratedToday.value =
           value != null && _celebratedDateKeys.contains(value.dateKey);
     }, onError: (Object e) {
@@ -311,6 +445,9 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     });
 
     if (_isToday(date)) {
+      if (_planHasEmitted) {
+        unawaited(_ensureTrainingDay(date, workoutPlan.toList(), epoch));
+      }
       final profile = _session.profile.value;
       if (profile != null) {
         unawaited(_materializeToday(
@@ -353,16 +490,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
 
     // Crossing into the final 5% is a one-shot per day/session. Watching the
     // stream must never re-trigger it after rotation or a Firestore echo.
-    if (value != null &&
-        previousProgress != null &&
-        previousProgress < .95 &&
-        nextProgress >= .95 &&
-        !_celebratedDateKeys.contains(value.dateKey)) {
-      goalCelebratedToday.value = true;
-      _celebratedDateKeys.add(value.dateKey);
-      goalCelebration.value++;
-      unawaited(HapticPhrase.play(AppHaptics.goal));
-    }
+    _checkRingCelebration();
   }
 
   Future<void> toggleEaten(String entryId) async {
@@ -377,7 +505,9 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     final before = progress.value;
     final updated = current.withEntry(entry.toggleEaten());
     _publishDay(updated);
+    _celebrationArmed = true;
     _syncMood(day.value, previousProgress: before);
+    _celebrationArmed = false;
     // The ring's ripple stays tick-only -- undo is deliberately restrained.
     // The macro bars need no token: they glide to the new value off the
     // `day.value` change itself.

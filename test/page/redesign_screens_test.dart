@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:diet_app2/domain/day/day_log.dart';
+import 'package:diet_app2/domain/body/body_weight.dart';
+import 'package:diet_app2/domain/training/training_day.dart';
 import 'package:diet_app2/domain/nutrition/energy.dart';
 import 'package:diet_app2/domain/nutrition/macros.dart';
 import 'package:diet_app2/l10n/app_strings.dart';
@@ -78,6 +80,18 @@ class _TodayFixture extends GetxController implements TodayController {
           ]),
     ],
   ));
+  @override
+  final calorieStreak = 0.obs;
+  @override
+  final trainingDay = Rxn<TrainingDay>();
+  @override
+  final weightToday = Rxn<BodyWeightEntry>();
+  @override
+  final weightTrend = Rxn<WeightTrend>();
+  @override
+  final goalCelebration = 0.obs;
+  @override
+  double? get goalWeightKg => null;
   @override
   bool get isViewingToday =>
       DayLog.keyFor(selectedDate.value) == DayLog.keyFor(today.value);
@@ -182,9 +196,12 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(
         find.byTooltip(AppStrings.askAssistant).hitTestable(), findsOneWidget);
-    expect(find.text(AppStrings.addMeal).hitTestable(), findsOneWidget);
     await capture(tester, key, 'today-implemented');
-    await tester.drag(find.byType(ListView).first, const Offset(0, -260));
+    await tester.scrollUntilVisible(find.text(AppStrings.addMeal), 250,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text(AppStrings.addMeal), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('دجاج مع الأرز'), 250,
+        scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     expect(find.text('دجاج مع الأرز').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);

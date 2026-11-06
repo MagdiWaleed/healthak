@@ -38,6 +38,16 @@ StreakResult computeStreak(Set<String> hitDateKeys, DateTime today) {
   return StreakResult(current: current, best: best);
 }
 
+/// A day "hits" its calorie target when something was eaten and the total is
+/// within ±[tolerance] of the target. Over-eating does not extend a streak.
+/// Shared by Today's streak chip and the Progress tab so they always agree.
+bool isCalorieHit(DayLog day, {double tolerance = .10}) {
+  final target = day.targets.kcal;
+  final eaten = day.consumedKcal;
+  if (target <= 0 || eaten <= 0) return false;
+  return (eaten - target).abs() <= target * tolerance;
+}
+
 class DailyKcal {
   final String dateKey;
   final double kcalEaten;

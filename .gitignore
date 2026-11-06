@@ -61,3 +61,4 @@ output/emulator-ux/
 .flutter
 .flutter_tool_state
 phase3_*_output.txt
+.toolstate/

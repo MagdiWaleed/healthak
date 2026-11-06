@@ -5,9 +5,11 @@ import '../../domain/day/day_log.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
+import '../../ui/components/streak_chip.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/food/food_photo.dart';
 import '../../ui/motion/navigation.dart';
+import '../../ui/theme/motion_settings.dart';
 import '../../ui/theme/app_colors.dart';
 import '../assistant/assistant_tab.dart';
 import '../home/quick_add_sheet.dart';
@@ -15,6 +17,7 @@ import 'add_food_flow.dart';
 import 'edit_entry_sheet.dart';
 import 'today_controller.dart';
 import 'today_summary.dart';
+import 'today_dashboard.dart';
 
 class TodayTab extends GetView<TodayController> {
   const TodayTab({super.key});
@@ -51,10 +54,11 @@ class TodayTab extends GetView<TodayController> {
                   message: AppStrings.emptyDay),
             )
           else ...[
-            TodaySummary(
+            TodayDashboard(
                 key: ValueKey('summary-${day.dateKey}'),
                 day: day,
-                showPlannedDetails: false),
+                controller: controller,
+                readOnly: readOnly),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(
@@ -76,19 +80,21 @@ class TodayTab extends GetView<TodayController> {
               ),
             for (final slot in day.activeSlots) ...[
               for (final entry in day.entriesForSlot(slot))
-                Padding(
+                _MealEntrance(
                   key: ValueKey('entry-${entry.entryId}'),
-                  padding: const EdgeInsets.only(top: 10),
-                  child: TodayEntryCard(
-                    entry: entry,
-                    readOnly: readOnly,
-                    onToggle: () => controller.toggleEaten(entry.entryId),
-                    onEdit: () => EditEntrySheet.show(context,
+                  index: day.entries.indexOf(entry),
+                  child: Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 10),
+                      child: TodayEntryCard(
                         entry: entry,
-                        onSave: (items) =>
-                            controller.updateEntryItems(entry.entryId, items)),
-                    onDelete: () => controller.deleteEntry(entry.entryId),
-                  ),
+                        readOnly: readOnly,
+                        onToggle: () => controller.toggleEaten(entry.entryId),
+                        onEdit: () => EditEntrySheet.show(context,
+                            entry: entry,
+                            onSave: (items) => controller.updateEntryItems(
+                                entry.entryId, items)),
+                        onDelete: () => controller.deleteEntry(entry.entryId),
+                      )),
                 ),
             ],
             const SizedBox(height: 14),
@@ -102,12 +108,58 @@ class TodayTab extends GetView<TodayController> {
         };
         return ListView.builder(
           key: PageStorageKey('today-${DayLog.keyFor(date)}'),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 24),
           itemCount: sections.length,
           findChildIndexCallback: (key) => indexes[key],
           itemBuilder: (context, index) => sections[index],
         );
       });
+}
+
+class _MealEntrance extends StatefulWidget {
+  const _MealEntrance({required this.child, required this.index, super.key});
+  final Widget child;
+  final int index;
+
+  @override
+  State<_MealEntrance> createState() => _MealEntranceState();
+}
+
+class _MealEntranceState extends State<_MealEntrance>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 330),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(Duration(milliseconds: widget.index.clamp(0, 8) * 45),
+        () {
+      if (mounted) _animation.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _animation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!MotionSettings.enabled(context)) return widget.child;
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: _animation, curve: Curves.easeOut),
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, .07), end: Offset.zero)
+            .animate(
+                CurvedAnimation(parent: _animation, curve: Curves.easeOut)),
+        child: widget.child,
+      ),
+    );
+  }
 }
 
 class _TodayHeader extends StatelessWidget {
@@ -131,18 +183,7 @@ class _TodayHeader extends StatelessWidget {
       SizedBox(
         height: 44,
         child: Stack(children: [
-          Center(
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(AppStrings.appName,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppPalette.emerald,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 23)),
-              const SizedBox(width: 5),
-              const Icon(Icons.eco_rounded,
-                  color: AppPalette.emerald, size: 22),
-            ]),
-          ),
+          Center(child: StreakChip(count: controller.calorieStreak.value)),
           PositionedDirectional(
             start: 0,
             child: IconButton(
@@ -171,9 +212,7 @@ class _TodayHeader extends StatelessWidget {
           icon: const Icon(Icons.chevron_right_rounded),
         ),
         Text(
-          controller.isViewingToday
-              ? AppStrings.today
-              : '${AppStrings.weekdays[selected.weekday - 1]} ${selected.day}/${selected.month}',
+          '${AppStrings.weekdays[selected.weekday - 1]} ${selected.day}/${selected.month}',
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -270,6 +309,8 @@ class _WeekStrip extends StatelessWidget {
                 date: days[i],
                 width: chipWidth,
                 selected: DayLog.keyFor(days[i]) == DayLog.keyFor(selected),
+                isToday: DayLog.keyFor(days[i]) == DayLog.keyFor(today),
+                logged: logged.contains(DayLog.keyFor(days[i])),
                 onTap: DayLog.keyFor(days[i]) == DayLog.keyFor(today) ||
                         DayLog.keyFor(days[i]) == DayLog.keyFor(selected) ||
                         logged.contains(DayLog.keyFor(days[i]))
@@ -285,6 +326,8 @@ class _WeekStrip extends StatelessWidget {
 class DayChip extends StatelessWidget {
   final DateTime date;
   final bool selected;
+  final bool isToday;
+  final bool logged;
   final VoidCallback? onTap;
   final double width;
   static const stripWidth = 44.0;
@@ -292,6 +335,8 @@ class DayChip extends StatelessWidget {
   const DayChip(
       {required this.date,
       required this.selected,
+      this.isToday = false,
+      this.logged = false,
       super.key,
       this.onTap,
       this.width = stripWidth});
@@ -306,6 +351,8 @@ class DayChip extends StatelessWidget {
         child: Material(
           color: selected ? AppPalette.emerald : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
+          elevation: isToday ? 5 : 0,
+          shadowColor: AppPalette.emerald,
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(12),
@@ -329,6 +376,14 @@ class DayChip extends StatelessWidget {
                             : onTap == null
                                 ? AppPalette.muted.withValues(alpha: .5)
                                 : AppPalette.text)),
+                if (logged) ...[
+                  const SizedBox(height: 3),
+                  Container(
+                      width: 4,
+                      height: 4,
+                      decoration: const BoxDecoration(
+                          color: AppPalette.lime, shape: BoxShape.circle)),
+                ],
               ]),
             ),
           ),
