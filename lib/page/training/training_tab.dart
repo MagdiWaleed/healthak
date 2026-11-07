@@ -62,7 +62,8 @@ class _TrainingTabState extends State<TrainingTab> {
               SectionHeader(
                   title: AppStrings.training,
                   actionText: AppStrings.trainingPlanEdit,
-                  onAction: () => Get.toNamed(AppRoutes.trainingEditor)),
+                  onAction: () => Get.toNamed(AppRoutes.trainingEditor,
+                      arguments: selected.weekday)),
               const SizedBox(height: 12),
               LayoutBuilder(builder: (context, constraints) {
                 final width = (constraints.maxWidth - 18) / 7;
@@ -116,18 +117,25 @@ class _TrainingTabState extends State<TrainingTab> {
                             label: AppStrings.training)
                       ],
                       center: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text('${((day?.progress ?? 0) * 100).round()}%',
-                            style: Theme.of(context).textTheme.headlineLarge),
-                        Text(AppStrings.trainingProgress(
-                            controller.doneCount, day?.items.length ?? 0)),
+                        if (day?.isRestDay ?? true)
+                          Text(AppStrings.trainingRest,
+                              style: Theme.of(context).textTheme.titleMedium)
+                        else ...[
+                          Text('${((day?.progress ?? 0) * 100).round()}%',
+                              style: Theme.of(context).textTheme.headlineLarge),
+                          Text(AppStrings.trainingProgress(
+                              controller.doneCount, day!.items.length)),
+                        ],
                       ]))),
               const SizedBox(height: 18),
               Row(children: [
                 Expanded(
                     child: StatTile(
                         label: AppStrings.trainingDoneTotal,
-                        value: AppStrings.trainingProgress(
-                            controller.doneCount, day?.items.length ?? 0))),
+                        value: day?.isRestDay ?? true
+                            ? AppStrings.trainingRest
+                            : AppStrings.trainingProgress(
+                                controller.doneCount, day!.items.length))),
                 const SizedBox(width: 6),
                 Expanded(
                     child: StatTile(
@@ -137,7 +145,9 @@ class _TrainingTabState extends State<TrainingTab> {
                 Expanded(
                     child: StatTile(
                         label: AppStrings.trainingStreak,
-                        value: '${controller.streak}')),
+                        value: controller.streak == 0
+                            ? AppStrings.startStreak
+                            : '${controller.streak}')),
               ]),
               const SizedBox(height: 22),
               SectionHeader(
@@ -166,7 +176,10 @@ class _TrainingTabState extends State<TrainingTab> {
                       NeonButton(
                           label: AppStrings.trainingStart,
                           onPressed: () => Get.toNamed(AppRoutes.trainingEditor,
-                              arguments: true)),
+                                  arguments: (
+                                    weekday: selected.weekday,
+                                    showTemplates: true
+                                  ))),
                     ]))
               else if (day?.items.isEmpty ?? true)
                 const Padding(

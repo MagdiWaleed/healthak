@@ -107,6 +107,13 @@ class TrainingDay {
     final oneOffs = (existing?.items ?? <TrainingItem>[])
         .where((e) => e.planItemId == null)
         .toList();
+    final selectedIds = selected.map((e) => e.id).toSet();
+    final completedRemoved = (existing?.items ?? <TrainingItem>[])
+        .where((e) =>
+            e.planItemId != null &&
+            e.done &&
+            !selectedIds.contains(e.planItemId))
+        .toList();
     return TrainingDay(
       dateKey: DayLog.keyFor(date),
       date: DateTime(date.year, date.month, date.day),
@@ -124,6 +131,7 @@ class TrainingDay {
             done: previous[item.id]?.done ?? false,
             doneAt: previous[item.id]?.doneAt,
           ),
+        ...completedRemoved,
         ...oneOffs,
       ],
       materializedFromPlanVersion: workoutPlanVersionOf(plan, date.weekday),

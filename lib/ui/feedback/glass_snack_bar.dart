@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../glass/glass_card.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
-import '../theme/glass_tokens.dart';
 
 enum GlassSnackTone { info, success, warning, error }
 
 /// The one snackbar treatment for the app.
 ///
-/// This deliberately uses filter-free [GlassCard], not a [BackdropFilter]. A
-/// snackbar can coexist with the blurred header and bottom navigation, which
-/// already consume the entire two-filter budget. The shared glass gradient,
-/// specular edge, elevation, and status tint keep the material consistent
-/// without adding a third expensive readback layer.
+/// An opaque surface keeps the page behind it from showing through the text.
 abstract final class GlassSnackBar {
   static ScaffoldFeatureController<SnackBar, SnackBarClosedReason> show(
     BuildContext context,
@@ -44,10 +38,13 @@ abstract final class GlassSnackBar {
             (onAction == null
                 ? const Duration(seconds: 4)
                 : const Duration(seconds: 6)),
-        content: GlassCard(
-          elevation: GlassElevation.panel,
-          tint: visual.color,
+        content: Container(
           padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 10, 12),
+          decoration: BoxDecoration(
+            color: AppPalette.raised,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: visual.color),
+          ),
           child: Row(
             children: [
               Icon(visual.icon, size: 20, color: visual.color),

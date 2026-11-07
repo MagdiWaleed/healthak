@@ -76,4 +76,17 @@ void main() {
     );
     expect(workoutPlanVersionOf([a], 2), workoutPlanVersionOf([], 2));
   });
+
+  test('completed removed plan items survive while incomplete ones are dropped',
+      () {
+    final first = TrainingDay.materialize(
+        date: date, plan: [item('done', 0), item('pending', 1)], newId: newId);
+    final completed = first.withToggled(first.items.first.localId, date);
+    final next = TrainingDay.materialize(
+        date: date, plan: [], existing: completed, newId: newId);
+    expect(next.items.map((e) => e.planItemId), ['done']);
+    expect(next.items.single.localId, first.items.first.localId);
+    expect(next.items.single.done, isTrue);
+    expect(next.items.single.doneAt, date);
+  });
 }

@@ -41,7 +41,7 @@ class TodaySummary extends StatelessWidget {
       children: [
         const Text(AppStrings.todayEnergy,
             style: TextStyle(color: AppPalette.muted, fontSize: 12)),
-        Text('${eaten.round()} / ${target.round()}',
+        Text('${eaten.round()}/${target.round()}',
             textDirection: TextDirection.ltr,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 color: AppPalette.text,

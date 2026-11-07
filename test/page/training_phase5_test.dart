@@ -40,6 +40,7 @@ class _TrainingRepo implements TrainingDayRepository {
   final stream = StreamController<TrainingDay?>.broadcast();
   TrainingDay? current;
   int toggles = 0;
+  final ensuredPlans = <List<WorkoutPlanItem>>[];
   _TrainingRepo(this.current);
   @override
   Stream<TrainingDay?> watch(DateTime date) => stream.stream;
@@ -49,6 +50,7 @@ class _TrainingRepo implements TrainingDayRepository {
   @override
   Future<TrainingDay> ensureTrainingDay(
       DateTime date, List<WorkoutPlanItem> plan) async {
+    ensuredPlans.add(plan);
     final value = current ?? _day(date);
     stream.add(value);
     return value;
@@ -66,8 +68,9 @@ class _TrainingRepo implements TrainingDayRepository {
 }
 
 class _PlanRepo implements WorkoutPlanRepository {
+  final delayed = StreamController<List<WorkoutPlanItem>>.broadcast();
   @override
-  Stream<List<WorkoutPlanItem>> watchAll() => Stream.value([]);
+  Stream<List<WorkoutPlanItem>> watchAll() => delayed.stream;
   @override
   Future<List<WorkoutPlanItem>> getAll() async => [];
   @override
@@ -93,8 +96,10 @@ void main() {
 
   test('controller toggles once and celebrates complete day once', () async {
     final repo = _TrainingRepo(_day(_now));
+    final plans = _PlanRepo();
     final controller = Get.put(TrainingController(
-        uid: 'test', days: repo, plans: _PlanRepo(), clock: () => _now));
+        uid: 'test', days: repo, plans: plans, clock: () => _now));
+    plans.delayed.add([]);
     await Future<void>.delayed(const Duration(milliseconds: 10));
     expect(controller.day.value?.items.length, 1);
     await controller.toggle('one');
@@ -106,6 +111,37 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 10));
     expect(controller.celebration.value, 1);
     await repo.stream.close();
+    await plans.delayed.close();
+  });
+
+  test('late plan stream cannot rematerialize launch day with an empty plan',
+      () async {
+    final repo = _TrainingRepo(_day(_now, done: true));
+    final plans = _PlanRepo();
+    final controller = Get.put(TrainingController(
+        uid: 'test', days: repo, plans: plans, clock: () => _now));
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(repo.ensuredPlans, isEmpty);
+    plans.delayed.add([
+      WorkoutPlanItem(
+        id: 'plan',
+        exerciseId: 'bench_press',
+        nameAr: 'تمرين',
+        muscle: MuscleGroup.chest,
+        sets: 3,
+        reps: 10,
+        daysOfWeek: {6},
+        order: 0,
+        createdAt: _now,
+        updatedAt: _now,
+      )
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(repo.ensuredPlans, hasLength(1));
+    expect(repo.ensuredPlans.single.single.id, 'plan');
+    expect(controller.day.value?.items.single.done, isTrue);
+    await repo.stream.close();
+    await plans.delayed.close();
   });
 
   testWidgets('checklist renders and historical day is read only',
@@ -142,6 +178,8 @@ void main() {
         GetMaterialApp(theme: AppTheme.dark, home: const PlanEditorScreen()));
     await tester.pump();
     expect(find.text(AppStrings.trainingPlanEdit), findsOneWidget);
-    expect(find.text(AppStrings.trainingTemplates), findsOneWidget);
+    expect(find.text(AppStrings.trainingTemplates), findsWidgets);
+    expect(find.text(AppStrings.trainingEmptyEditorDay), findsOneWidget);
+    expect(AppStrings.trainingProgress(0, 2), '0/2');
   });
 }

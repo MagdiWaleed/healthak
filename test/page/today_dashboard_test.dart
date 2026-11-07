@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:diet_app2/data/repositories/body_weight_repository.dart';
 import 'package:diet_app2/data/repositories/day_repository.dart';
 import 'package:diet_app2/data/repositories/training_day_repository.dart';
@@ -8,9 +10,11 @@ import 'package:diet_app2/domain/nutrition/energy.dart';
 import 'package:diet_app2/domain/nutrition/macros.dart';
 import 'package:diet_app2/domain/training/exercise.dart';
 import 'package:diet_app2/domain/training/training_day.dart';
+import 'package:diet_app2/domain/training/workout_plan_item.dart';
 import 'package:diet_app2/l10n/app_strings.dart';
 import 'package:diet_app2/page/today/today_controller.dart';
 import 'package:diet_app2/page/today/today_dashboard.dart';
+import 'package:diet_app2/page/training/training_controller.dart';
 import 'package:diet_app2/service/session_controller.dart';
 import 'package:diet_app2/ui/components/activity_rings.dart';
 import 'package:diet_app2/ui/components/check_tile.dart';
@@ -45,6 +49,72 @@ class _Training implements TrainingDayRepository {
   int toggles = 0;
   @override
   Future<void> toggle(DateTime date, String localId) async => toggles++;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _SharedTraining implements TrainingDayRepository {
+  _SharedTraining(this.current);
+  TrainingDay current;
+  final snapshots = StreamController<TrainingDay?>.broadcast();
+  @override
+  Stream<TrainingDay?> watch(DateTime date) => snapshots.stream;
+  @override
+  Stream<List<TrainingDay>> watchRange(DateTime from, DateTime to) =>
+      Stream.value([]);
+  @override
+  Future<TrainingDay> ensureTrainingDay(
+      DateTime date, List<WorkoutPlanItem> plan) async {
+    snapshots.add(current);
+    return current;
+  }
+
+  @override
+  Future<void> toggle(DateTime date, String localId) async {
+    current = current.withToggled(localId, DateTime.now());
+    snapshots.add(current);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _LiveDays implements DayRepository {
+  @override
+  Stream<DayLog?> watch(DateTime date) => Stream.value(_day());
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _LiveWeights implements BodyWeightRepository {
+  @override
+  Stream<List<BodyWeightEntry>> watchRange(DateTime from, DateTime to) =>
+      Stream.value([]);
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _LiveToday extends TodayController {
+  _LiveToday(_SharedTraining training)
+      : super(
+            uid: 'test',
+            days: _LiveDays(),
+            weights: _LiveWeights(),
+            trainingDays: training,
+            plans: _Plans(),
+            session: _Session());
+  @override
+  // The fixture starts only the selected-day subscription.
+  // ignore: must_call_super
+  void onInit() {
+    unawaited(selectDate(DateTime.now()));
+  }
+}
+
+class _LivePlans implements WorkoutPlanRepository {
+  final snapshots = StreamController<List<WorkoutPlanItem>>.broadcast();
+  @override
+  Stream<List<WorkoutPlanItem>> watchAll() => snapshots.stream;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -110,6 +180,46 @@ Widget _app(Widget child, {double scale = 1}) => MaterialApp(
             child: Scaffold(body: SingleChildScrollView(child: child)))));
 
 void main() {
+  testWidgets('Training toggle updates Today controller and rendered legend',
+      (tester) async {
+    final now = DateTime.now();
+    final initial = TrainingDay(
+        dateKey: DayLog.keyFor(now),
+        date: now,
+        materializedFromPlanVersion: 1,
+        items: const [
+          TrainingItem(
+              localId: 'exercise',
+              planItemId: 'plan',
+              exerciseId: 'squat',
+              nameAr: 'قرفصاء',
+              muscle: MuscleGroup.legs,
+              sets: 3,
+              reps: 10,
+              order: 0)
+        ]);
+    final shared = _SharedTraining(initial);
+    final plans = _LivePlans();
+    final today = _LiveToday(shared)..onInit();
+    final training = TrainingController(
+        uid: 'test', days: shared, plans: plans, clock: () => now)
+      ..onInit();
+    await tester.pump();
+    plans.snapshots.add([]);
+    await tester.pumpWidget(
+        _app(TodayDashboard(day: _day(), controller: today, readOnly: true)));
+    await tester.pump();
+    expect(find.text('0/1'), findsOneWidget);
+    await training.toggle('exercise');
+    await tester.pump();
+    expect(today.trainingDay.value?.items.single.done, isTrue);
+    expect(find.text('1/1'), findsOneWidget);
+    training.onClose();
+    today.onClose();
+    await shared.snapshots.close();
+    await plans.snapshots.close();
+  });
+
   testWidgets('rings, weight and workout render and checks respect readOnly',
       (tester) async {
     final repo = _Training();

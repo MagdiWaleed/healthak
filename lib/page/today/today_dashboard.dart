@@ -26,7 +26,9 @@ class TodayDashboard extends StatelessWidget {
   final bool readOnly;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Obx(() => _buildDashboard(context));
+
+  Widget _buildDashboard(BuildContext context) {
     final training = controller.trainingDay.value;
     final weight = controller.weightToday.value;
     final trend = controller.weightTrend.value;

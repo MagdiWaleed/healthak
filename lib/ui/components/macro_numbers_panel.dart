@@ -169,7 +169,7 @@ class _MacroProgressRow extends StatelessWidget {
               ),
             ),
             Text(
-              ' / ${target.round()} ${AppStrings.grams}',
+              '/${target.round()} ${AppStrings.grams}',
               style: const TextStyle(
                 color: AppPalette.muted,
                 fontWeight: FontWeight.w600,

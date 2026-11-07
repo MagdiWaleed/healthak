@@ -68,8 +68,8 @@ class CheckTile extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: checked ? AppPalette.emerald : AppPalette.surface,
                     border: Border.all(
-                        color:
-                            checked ? AppPalette.emerald : AppPalette.outline),
+                        color: checked ? AppPalette.emerald : AppPalette.muted,
+                        width: 1.5),
                     boxShadow:
                         checked ? AppPalette.glow(AppPalette.emerald) : null,
                   ),

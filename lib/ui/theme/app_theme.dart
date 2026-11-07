@@ -85,8 +85,16 @@ abstract final class AppTheme {
             s.contains(WidgetState.selected) ? AppPalette.emerald : null),
         checkColor: const WidgetStatePropertyAll(AppPalette.onAccent),
       ),
-      switchTheme: const SwitchThemeData(
-        thumbColor: WidgetStatePropertyAll(AppPalette.emerald),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? AppPalette.onAccent
+                : AppPalette.muted),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? AppPalette.emerald
+                : AppPalette.raised),
+        trackOutlineColor: const WidgetStatePropertyAll(AppPalette.muted),
       ),
       sliderTheme: const SliderThemeData(activeTrackColor: AppPalette.emerald),
       segmentedButtonTheme: SegmentedButtonThemeData(

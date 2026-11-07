@@ -40,6 +40,7 @@ class TrainingController extends GetxController {
   StreamSubscription<List<WorkoutPlanItem>>? _planSub;
   StreamSubscription<List<TrainingDay>>? _rangeSub;
   int _epoch = 0;
+  bool _planHasEmitted = false;
   String? _togglePending;
 
   DateTime get today => _clock();
@@ -58,6 +59,7 @@ class TrainingController extends GetxController {
   void onInit() {
     super.onInit();
     _planSub = _plans.watchAll().listen((items) {
+      _planHasEmitted = true;
       plan.assignAll(items);
       if (isToday) {
         unawaited(_days
@@ -107,7 +109,7 @@ class TrainingController extends GetxController {
         loading.value = false;
       }
     });
-    if (isToday) {
+    if (isToday && _planHasEmitted) {
       try {
         await _days.ensureTrainingDay(selectedDate.value, plan.toList());
       } catch (e) {

@@ -20,7 +20,7 @@ class _NutritionTabState extends State<NutritionTab> {
         Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 8),
           child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(AppStrings.nutrition,
                 style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 12),

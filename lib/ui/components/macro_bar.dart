@@ -37,7 +37,7 @@ class MacroBar extends StatelessWidget {
           if (showHeader) ...[
             Row(children: [
               Expanded(child: Text(label)),
-              Text('${value.round()} / ${target.round()} غ')
+              Text('${value.round()}/${target.round()} غ')
             ]),
             const SizedBox(height: 6),
           ],
@@ -118,9 +118,8 @@ class _MacroFillState extends State<_MacroFill>
     super.dispose();
   }
 
-  double get _eatenTarget => widget.target <= 0
-      ? 0
-      : (widget.value / widget.target).clamp(0.0, 1.0);
+  double get _eatenTarget =>
+      widget.target <= 0 ? 0 : (widget.value / widget.target).clamp(0.0, 1.0);
 
   double get _plannedTarget => widget.planned == null || widget.target <= 0
       ? 0

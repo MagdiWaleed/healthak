@@ -46,12 +46,12 @@ void main() {
   testWidgets('planned food does not appear as eaten; plan remains accessible',
       (tester) async {
     await tester.pumpWidget(_app(TodaySummary(day: _day())));
-    expect(find.text('0 / 2000'), findsOneWidget);
+    expect(find.text('0/2000'), findsOneWidget);
     await tester.tap(find.text(AppStrings.plannedDetails));
     await tester.pumpAndSettle();
     expect(find.text(AppStrings.plannedSummary(156, 30, 0, 4)), findsOneWidget);
     await tester.pumpWidget(_app(TodaySummary(day: _day(eaten: true))));
-    expect(find.text('156 / 2000'), findsOneWidget);
+    expect(find.text('156/2000'), findsOneWidget);
     expect(find.text('1844'), findsOneWidget);
   });
 

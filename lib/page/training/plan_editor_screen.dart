@@ -29,6 +29,12 @@ class PlanEditorController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    final arguments = Get.arguments;
+    if (arguments is int && arguments >= 1 && arguments <= 7) {
+      weekday.value = arguments;
+    } else if (arguments is ({int weekday, bool showTemplates})) {
+      weekday.value = arguments.weekday;
+    }
     load();
   }
 
@@ -125,7 +131,10 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
   @override
   void initState() {
     super.initState();
-    if (Get.arguments == true) {
+    if (Get.arguments == true ||
+        (Get.arguments is ({int weekday, bool showTemplates}) &&
+            (Get.arguments as ({int weekday, bool showTemplates}))
+                .showTemplates)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _templates(context, Get.find<PlanEditorController>());
       });
@@ -249,111 +258,137 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
                             onSelected: (_) => controller.weekday.value = i))
                 ])),
             Expanded(
-                child: ReorderableListView.builder(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    itemCount: list.length,
-                    onReorder: controller.reorder,
-                    itemBuilder: (context, index) {
-                      final item = list[index];
-                      return GlassCard(
-                          key: ValueKey(item.id),
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: [
-                                  Expanded(
-                                      child: Text(item.nameAr,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium)),
-                                  IconButton(
-                                      icon: const Icon(Icons.delete_outline),
-                                      onPressed: () =>
-                                          _delete(context, controller, item.id))
-                                ]),
-                                Text(muscleLabelAr(item.muscle)),
-                                Wrap(
-                                    spacing: 12,
-                                    runSpacing: 4,
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    children: [
-                                      const Text(AppStrings.trainingSets),
-                                      NumericStepper(
-                                          value: item.sets.toDouble(),
-                                          step: 1,
-                                          min: 1,
-                                          max: 20,
-                                          format: (v) => '${v.round()}',
-                                          parse: (v) => double.tryParse(v),
-                                          onChanged: (v) => controller.replace(
-                                              item.copyWith(sets: v.round()))),
-                                      const Text(AppStrings.trainingReps),
-                                      NumericStepper(
-                                          value: item.reps.toDouble(),
-                                          step: 1,
-                                          min: 1,
-                                          max: 100,
-                                          format: (v) => '${v.round()}',
-                                          parse: (v) => double.tryParse(v),
-                                          onChanged: (v) => controller.replace(
-                                              item.copyWith(reps: v.round()))),
-                                    ]),
-                                SwitchListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(item.active
-                                        ? AppStrings.trainingPause
-                                        : AppStrings.trainingResume),
-                                    value: item.active,
-                                    onChanged: (v) => controller
-                                        .replace(item.copyWith(active: v))),
-                                Wrap(spacing: 4, children: [
-                                  for (var i = 1; i <= 7; i++)
-                                    FilterChip(
-                                        label: Text(
-                                            AppStrings.weekdayShort[i - 1]),
-                                        selected: item.daysOfWeek.contains(i),
-                                        onSelected: (selected) {
-                                          final days = {...item.daysOfWeek};
-                                          if (selected) {
-                                            days.add(i);
-                                          } else if (days.length > 1) {
-                                            days.remove(i);
-                                          }
-                                          controller.replace(
-                                              item.copyWith(daysOfWeek: days));
-                                        })
-                                ]),
-                              ]));
-                    })),
+                child: list.isEmpty
+                    ? Center(
+                        child:
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                        const Text(AppStrings.trainingEmptyEditorDay),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                            onPressed: () => _add(context, controller),
+                            child: const Text(AppStrings.trainingAddExercise)),
+                        OutlinedButton(
+                            onPressed: () => _templates(context, controller),
+                            child: const Text(AppStrings.trainingTemplates)),
+                      ]))
+                    : ReorderableListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        itemCount: list.length,
+                        onReorder: controller.reorder,
+                        itemBuilder: (context, index) {
+                          final item = list[index];
+                          return Padding(
+                              key: ValueKey(item.id),
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: GlassCard(
+                                  padding: const EdgeInsets.all(10),
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(children: [
+                                          Expanded(
+                                              child: Text(item.nameAr,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleMedium)),
+                                          IconButton(
+                                              icon: const Icon(
+                                                  Icons.delete_outline),
+                                              onPressed: () => _delete(
+                                                  context, controller, item.id))
+                                        ]),
+                                        Text(muscleLabelAr(item.muscle)),
+                                        Row(children: [
+                                          const Expanded(
+                                              child: Text(
+                                                  AppStrings.trainingSets)),
+                                          NumericStepper(
+                                              value: item.sets.toDouble(),
+                                              step: 1,
+                                              min: 1,
+                                              max: 20,
+                                              format: (v) => '${v.round()}',
+                                              parse: (v) => double.tryParse(v),
+                                              onChanged: (v) => controller
+                                                  .replace(item.copyWith(
+                                                      sets: v.round()))),
+                                        ]),
+                                        Row(children: [
+                                          const Expanded(
+                                              child: Text(
+                                                  AppStrings.trainingReps)),
+                                          NumericStepper(
+                                              value: item.reps.toDouble(),
+                                              step: 1,
+                                              min: 1,
+                                              max: 100,
+                                              format: (v) => '${v.round()}',
+                                              parse: (v) => double.tryParse(v),
+                                              onChanged: (v) => controller
+                                                  .replace(item.copyWith(
+                                                      reps: v.round()))),
+                                        ]),
+                                        SwitchListTile(
+                                            contentPadding: EdgeInsets.zero,
+                                            title: const Text(
+                                                AppStrings.trainingPlanActive),
+                                            value: item.active,
+                                            onChanged: (v) =>
+                                                controller.replace(
+                                                    item.copyWith(active: v))),
+                                        Wrap(spacing: 4, children: [
+                                          for (var i = 1; i <= 7; i++)
+                                            FilterChip(
+                                                label: Text(AppStrings
+                                                    .weekdayShort[i - 1]),
+                                                selected:
+                                                    item.daysOfWeek.contains(i),
+                                                onSelected: (selected) {
+                                                  final days = {
+                                                    ...item.daysOfWeek
+                                                  };
+                                                  if (selected) {
+                                                    days.add(i);
+                                                  } else if (days.length > 1) {
+                                                    days.remove(i);
+                                                  }
+                                                  controller.replace(
+                                                      item.copyWith(
+                                                          daysOfWeek: days));
+                                                })
+                                        ]),
+                                      ])));
+                        })),
             if (controller.error.value case final error?)
               Text(error, style: const TextStyle(color: AppPalette.coral)),
-            Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(children: [
-                  Wrap(spacing: 8, children: [
-                    OutlinedButton(
-                        onPressed: () => _add(context, controller),
-                        child: const Text(AppStrings.trainingAddExercise)),
-                    OutlinedButton(
-                        onPressed: () => _copy(context, controller),
-                        child: const Text(AppStrings.trainingCopyDays)),
-                    OutlinedButton(
-                        onPressed: () => _templates(context, controller),
-                        child: const Text(AppStrings.trainingTemplates)),
-                  ]),
-                  const SizedBox(height: 8),
-                  NeonButton(
-                      label: AppStrings.save,
-                      loading: controller.saving.value,
-                      onPressed: () async {
-                        if (await controller.save() && context.mounted) {
-                          Navigator.pop(context);
-                        }
-                      }),
-                ])),
+            SafeArea(
+                top: false,
+                child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(children: [
+                      Wrap(spacing: 8, children: [
+                        OutlinedButton(
+                            onPressed: () => _add(context, controller),
+                            child: const Text(AppStrings.trainingAddExercise)),
+                        OutlinedButton(
+                            onPressed: () => _copy(context, controller),
+                            child: const Text(AppStrings.trainingCopyDays)),
+                        OutlinedButton(
+                            onPressed: () => _templates(context, controller),
+                            child: const Text(AppStrings.trainingTemplates)),
+                      ]),
+                      const SizedBox(height: 8),
+                      NeonButton(
+                          label: AppStrings.save,
+                          loading: controller.saving.value,
+                          onPressed: () async {
+                            if (await controller.save() && context.mounted) {
+                              Navigator.pop(context);
+                            }
+                          }),
+                    ]))),
           ]);
         }));
   }

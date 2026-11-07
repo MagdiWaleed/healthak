@@ -1,5 +1,18 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 10: training recovery and device polish (2026-11-07)
+
+- TrainingController waits for the first plan stream emission before ensuring today's training day. The materializer preserves completed items removed from a plan, including their IDs and completion timestamps, while dropping removed incomplete items.
+- TodayDashboard now observes its training-day Rx directly. The shared-stream test toggles through TrainingController and verifies Today's controller and rendered legend update in the same session.
+- Corrected RTL progress fractions; added rest/no-plan presentation, visible checklist border, editor rows/state switch/weekday/empty state/spacing/safe bottom, opaque snackbar surface, and start-aligned Nutrition title.
+- Added domain, delayed-plan launch, shared-stream dashboard, and display assertions. `flutter analyze --no-pub` is clean and all 297 tests pass. Android APK/device verification remains unavailable because this sandbox denies access to the Android SDK.
+
+### Phase 10 deviations
+
+| Decision | Reason |
+|---|---|
+| None | Implemented the requested behavior without changing the data model. |
+
 ## Redesign v2 Phase 9: body-stat validation (2026-11-07)
 
 - Added pure domain bounds for birth-year age, height, and weight. Onboarding and profile now parse Arabic-Indic numbers through the shared input parser and reject invalid stats before calculating targets or saving; the offending field shows a specific Arabic error.

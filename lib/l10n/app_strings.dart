@@ -33,7 +33,7 @@ abstract final class AppStrings {
   static const trainingDeleteConfirm = 'حذف التمرين من الخطة؟';
   static const trainingSelectDays = 'اختر الأيام';
   static const trainingNoResults = 'لا توجد تمارين مطابقة';
-  static String trainingProgress(int done, int total) => '$done / $total';
+  static String trainingProgress(int done, int total) => '$done/$total';
   static const progress = 'التقدم';
   static const me = 'أنا';
   static const trainingEmptyTitle = 'خطتك التدريبية قريباً';
@@ -366,9 +366,9 @@ abstract final class AppStrings {
   static String progressBestStreak(int count) => 'الأفضل: $count يوم';
   static const progressWeeklyRecap = 'ملخص آخر 7 أيام';
   static String progressAvgKcal(int avg, int? target) =>
-      'متوسط السعرات: $avg / ${target?.toString() ?? '—'}';
+      'متوسط السعرات: $avg/${target?.toString() ?? '—'}';
   static String progressSessions(int done, int planned) =>
-      'التمارين: $done / $planned';
+      'التمارين: $done/$planned';
   static String progressWeightDelta(double? delta) =>
       'تغير الوزن: ${delta == null ? '—' : '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(1)} كجم'}';
   static const progressRecentWeights = 'آخر قياسات الوزن';
@@ -413,4 +413,7 @@ abstract final class AppStrings {
         BodyStatsError.height => invalidHeight,
         BodyStatsError.weight => invalidBodyWeight,
       };
+  // --- Phase 10 strings ---
+  static const trainingPlanActive = 'مفعّل في الخطة';
+  static const trainingEmptyEditorDay = 'لا تمارين في هذا اليوم';
 }
