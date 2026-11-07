@@ -13,7 +13,10 @@ import 'package:diet_app2/page/progress/progress_controller.dart';
 import 'package:diet_app2/page/progress/progress_tab.dart';
 import 'package:diet_app2/service/session_controller.dart';
 import 'package:diet_app2/ui/components/weight_chart.dart';
+import 'package:diet_app2/ui/glass/glass_card.dart';
+import 'package:diet_app2/ui/theme/app_colors.dart';
 import 'package:diet_app2/ui/theme/app_theme.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -199,6 +202,63 @@ void main() {
         scrollable: find.byType(Scrollable).first);
     final error = tester.takeException();
     expect(error, isNull);
+  });
+
+  testWidgets('weekly recap keeps seven labeled bars with one logged day',
+      (tester) async {
+    final today = DateTime(2026, 11, 7);
+    Get.put(_controller(days: [_day(today)]));
+    await tester.pumpWidget(_app(const ProgressTab()));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byType(BarChart), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    final chart = tester.widget<BarChart>(find.byType(BarChart));
+    expect(chart.data.barGroups.length, 7);
+    expect(chart.data.barGroups.map((group) => group.x),
+        orderedEquals([0, 1, 2, 3, 4, 5, 6]));
+    expect(chart.data.barGroups.last.barRods.single.toY,
+        greaterThan(chart.data.barGroups.first.barRods.single.toY));
+    expect(chart.data.extraLinesData.horizontalLines.single.dashArray, [5, 4]);
+    for (var i = 0; i < 7; i++) {
+      final weekday = DateTime(2026, 11, 1 + i).weekday;
+      expect(find.text(AppStrings.weekdayShort[weekday - 1]), findsWidgets);
+    }
+  });
+
+  testWidgets('zero streak uses muted flame and start wording', (tester) async {
+    Get.put(_controller());
+    await tester.pumpWidget(_app(const ProgressTab()));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text(AppStrings.progressStreaks), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.startStreak), findsNWidgets(3));
+    final flames = tester
+        .widgetList<Icon>(find.byIcon(Icons.local_fire_department_rounded));
+    expect(flames.every((icon) => icon.color == AppPalette.muted), isTrue);
+  });
+
+  testWidgets('active streak uses coral flame', (tester) async {
+    Get.put(_controller(training: [_trainingDay(DateTime(2026, 11, 7))]));
+    await tester.pumpWidget(_app(const ProgressTab()));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+        find.text(AppStrings.progressTrainingStreak), 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    final card = find
+        .ancestor(
+            of: find.text(AppStrings.progressTrainingStreak),
+            matching: find.byType(GlassCard))
+        .first;
+    expect(
+        tester
+            .widget<Icon>(find.descendant(
+                of: card,
+                matching: find.byIcon(Icons.local_fire_department_rounded)))
+            .color,
+        AppPalette.coral);
   });
 
   for (final count in [1, 2, 90]) {

@@ -383,9 +383,9 @@ class _TargetPreview extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'بروتين ${preview.macros.protein.round()}غ  •  '
-                'كارب ${preview.macros.carbs.round()}غ  •  '
-                'دهون ${preview.macros.fat.round()}غ',
+                'بروتين ${preview.macros.protein.round()}${AppStrings.grams}  •  '
+                'كارب ${preview.macros.carbs.round()}${AppStrings.grams}  •  '
+                'دهون ${preview.macros.fat.round()}${AppStrings.grams}',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],

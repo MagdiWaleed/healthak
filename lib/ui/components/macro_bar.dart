@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_strings.dart';
 
 import '../theme/motion_settings.dart';
 
@@ -37,7 +38,7 @@ class MacroBar extends StatelessWidget {
           if (showHeader) ...[
             Row(children: [
               Expanded(child: Text(label)),
-              Text('${value.round()}/${target.round()} غ')
+              Text('${value.round()}/${target.round()} ${AppStrings.grams}')
             ]),
             const SizedBox(height: 6),
           ],

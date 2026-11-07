@@ -180,6 +180,18 @@ Widget _app(Widget child, {double scale = 1}) => MaterialApp(
             child: Scaffold(body: SingleChildScrollView(child: child)))));
 
 void main() {
+  test('Today streak chip selects the largest current streak', () {
+    final controller = _controller(_Training());
+    controller.calorieStreak.value = 0;
+    controller.trainingStreak.value = 1;
+    controller.weighInStreak.value = 2;
+    expect(controller.bestCurrentStreak.count, 2);
+    expect(controller.bestCurrentStreak.name, AppStrings.streakWeighInName);
+    controller.trainingStreak.value = 3;
+    expect(controller.bestCurrentStreak.count, 3);
+    expect(controller.bestCurrentStreak.name, AppStrings.streakTrainingName);
+    controller.onClose();
+  });
   testWidgets('Training toggle updates Today controller and rendered legend',
       (tester) async {
     final now = DateTime.now();

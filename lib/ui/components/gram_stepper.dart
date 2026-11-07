@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'numeric_stepper.dart';
+import '../../l10n/app_strings.dart';
 import '../../domain/nutrition/limits.dart';
 import '../format/number_input.dart';
 
@@ -36,7 +37,7 @@ class GramStepper extends StatelessWidget {
         step: step,
         min: minGrams,
         max: maxGrams,
-        format: (v) => '${v.round()} غ',
+        format: (v) => '${v.round()} ${AppStrings.grams}',
         editText: (v) => v.round().toString(),
         parse: parseNutritionAmount,
       );

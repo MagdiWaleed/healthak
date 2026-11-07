@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -86,14 +87,7 @@ class OnboardingController extends GetxController {
       if (isLogin.value) {
         final user =
             await _auth.signIn(email: email.text, password: password.text);
-        final profile = await _profiles.get(user.uid);
-        if (profile?.onboardingComplete == true) {
-          unawaited(Get.offAllNamed(AppRoutes.home));
-        } else {
-          collectingProfile.value = true;
-          name.text = user.displayName ?? name.text;
-          recalculatePreview();
-        }
+        await _continueAfterSignIn(user);
       } else {
         await _auth.signUp(
             email: email.text, password: password.text, displayName: name.text);
@@ -104,6 +98,34 @@ class OnboardingController extends GetxController {
       error.value = failure.messageAr;
     } finally {
       busy.value = false;
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    busy.value = true;
+    error.value = null;
+    try {
+      final user = await _auth.signInWithGoogle();
+      await _continueAfterSignIn(user);
+    } on AuthFailure catch (failure) {
+      // Closing Google's page is a choice, not an error worth a red banner.
+      if (failure.code != 'canceled') error.value = failure.messageAr;
+    } finally {
+      busy.value = false;
+    }
+  }
+
+  /// Existing users go home; new ones (first Google sign-in, or an account
+  /// that never finished onboarding) continue to the body-stats step.
+  Future<void> _continueAfterSignIn(User user) async {
+    final profile = await _profiles.get(user.uid);
+    if (profile?.onboardingComplete == true) {
+      unawaited(Get.offAllNamed(AppRoutes.home));
+    } else {
+      collectingProfile.value = true;
+      name.text = user.displayName ?? name.text;
+      email.text = user.email ?? email.text;
+      recalculatePreview();
     }
   }
 

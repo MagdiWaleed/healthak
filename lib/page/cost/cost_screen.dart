@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../domain/nutrition/cost.dart';
 import '../../domain/nutrition/limits.dart';
+import '../../l10n/app_strings.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/glass_button.dart';
@@ -411,7 +412,7 @@ class _CostRowState extends State<_CostRow> {
           const SizedBox(height: AppSpacing.xs),
           Row(
             children: [
-              Text('${item.grams.round()} غ',
+              Text('${item.grams.round()} ${AppStrings.grams}',
                   style: Theme.of(context).textTheme.bodyMedium),
               const Spacer(),
               SizedBox(

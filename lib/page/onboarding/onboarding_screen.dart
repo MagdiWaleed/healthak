@@ -208,6 +208,36 @@ class _AuthForm extends StatelessWidget {
           TextButton(
               onPressed: controller.resetPassword,
               child: const Text(AppStrings.resetPassword)),
+        const SizedBox(height: 8),
+        const Row(children: [
+          Expanded(child: Divider(color: AppPalette.outline)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Text(AppStrings.orDivider,
+                style: TextStyle(color: AppPalette.muted)),
+          ),
+          Expanded(child: Divider(color: AppPalette.outline)),
+        ]),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed:
+                controller.busy.value ? null : controller.signInWithGoogle,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppPalette.text,
+              side: const BorderSide(color: AppPalette.outline),
+              minimumSize: const Size.fromHeight(52),
+              shape: const StadiumBorder(),
+            ),
+            icon: const Text('G',
+                style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    color: AppPalette.emerald)),
+            label: const Text(AppStrings.continueWithGoogle),
+          ),
+        ),
       ]);
 }
 

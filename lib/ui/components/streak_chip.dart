@@ -5,12 +5,15 @@ import '../theme/app_colors.dart';
 
 class StreakChip extends StatelessWidget {
   final int count;
-  const StreakChip({required this.count, super.key});
+  final String? semanticLabel;
+  const StreakChip({required this.count, this.semanticLabel, super.key});
 
   @override
   Widget build(BuildContext context) => Semantics(
-        label:
-            count == 0 ? AppStrings.startStreak : AppStrings.streakDays(count),
+        label: semanticLabel ??
+            (count == 0
+                ? AppStrings.startStreak
+                : AppStrings.streakDays(count)),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(

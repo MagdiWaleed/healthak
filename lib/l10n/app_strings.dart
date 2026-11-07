@@ -419,5 +419,17 @@ abstract final class AppStrings {
   // --- Phase 11 input strings ---
   static const invalidNumberRange = 'أدخل قيمة رقمية ضمن الحدود المسموحة';
   static const invalidCatalogMacros =
-      'مجموع المغذيات لكل ١٠٠ غ يجب ألا يتجاوز ١٠٠ غ';
+      'مجموع المغذيات لكل ١٠٠ $grams يجب ألا يتجاوز ١٠٠ $grams';
+  // --- Phase 12 strings ---
+  static const mealSaved = 'تم حفظ الوجبة';
+  static const mealLockWeight = 'تثبيت الوزن';
+  static const mealUnlockWeight = 'إلغاء التثبيت';
+  static const streakCalorieName = 'سلسلة السعرات';
+  static const streakTrainingName = 'سلسلة التمرين';
+  static const streakWeighInName = 'سلسلة تسجيل الوزن';
+  static String namedStreak(String name, int count) => '$name: $count يوم';
+
+  // --- Google sign-in strings ---
+  static const continueWithGoogle = 'المتابعة باستخدام Google';
+  static const orDivider = 'أو';
 }

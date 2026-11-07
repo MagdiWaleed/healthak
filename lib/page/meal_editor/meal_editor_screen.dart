@@ -37,6 +37,10 @@ class MealEditorScreen extends StatefulWidget {
 
   const MealEditorScreen({super.key, this.mealId});
 
+  static void showSavedSnack(BuildContext context) =>
+      GlassSnackBar.show(context, AppStrings.mealSaved,
+          tone: GlassSnackTone.success);
+
   @override
   State<MealEditorScreen> createState() => _MealEditorScreenState();
 }
@@ -75,41 +79,48 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
     super.dispose();
   }
 
-  void _snack(String message, {VoidCallback? undo}) {
+  void _snack(String message, {VoidCallback? undo, GlassSnackTone? tone}) {
     GlassSnackBar.show(
       context,
       message,
-      tone: undo == null ? GlassSnackTone.warning : GlassSnackTone.success,
+      tone: tone ?? GlassSnackTone.success,
       actionLabel: undo == null ? null : 'تراجع',
       onAction: undo,
     );
   }
 
   Future<void> _addFood() async {
+    FocusScope.of(context).unfocus();
     final food = await FoodPickerSheet.show(context);
+    if (mounted) FocusScope.of(context).unfocus();
     if (food == null || !mounted) return;
     controller.addFood(food);
     _snack('أُضيف ${food.name}', undo: controller.undo);
   }
 
-  Future<void> _addMealRef() => MealPickerSheet.show(context, controller);
+  Future<void> _addMealRef() async {
+    FocusScope.of(context).unfocus();
+    await MealPickerSheet.show(context, controller);
+    if (mounted) FocusScope.of(context).unfocus();
+  }
 
   Future<void> _balance() => BalanceSheet.show(context, controller);
 
   Future<void> _save() async {
     if (controller.name.value.trim().isEmpty) {
-      _snack('أدخل اسماً للوجبة أولاً');
+      _snack('أدخل اسماً للوجبة أولاً', tone: GlassSnackTone.warning);
       return;
     }
     if (controller.isEmpty) {
-      _snack('أضف مكوّناً واحداً على الأقل');
+      _snack('أضف مكوّناً واحداً على الأقل', tone: GlassSnackTone.warning);
       return;
     }
     final wasEditing = !controller.isNew;
     final saved = await controller.save();
     if (!mounted) return;
     if (saved == null) {
-      _snack(controller.error.value ?? 'تعذر الحفظ');
+      _snack(controller.error.value ?? 'تعذر الحفظ',
+          tone: GlassSnackTone.error);
       return;
     }
 
@@ -144,26 +155,28 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
     // Saving finishes the job the screen exists for, so it leaves. The
     // app-bar check used to save in place with no snack and no navigation,
     // which was indistinguishable from the tap doing nothing at all.
-    _snack('تم حفظ الوجبة');
+    MealEditorScreen.showSavedSnack(context);
     Get.back(result: saved);
   }
 
   Future<void> _addToToday() async {
     if (controller.name.value.trim().isEmpty || controller.isEmpty) {
-      _snack('أكمل الوجبة أولاً');
+      _snack('أكمل الوجبة أولاً', tone: GlassSnackTone.warning);
       return;
     }
     final ok = await controller.addToToday();
     if (!mounted) return;
-    _snack(ok
-        ? 'أُضيفت الوجبة لليوم'
-        : (controller.error.value ?? 'تعذرت الإضافة'));
+    _snack(
+        ok
+            ? 'أُضيفت الوجبة لليوم'
+            : (controller.error.value ?? 'تعذرت الإضافة'),
+        tone: ok ? GlassSnackTone.success : GlassSnackTone.error);
     if (ok) Get.back();
   }
 
   Future<void> _addToSchedule() async {
     if (controller.name.value.trim().isEmpty || controller.isEmpty) {
-      _snack('أكمل الوجبة أولاً');
+      _snack('أكمل الوجبة أولاً', tone: GlassSnackTone.warning);
       return;
     }
     final picked = await ScheduleSheet.show(context);
@@ -173,9 +186,11 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
       daysOfWeek: picked.daysOfWeek,
     );
     if (!mounted) return;
-    _snack(ok
-        ? 'أُضيفت الوجبة لجدولك'
-        : (controller.error.value ?? 'تعذرت الإضافة'));
+    _snack(
+        ok
+            ? 'أُضيفت الوجبة لجدولك'
+            : (controller.error.value ?? 'تعذرت الإضافة'),
+        tone: ok ? GlassSnackTone.success : GlassSnackTone.error);
     if (ok) Get.back();
   }
 
@@ -480,7 +495,8 @@ class _EmptyEditor extends StatelessWidget {
 
 class _EntryList extends StatelessWidget {
   final MealEditorController controller;
-  final void Function(String message, {VoidCallback? undo}) onSnack;
+  final void Function(String message,
+      {VoidCallback? undo, GlassSnackTone? tone}) onSnack;
   final Set<Object> enteredEntries;
 
   const _EntryList(
@@ -527,7 +543,7 @@ class _EntryList extends StatelessWidget {
               maxStaggered: 6,
               replayKey: entry.localId,
               replayGuard: enteredEntries,
-              child: _EntryRow(
+              child: MealEditorEntryRow(
                 controller: controller,
                 entry: entry,
                 index: index,
@@ -539,7 +555,7 @@ class _EntryList extends StatelessWidget {
       });
 }
 
-class _EntryRow extends StatelessWidget {
+class MealEditorEntryRow extends StatelessWidget {
   final MealEditorController controller;
   final MealEntry entry;
 
@@ -548,13 +564,15 @@ class _EntryRow extends StatelessWidget {
   /// placeholder value here would make every drag reorder from the wrong row.
   final int index;
 
-  final void Function(String message, {VoidCallback? undo}) onSnack;
+  final void Function(String message,
+      {VoidCallback? undo, GlassSnackTone? tone}) onSnack;
 
-  const _EntryRow({
+  const MealEditorEntryRow({
     required this.controller,
     required this.entry,
     required this.index,
     required this.onSnack,
+    super.key,
   });
 
   @override
@@ -563,74 +581,70 @@ class _EntryRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: GlassCard(
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ReorderableDragStartListener(
-              index: index,
-              child: const Padding(
-                padding: EdgeInsets.only(left: 4),
-                child: Icon(Icons.drag_handle_rounded, color: AppPalette.muted),
+            Row(children: [
+              if (isRef) ...[
+                const Icon(Icons.restaurant_menu,
+                    size: 14, color: AppPalette.violet),
+                const SizedBox(width: AppSpacing.xs),
+              ],
+              Expanded(
+                child: Text(entry.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium),
               ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      if (isRef)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4),
-                          child: Icon(Icons.restaurant_menu,
-                              size: 14, color: AppPalette.violet),
-                        ),
-                      Flexible(
-                        child: Text(entry.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${_kcalOf(entry).round()} سعرة',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            ),
-            Obx(() {
-              final locked = controller.lockedIds.contains(entry.localId);
-              return IconButton(
-                onPressed: () => controller.toggleLock(entry.localId),
-                icon: Icon(
-                  locked ? Icons.lock_rounded : Icons.lock_open_rounded,
-                  size: 18,
-                  color: locked ? AppPalette.amber : AppPalette.muted,
+              const SizedBox(width: AppSpacing.xs),
+              Text('${_kcalOf(entry).round()} ${AppStrings.kcal}',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ]),
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const Icon(Icons.drag_handle_rounded,
+                      color: AppPalette.muted),
                 ),
-                tooltip: locked ? 'إلغاء التثبيت' : 'تثبيت الوزن',
-              );
-            }),
-            switch (entry) {
-              FoodEntry f => GramStepper(
-                  grams: f.grams,
-                  onChanged: (g) => controller.updateFoodGrams(f.localId, g),
+                const Spacer(),
+                switch (entry) {
+                  FoodEntry f => GramStepper(
+                      grams: f.grams,
+                      onChanged: (g) =>
+                          controller.updateFoodGrams(f.localId, g),
+                    ),
+                  MealRefEntry r => ScaleStepper(
+                      scale: r.scale,
+                      onChanged: (s) => controller.updateRefScale(r.localId, s),
+                    ),
+                },
+                Obx(() {
+                  final locked = controller.lockedIds.contains(entry.localId);
+                  return IconButton(
+                    onPressed: () => controller.toggleLock(entry.localId),
+                    icon: Icon(
+                      locked ? Icons.lock_rounded : Icons.lock_open_rounded,
+                      size: 18,
+                      color: locked ? AppPalette.amber : AppPalette.muted,
+                    ),
+                    tooltip: locked
+                        ? AppStrings.mealUnlockWeight
+                        : AppStrings.mealLockWeight,
+                  );
+                }),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded,
+                      color: AppPalette.muted),
+                  onSelected: (action) => _onMenu(context, action),
+                  itemBuilder: (context) => [
+                    if (isRef)
+                      const PopupMenuItem(
+                          value: 'ungroup', child: Text('فك التجميع')),
+                    const PopupMenuItem(value: 'delete', child: Text('حذف')),
+                  ],
                 ),
-              MealRefEntry r => ScaleStepper(
-                  scale: r.scale,
-                  onChanged: (s) => controller.updateRefScale(r.localId, s),
-                ),
-            },
-            PopupMenuButton<String>(
-              icon:
-                  const Icon(Icons.more_vert_rounded, color: AppPalette.muted),
-              onSelected: (action) => _onMenu(context, action),
-              itemBuilder: (context) => [
-                if (isRef)
-                  const PopupMenuItem(
-                      value: 'ungroup', child: Text('فك التجميع')),
-                const PopupMenuItem(value: 'delete', child: Text('حذف')),
               ],
             ),
           ],
@@ -649,7 +663,7 @@ class _EntryRow extends StatelessWidget {
       case 'ungroup':
         final refusal = controller.ungroup(entry.localId);
         if (refusal != null) {
-          onSnack(refusal);
+          onSnack(refusal, tone: GlassSnackTone.warning);
         } else {
           onSnack('تم فك تجميع ${entry.name}', undo: controller.undo);
         }

@@ -1,5 +1,18 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 12: device-found UI polish (2026-11-07)
+
+- Split meal editor entries into a two-line name/kcal heading and a separate controls row. Unfocused the meal name around ingredient pickers; unified displayed gram suffixes with `AppStrings.grams`.
+- Audited snack feedback tones. Meal save and other successful actions show success, failed actions show error, and input/refusal prompts show warning.
+- Weekly recap now renders seven chronological Arabic-labeled bars, faint zero-day stubs, a dashed target, and a compact scale. Progress streaks use a muted zero flame and the shared start wording. Today selects the largest current calorie, training, or weigh-in streak and names it in tooltip/semantics.
+- Added meal editor 320px/1.6x and saved-snack tests, weekly-chart and streak tests. `flutter analyze --no-pub` is clean; all 309 tests pass. APK/device verification remains unavailable because the Android SDK is inaccessible in this sandbox (`No Android SDK found`).
+
+### Phase 12 deviations
+
+| Decision | Reason |
+|---|---|
+| Added bounded, read-only training and weigh-in streak listeners to Today | The existing Today controller only observed calorie streak history; the header needs current values for all three. No write or domain model changed. |
+
 ## Redesign v2 Phase 11: numeric input hardening (2026-11-07)
 
 - Added a shared `NumberField` that selects prefilled text on focus entry, accepts Arabic-Indic digits through the shared parser, and shows inline range errors. Migrated numeric input in quick portions, manual entries, catalog components, cost, marketplace, assistant proposals, weight entry, onboarding/profile, balance, and typed steppers.

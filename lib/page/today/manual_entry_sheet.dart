@@ -225,7 +225,8 @@ class _MacroField extends StatelessWidget {
         controller: controller,
         min: 0,
         max: kMaxEntryMacroGrams,
-        decoration: InputDecoration(labelText: label, suffixText: 'غ'),
+        decoration:
+            InputDecoration(labelText: label, suffixText: AppStrings.grams),
         onChanged: (_) => onChanged(),
       );
 }

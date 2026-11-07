@@ -162,7 +162,7 @@ class _ComponentEditorSheetState extends State<ComponentEditorSheet> {
                 const Text(AppStrings.invalidCatalogMacros,
                     style: TextStyle(color: AppPalette.danger)),
               Text(
-                '${_macros.kcal.round()} سعرة / 100غ (محسوبة تلقائياً)',
+                '${_macros.kcal.round()} سعرة / 100${AppStrings.grams} (محسوبة تلقائياً)',
                 style: const TextStyle(
                   color: AppPalette.text,
                   fontWeight: FontWeight.w700,
@@ -199,7 +199,8 @@ class _MacroField extends StatelessWidget {
         controller: controller,
         min: 0,
         max: kMaxPer100MacroGrams,
-        decoration: InputDecoration(labelText: label, suffixText: 'غ'),
+        decoration:
+            InputDecoration(labelText: label, suffixText: AppStrings.grams),
         onChanged: (_) => onChanged(),
       );
 }

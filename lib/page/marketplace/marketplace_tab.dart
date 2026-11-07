@@ -14,6 +14,7 @@ import '../../ui/components/neon_button.dart';
 import '../../ui/components/number_field.dart';
 import '../../ui/components/shimmer_box.dart';
 import '../../ui/format/number_input.dart';
+import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/motion/navigation.dart';
 import '../../ui/motion/staggered_entry.dart';
@@ -320,9 +321,8 @@ class _MarketDetailState extends State<_MarketDetail> {
       );
       if (mounted) {
         setState(() => saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.marketAddedToday)),
-        );
+        GlassSnackBar.show(context, AppStrings.marketAddedToday,
+            tone: GlassSnackTone.success);
       }
     } catch (_) {
       if (mounted) {
@@ -375,9 +375,8 @@ class _MarketDetailState extends State<_MarketDetail> {
           saving = false;
           scheduled = true;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.marketScheduled)),
-        );
+        GlassSnackBar.show(context, AppStrings.marketScheduled,
+            tone: GlassSnackTone.success);
       }
     } catch (_) {
       if (mounted) {

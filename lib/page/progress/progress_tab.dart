@@ -1,4 +1,5 @@
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -244,12 +245,14 @@ class ProgressTab extends GetView<ProgressController> {
 
   Widget _streakCard(String label, StreakResult streak) => GlassCard(
         child: Row(children: [
-          const Icon(Icons.local_fire_department_rounded,
-              color: AppPalette.coral),
+          Icon(Icons.local_fire_department_rounded,
+              color: streak.current > 0 ? AppPalette.coral : AppPalette.muted),
           const SizedBox(width: 10),
           Expanded(child: Text(label)),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(AppStrings.progressCurrentStreak(streak.current)),
+            Text(streak.current == 0
+                ? AppStrings.startStreak
+                : AppStrings.progressCurrentStreak(streak.current)),
             Text(AppStrings.progressBestStreak(streak.best),
                 style: const TextStyle(color: AppPalette.muted)),
           ]),
@@ -259,23 +262,26 @@ class ProgressTab extends GetView<ProgressController> {
   Widget _recapCard(
       WeeklyRecap recap, List<DayLog> days, double? target, DateTime start) {
     final byKey = {for (final day in days) day.dateKey: day.consumedKcal};
+    final maxKcal = math.max(
+        1,
+        math.max(target ?? 0,
+            byKey.values.isEmpty ? 0 : byKey.values.reduce(math.max)));
+    final chartMax = maxKcal * 1.1;
     final bars = <BarChartGroupData>[];
     for (var i = 0; i < 7; i++) {
       final date = DateTime(start.year, start.month, start.day + i);
+      final kcal = byKey[DayLog.keyFor(date)] ?? 0;
       bars.add(BarChartGroupData(x: i, barRods: [
         BarChartRodData(
-          toY: byKey[DayLog.keyFor(date)] ?? 0,
-          color: AppPalette.emerald,
-          width: 14,
-          borderRadius: BorderRadius.circular(5),
+          toY: kcal == 0 ? chartMax * .025 : math.max(kcal, chartMax * .06),
+          color: kcal == 0
+              ? AppPalette.emerald.withValues(alpha: .2)
+              : AppPalette.emerald,
+          width: 16,
+          borderRadius: BorderRadius.circular(4),
         ),
       ]));
     }
-    final maxKcal = [
-      ...byKey.values,
-      if (target != null) target,
-      1.0,
-    ].reduce((a, b) => a > b ? a : b);
     return GlassCard(
         child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,15 +293,56 @@ class ProgressTab extends GetView<ProgressController> {
         Text(AppStrings.progressWeightDelta(recap.weightDeltaKg)),
         const SizedBox(height: 12),
         SizedBox(
-            height: 100,
+            height: 112,
             child: Directionality(
               textDirection: TextDirection.ltr,
+              // Time advances left to right, matching the weight chart.
               child: BarChart(BarChartData(
-                maxY: maxKcal * 1.12,
+                minY: 0,
+                maxY: chartMax,
+                alignment: BarChartAlignment.spaceAround,
                 barGroups: bars,
                 borderData: FlBorderData(show: false),
                 gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 24,
+                    getTitlesWidget: (value, meta) {
+                      final i = value.toInt();
+                      if (i < 0 || i > 6 || value != i) {
+                        return const SizedBox.shrink();
+                      }
+                      final weekday =
+                          DateTime(start.year, start.month, start.day + i)
+                              .weekday;
+                      return SideTitleWidget(
+                          axisSide: meta.axisSide,
+                          child: Text(AppStrings.weekdayShort[weekday - 1],
+                              style: const TextStyle(
+                                  color: AppPalette.muted, fontSize: 10)));
+                    },
+                  )),
+                ),
+                extraLinesData: target == null
+                    ? null
+                    : ExtraLinesData(
+                        horizontalLines: [
+                          HorizontalLine(
+                            y: target,
+                            color: AppPalette.lime,
+                            strokeWidth: 1.5,
+                            dashArray: [5, 4],
+                          )
+                        ],
+                      ),
               )),
             )),
       ],

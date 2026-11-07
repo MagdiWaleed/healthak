@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../domain/nutrition/macros.dart';
+import '../../l10n/app_strings.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/motion_settings.dart';
@@ -314,7 +315,7 @@ class _MacroStat extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            '${grams.round()}غ',
+            '${grams.round()}${AppStrings.grams}',
             style: const TextStyle(
               fontSize: 12,
               color: AppPalette.muted,

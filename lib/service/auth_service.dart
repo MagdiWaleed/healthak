@@ -49,6 +49,23 @@ class AuthService extends GetxService {
     }
   }
 
+  /// Google ("Gmail") sign-in through Firebase Auth's own provider flow,
+  /// which opens Google's sign-in page in a browser tab. Deliberately not the
+  /// `google_sign_in` package (removed earlier at the user's request).
+  /// Needs the Google provider enabled in the Firebase console and the app's
+  /// SHA-1 registered. Signing in with a Google account whose email already
+  /// has an email/password account signs into that same account.
+  Future<User> signInWithGoogle() async {
+    try {
+      final provider = GoogleAuthProvider()
+        ..setCustomParameters({'prompt': 'select_account'});
+      final credential = await _auth.signInWithProvider(provider);
+      return credential.user!;
+    } on FirebaseAuthException catch (error) {
+      throw mapAuthFailure(error);
+    }
+  }
+
   Future<void> signOut() => _auth.signOut();
 
   Future<void> sendPasswordReset(String email) async {
@@ -99,5 +116,16 @@ AuthFailure mapAuthFailure(FirebaseAuthException error) => switch (error.code) {
           'requires-recent-login', 'سجل الدخول مرة أخرى لإكمال العملية'),
       'network-request-failed' =>
         const AuthFailure('network-request-failed', 'تعذر الاتصال بالإنترنت'),
+      'operation-not-allowed' => const AuthFailure(
+          'operation-not-allowed', 'تسجيل الدخول بحساب Google غير مفعّل بعد'),
+      'web-context-canceled' ||
+      'web-context-cancelled' ||
+      'canceled' ||
+      'cancelled' ||
+      'web-context-already-presented' =>
+        const AuthFailure('canceled', 'تم إلغاء تسجيل الدخول'),
+      'account-exists-with-different-credential' => const AuthFailure(
+          'account-exists-with-different-credential',
+          'هذا البريد مسجل بطريقة أخرى. سجّل الدخول بالبريد وكلمة المرور'),
       _ => AuthFailure(error.code, 'حدث خطأ. حاول مرة أخرى'),
     };

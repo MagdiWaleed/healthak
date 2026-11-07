@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/food/food_item.dart';
+import '../../l10n/app_strings.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/theme/app_colors.dart';
@@ -31,7 +32,7 @@ class FoodDetailScreen extends StatelessWidget {
                     children: [
                       Text('${food.per100.kcal.round()}',
                           style: Theme.of(context).textTheme.displayMedium),
-                      const Text('سعرة / 100غ',
+                      const Text('سعرة / 100${AppStrings.grams}',
                           style: TextStyle(color: AppPalette.muted)),
                     ],
                   ),
@@ -75,7 +76,7 @@ class FoodDetailScreen extends StatelessWidget {
                         color: AppPalette.muted),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
-                        'السعر التقريبي: ${food.pricePer100!.toStringAsFixed(1)} / 100غ'),
+                        'السعر التقريبي: ${food.pricePer100!.toStringAsFixed(1)} / 100${AppStrings.grams}'),
                   ],
                 ),
               ),
@@ -131,7 +132,7 @@ class _MacroRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.xs),
           Expanded(child: Text(label)),
-          Text('${grams.toStringAsFixed(1)} غ',
+          Text('${grams.toStringAsFixed(1)} ${AppStrings.grams}',
               style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
       );

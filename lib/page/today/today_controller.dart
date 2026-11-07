@@ -21,6 +21,7 @@ import '../../domain/market/market_meal.dart';
 import '../../domain/nutrition/energy.dart';
 import '../../domain/nutrition/macros.dart';
 import '../../domain/profile/user_profile.dart';
+import '../../l10n/app_strings.dart';
 import '../../service/session_controller.dart';
 import '../../ui/feedback/haptics.dart';
 import '../../ui/theme/mood_palette.dart';
@@ -99,6 +100,21 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   final weightToday = Rxn<BodyWeightEntry>();
   final weightTrend = Rxn<WeightTrend>();
   final calorieStreak = 0.obs;
+  final trainingStreak = 0.obs;
+  final weighInStreak = 0.obs;
+  ({int count, String name}) get bestCurrentStreak {
+    final calories = calorieStreak.value;
+    final training = trainingStreak.value;
+    final weighIn = weighInStreak.value;
+    if (training > calories && training >= weighIn) {
+      return (count: training, name: AppStrings.streakTrainingName);
+    }
+    if (weighIn > calories && weighIn > training) {
+      return (count: weighIn, name: AppStrings.streakWeighInName);
+    }
+    return (count: calories, name: AppStrings.streakCalorieName);
+  }
+
   final workoutPlan = <WorkoutPlanItem>[].obs;
   final loading = true.obs;
   final error = RxnString();
@@ -136,6 +152,8 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   StreamSubscription<DayLog?>? _watchSub;
   StreamSubscription<List<DayLog>>? _weekSub;
   StreamSubscription<List<DayLog>>? _streakSub;
+  StreamSubscription<List<TrainingDay>>? _trainingStreakSub;
+  StreamSubscription<List<BodyWeightEntry>>? _weightStreakSub;
   StreamSubscription<TrainingDay?>? _trainingSub;
   StreamSubscription<List<BodyWeightEntry>>? _weightSub;
   StreamSubscription<List<WorkoutPlanItem>>? _planSub;
@@ -200,6 +218,30 @@ class TodayController extends GetxController with WidgetsBindingObserver {
           if (isCalorieHit(day)) day.dateKey,
       };
       calorieStreak.value = computeStreak(hits, end).current;
+    }, onError: (Object _) {
+      calorieStreak.value = 0;
+    });
+    _trainingStreakSub?.cancel();
+    _trainingStreakSub = _trainingDays
+        .watchRange(end.subtract(const Duration(days: 29)), end)
+        .listen((days) {
+      trainingStreak.value = computeStreak({
+        for (final day in days)
+          if (day.isComplete) day.dateKey
+      }, end)
+          .current;
+    }, onError: (Object _) {
+      trainingStreak.value = 0;
+    });
+    _weightStreakSub?.cancel();
+    _weightStreakSub = _weights
+        .watchRange(end.subtract(const Duration(days: 29)), end)
+        .listen((entries) {
+      weighInStreak.value =
+          computeStreak({for (final entry in entries) entry.dateKey}, end)
+              .current;
+    }, onError: (Object _) {
+      weighInStreak.value = 0;
     });
   }
 
@@ -283,6 +325,8 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     _watchSub?.cancel();
     _weekSub?.cancel();
     _streakSub?.cancel();
+    _trainingStreakSub?.cancel();
+    _weightStreakSub?.cancel();
     _trainingSub?.cancel();
     _weightSub?.cancel();
     _planSub?.cancel();

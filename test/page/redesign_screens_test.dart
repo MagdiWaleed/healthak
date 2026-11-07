@@ -83,6 +83,22 @@ class _TodayFixture extends GetxController implements TodayController {
   @override
   final calorieStreak = 0.obs;
   @override
+  final trainingStreak = 0.obs;
+  @override
+  final weighInStreak = 0.obs;
+  @override
+  ({int count, String name}) get bestCurrentStreak {
+    if (trainingStreak.value > calorieStreak.value &&
+        trainingStreak.value >= weighInStreak.value) {
+      return (count: trainingStreak.value, name: AppStrings.streakTrainingName);
+    }
+    if (weighInStreak.value > calorieStreak.value) {
+      return (count: weighInStreak.value, name: AppStrings.streakWeighInName);
+    }
+    return (count: calorieStreak.value, name: AppStrings.streakCalorieName);
+  }
+
+  @override
   final trainingDay = Rxn<TrainingDay>();
   @override
   final weightToday = Rxn<BodyWeightEntry>();
@@ -207,6 +223,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('دجاج مع الأرز').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Today header updates to the named training streak',
+      (tester) async {
+    final fixture = _TodayFixture();
+    Get.put<TodayController>(fixture);
+    final key = GlobalKey();
+    await tester.pumpWidget(app(const TodayTab(), key, navigation: true));
+    await tester.pumpAndSettle();
+    expect(find.text(AppStrings.startStreak), findsWidgets);
+    fixture.trainingStreak.value = 1;
+    await tester.pump();
+    expect(
+        find.byTooltip(
+            AppStrings.namedStreak(AppStrings.streakTrainingName, 1)),
+        findsOneWidget);
   });
 
   testWidgets('assistant header and composer fit a narrow RTL screen',

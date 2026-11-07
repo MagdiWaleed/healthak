@@ -188,7 +188,20 @@ class _TodayHeader extends StatelessWidget {
       SizedBox(
         height: 44,
         child: Stack(children: [
-          Center(child: StreakChip(count: controller.calorieStreak.value)),
+          Center(child: Obx(() {
+            final streak = controller.bestCurrentStreak;
+            return Tooltip(
+              message: streak.count == 0
+                  ? AppStrings.startStreak
+                  : AppStrings.namedStreak(streak.name, streak.count),
+              child: StreakChip(
+                count: streak.count,
+                semanticLabel: streak.count == 0
+                    ? AppStrings.startStreak
+                    : AppStrings.namedStreak(streak.name, streak.count),
+              ),
+            );
+          })),
           PositionedDirectional(
             start: 0,
             child: IconButton(

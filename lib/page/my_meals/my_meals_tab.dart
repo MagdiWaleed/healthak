@@ -239,9 +239,8 @@ class _MealCard extends StatelessWidget {
       await MarketRepository().unpublish(meal);
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.marketUnpublishFailed)),
-        );
+        GlassSnackBar.show(context, AppStrings.marketUnpublishFailed,
+            tone: GlassSnackTone.error);
       }
     }
   }
