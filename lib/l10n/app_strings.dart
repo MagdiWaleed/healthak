@@ -57,6 +57,7 @@ abstract final class AppStrings {
   static const todayWorkout = 'تمرين اليوم';
   static const restDay = 'يوم راحة';
   static const viewFullWorkout = 'عرض التمرين كاملًا';
+
   /// "4 × 8" kept left-to-right inside Arabic text (LRI ... PDI isolate),
   /// otherwise the bidi algorithm shows it as "8 × 4". Optional load and
   /// extra detail follow: "4 × 8 · 12 كجم · الصدر".
@@ -71,6 +72,7 @@ abstract final class AppStrings {
     if (extra != null && extra.isNotEmpty) parts.add(extra);
     return parts.join(' · ');
   }
+
   static String weightDelta7(double delta) =>
       '${delta >= 0 ? '↑' : '↓'} ${delta.abs().toStringAsFixed(1)} كجم خلال 7 أيام';
   static const startWorkout = 'ابدأ التمرين';
@@ -450,18 +452,17 @@ abstract final class AppStrings {
   static const deficitMode = 'وضع العجز';
   static const deficitExplanation = 'بدل الخطة: كُل أقل من المعتاد';
   static const deficitOff = 'متوقف';
-  static const deficitLight = 'خفيف ١٠٪';
-  static const deficitMedium = 'متوسط ١٥٪';
-  static const deficitStrong = 'قوي ٢٠٪';
-  static const deficitLightPercent = '١٠٪';
-  static const deficitMediumPercent = '١٥٪';
-  static const deficitStrongPercent = '٢٠٪';
+  static const deficitLight = 'خفيف 10%';
+  static const deficitMedium = 'متوسط 15%';
+  static const deficitStrong = 'قوي 20%';
+  static const deficitLightPercent = '10%';
+  static const deficitMediumPercent = '15%';
+  static const deficitStrongPercent = '20%';
   static const deficitFloorNote = 'طُبّق الحد الأدنى الآمن للسعرات';
   static const deficitBudget = 'ميزانية السعرات';
   static const deficitOverBudget = 'تجاوزت الميزانية بـ';
   static String deficitEatLess(int kcal) => 'كُل أقل من $kcal سعرة';
-  static String deficitLevel(int percent) =>
-      'وضع العجز ${percent == 10 ? '١٠' : percent == 15 ? '١٥' : '٢٠'}٪';
+  static String deficitLevel(int percent) => 'وضع العجز $percent%';
   static String deficitPreview(int maintenance, int budget) =>
       'المعتاد $maintenance ← الميزانية $budget سعرة';
   static String deficitAssistantContext(int budget) =>
@@ -499,8 +500,7 @@ abstract final class AppStrings {
   static const templateDescriptions = {
     'home_full_body_3':
         'كل الجسم في كل جلسة بالعقلة والدمبل. مناسب للبداية والاستمرار.',
-    'home_upper_lower_4':
-        'يومان للجزء العلوي ويومان للأرجل، بالعقلة والدمبل.',
+    'home_upper_lower_4': 'يومان للجزء العلوي ويومان للأرجل، بالعقلة والدمبل.',
     'bodyweight_beginner_3': 'تمارين بوزن الجسم فقط، بدون أي أدوات.',
     'gym_push_pull_legs': 'يحتاج بار وبنش وكابل وأجهزة.',
     'gym_upper_lower': 'يحتاج بار وبنش وأجهزة.',
