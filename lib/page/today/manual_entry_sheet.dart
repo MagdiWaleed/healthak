@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/nutrition/macros.dart';
+import '../../domain/nutrition/limits.dart';
 import '../../domain/day/day_log.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/glass_button.dart';
+import '../../ui/components/number_field.dart';
 import '../../ui/format/number_input.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_sheet.dart';
@@ -53,7 +55,10 @@ class _ManualEntrySheetState extends State<ManualEntrySheet> {
       Macros(protein: _num(_protein), carbs: _num(_carbs), fat: _num(_fat));
 
   bool get _canSave =>
-      _name.text.trim().isNotEmpty && _validNumbers && !_macros.isZero;
+      _name.text.trim().isNotEmpty &&
+      _validNumbers &&
+      !_macros.isZero &&
+      isManualEntryMacros(_macros);
 
   @override
   void dispose() {
@@ -179,7 +184,9 @@ class _ManualEntrySheetState extends State<ManualEntrySheet> {
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              if (!_validNumbers || _error != null) ...[
+              if (!_validNumbers ||
+                  !isManualEntryMacros(_macros) ||
+                  _error != null) ...[
                 Text(_error ?? AppStrings.invalidNutrition,
                     style: const TextStyle(
                         color: AppPalette.danger, fontSize: 12)),
@@ -213,10 +220,11 @@ class _MacroField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => TextField(
+  Widget build(BuildContext context) => NumberField(
         enabled: enabled,
         controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        min: 0,
+        max: kMaxEntryMacroGrams,
         decoration: InputDecoration(labelText: label, suffixText: 'غ'),
         onChanged: (_) => onChanged(),
       );

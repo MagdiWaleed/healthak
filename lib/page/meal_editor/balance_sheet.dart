@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/nutrition/portion_solver.dart';
+import '../../domain/nutrition/limits.dart';
+import '../../ui/format/number_input.dart';
+import '../../ui/components/number_field.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/glass/glass_sheet.dart';
 import '../../ui/theme/app_colors.dart';
@@ -36,6 +39,11 @@ class _BalanceSheetState extends State<BalanceSheet> {
   );
   SolverResult? _preview;
 
+  bool get _validTarget {
+    final value = parseNutritionAmount(_target.text);
+    return value != null && value >= 1 && value <= kMaxManualEntryKcal;
+  }
+
   @override
   void dispose() {
     _target.dispose();
@@ -43,8 +51,8 @@ class _BalanceSheetState extends State<BalanceSheet> {
   }
 
   void _solve() {
-    final target = double.tryParse(_target.text.trim());
-    if (target == null || target <= 0) return;
+    final target = parseNutritionAmount(_target.text);
+    if (!_validTarget || target == null) return;
     setState(() {
       _preview = widget.controller.autoBalance(targetKcal: target);
     });
@@ -81,20 +89,22 @@ class _BalanceSheetState extends State<BalanceSheet> {
                 style: TextStyle(color: AppPalette.muted, fontSize: 13),
               ),
               const SizedBox(height: AppSpacing.md),
-              TextField(
+              NumberField(
                 controller: _target,
-                keyboardType: TextInputType.number,
+                min: 1,
+                max: kMaxManualEntryKcal,
                 decoration: const InputDecoration(
                   labelText: 'السعرات المستهدفة',
                   suffixText: 'سعرة',
                 ),
                 onSubmitted: (_) => _solve(),
+                onChanged: (_) => setState(() => _preview = null),
               ),
               const SizedBox(height: AppSpacing.sm),
               GlassButton(
                 label: 'احسب',
                 icon: Icons.auto_awesome,
-                onPressed: _solve,
+                onPressed: _validTarget ? _solve : null,
               ),
               if (preview != null) ...[
                 const SizedBox(height: AppSpacing.md),
@@ -104,7 +114,8 @@ class _BalanceSheetState extends State<BalanceSheet> {
                     style: const TextStyle(color: AppPalette.amber),
                   )
                 else ...[
-                  Text('المعاينة', style: Theme.of(context).textTheme.titleMedium),
+                  Text('المعاينة',
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: AppSpacing.xs),
                   for (final row in preview.diff)
                     if ((row.to - row.from).abs() > 0.5)

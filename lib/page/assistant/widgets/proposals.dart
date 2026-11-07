@@ -125,7 +125,7 @@ class _FoodProposalEditSheetState extends State<_FoodProposalEditSheet> {
   String? error;
 
   double? get amount => parseNutritionAmount(grams.text);
-  bool get valid => amount != null && amount! >= 1 && amount! <= 2000;
+  bool get valid => isPortionGrams(amount);
 
   @override
   void dispose() {
@@ -173,11 +173,11 @@ class _FoodProposalEditSheetState extends State<_FoodProposalEditSheet> {
               children: [
                 Text(widget.message.proposal?.card['name']?.toString() ?? ''),
                 const SizedBox(height: 16),
-                TextField(
+                NumberField(
                   controller: grams,
                   enabled: !saving,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  min: kMinPortionGrams,
+                  max: kMaxPortionGrams,
                   decoration: const InputDecoration(
                     labelText: AppStrings.portionGrams,
                     suffixText: AppStrings.grams,

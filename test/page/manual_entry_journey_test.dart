@@ -87,6 +87,18 @@ void main() {
     expect(controller.writes, isEmpty);
   });
 
+  testWidgets('manual kcal above 10000 is rejected', (tester) async {
+    final controller = _ManualController();
+    await open(tester, controller);
+    await fill(tester);
+    await tester.enterText(find.byType(TextField).at(3), '11111');
+    await tester.pump();
+    expect(find.text(AppStrings.invalidNumberRange), findsOneWidget);
+    expect(
+        tester.widget<NeonButton>(find.byType(NeonButton)).onPressed, isNull);
+    expect(controller.writes, isEmpty);
+  });
+
   testWidgets(
       'save waits, prevents duplicates, preserves input on error and retries',
       (tester) async {

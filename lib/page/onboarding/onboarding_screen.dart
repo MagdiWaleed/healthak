@@ -224,7 +224,8 @@ class _ProfileForm extends StatelessWidget {
               child: GlassField(
                   controller: controller.birthYear,
                   label: AppStrings.birthYear,
-                  onTap: () => selectAllOnFocus(controller.birthYear),
+                  min: DateTime.now().year - kMaxAgeYears,
+                  max: DateTime.now().year - kMinAgeYears,
                   errorText:
                       controller.fieldError.value == BodyStatsError.birthYear
                           ? AppStrings.invalidBirthYear
@@ -235,7 +236,8 @@ class _ProfileForm extends StatelessWidget {
               child: GlassField(
                   controller: controller.height,
                   label: AppStrings.height,
-                  onTap: () => selectAllOnFocus(controller.height),
+                  min: kMinHeightCm,
+                  max: kMaxHeightCm,
                   errorText:
                       controller.fieldError.value == BodyStatsError.height
                           ? AppStrings.invalidHeight
@@ -246,7 +248,8 @@ class _ProfileForm extends StatelessWidget {
         GlassField(
             controller: controller.weight,
             label: AppStrings.weight,
-            onTap: () => selectAllOnFocus(controller.weight),
+            min: kMinWeightKg,
+            max: kMaxWeightKg,
             errorText: controller.fieldError.value == BodyStatsError.weight
                 ? AppStrings.invalidBodyWeight
                 : null,
@@ -255,6 +258,9 @@ class _ProfileForm extends StatelessWidget {
         GlassField(
             controller: controller.goalWeight,
             label: AppStrings.goalWeight,
+            min: kMinWeightKg,
+            max: kMaxWeightKg,
+            allowEmpty: true,
             keyboardType: const TextInputType.numberWithOptions(decimal: true)),
         TextButton(
             onPressed: () => controller.goalWeight.clear(),

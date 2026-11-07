@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../data/repositories/food_repository.dart';
 import '../../domain/food/food_item.dart';
 import '../../domain/nutrition/macros.dart';
+import '../../domain/nutrition/limits.dart';
+import '../../l10n/app_strings.dart';
+import '../../ui/components/number_field.dart';
+import '../../ui/format/number_input.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/glass_chip.dart';
 import '../../ui/glass/glass_sheet.dart';
@@ -42,12 +46,17 @@ class _ComponentEditorSheetState extends State<ComponentEditorSheet> {
   final _fat = TextEditingController();
   String? _category;
 
-  double _num(TextEditingController c) => double.tryParse(c.text.trim()) ?? 0;
+  double _num(TextEditingController c) => parseNutritionAmount(c.text) ?? 0;
 
   Macros get _macros =>
       Macros(protein: _num(_protein), carbs: _num(_carbs), fat: _num(_fat));
 
-  bool get _canSave => _name.text.trim().isNotEmpty && !_macros.isZero;
+  bool get _canSave =>
+      _name.text.trim().isNotEmpty &&
+      [_protein, _carbs, _fat]
+          .every((c) => parseNutritionAmount(c.text) != null) &&
+      !_macros.isZero &&
+      isCatalogMacros(_macros);
 
   @override
   void dispose() {
@@ -149,6 +158,9 @@ class _ComponentEditorSheetState extends State<ComponentEditorSheet> {
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
+              if (!isCatalogMacros(_macros))
+                const Text(AppStrings.invalidCatalogMacros,
+                    style: TextStyle(color: AppPalette.danger)),
               Text(
                 '${_macros.kcal.round()} سعرة / 100غ (محسوبة تلقائياً)',
                 style: const TextStyle(
@@ -183,9 +195,10 @@ class _MacroField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => TextField(
+  Widget build(BuildContext context) => NumberField(
         controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        min: 0,
+        max: kMaxPer100MacroGrams,
         decoration: InputDecoration(labelText: label, suffixText: 'غ'),
         onChanged: (_) => onChanged(),
       );

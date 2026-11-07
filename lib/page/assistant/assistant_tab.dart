@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/day/day_log.dart';
+import '../../domain/nutrition/limits.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/agent/agent_model_catalog.dart';
 import '../../service/agent/agent_models.dart';
@@ -14,6 +15,7 @@ import '../../service/agent/agent_proposal.dart';
 import '../../service/agent/chat_orchestrator.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
+import '../../ui/components/number_field.dart';
 import '../../ui/format/number_input.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';

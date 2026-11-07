@@ -9,6 +9,7 @@ import '../../service/auth_service.dart';
 import '../../service/weigh_in_service.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/components/neon_button.dart';
+import '../../ui/components/number_field.dart';
 import '../../ui/format/number_input.dart';
 import '../../ui/glass/glass_sheet.dart';
 import '../../ui/motion/celebration.dart';
@@ -55,6 +56,7 @@ class _WeightEntrySheetState extends State<WeightEntrySheet> {
                 .clamp(kMinWeightKg * 10, kMaxWeightKg * 10) /
             10.0)
         .toStringAsFixed(1);
+    setState(() => _error = null);
   }
 
   Future<void> _pickDate() async {
@@ -130,10 +132,10 @@ class _WeightEntrySheetState extends State<WeightEntrySheet> {
               IconButton(
                   onPressed: () => _step(1), icon: const Icon(Icons.add)),
               Expanded(
-                  child: TextField(
+                  child: NumberField(
                 controller: _kg,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                min: kMinWeightKg,
+                max: kMaxWeightKg,
                 textAlign: TextAlign.center,
                 decoration: InputDecoration(
                     labelText: AppStrings.weight, errorText: _error),
@@ -144,7 +146,7 @@ class _WeightEntrySheetState extends State<WeightEntrySheet> {
             ]),
             const SizedBox(height: 16),
             NeonButton(
-                onPressed: _saving ? null : _save,
+                onPressed: _saving || !_valid ? null : _save,
                 loading: _saving,
                 label: _saving ? AppStrings.saving : AppStrings.save),
           ]),

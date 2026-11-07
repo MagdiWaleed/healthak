@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../domain/day/day_log.dart';
 import '../../domain/food/food_item.dart';
+import '../../domain/nutrition/limits.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/glass_button.dart';
+import '../../ui/components/number_field.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/food/food_photo.dart';
 import '../../ui/format/number_input.dart';
@@ -46,7 +48,7 @@ class _QuickFoodPortionSheetState extends State<QuickFoodPortionSheet> {
   String? _error;
 
   double? get _amount => parseNutritionAmount(_grams.text);
-  bool get _canSave => _amount != null && _amount! > 0;
+  bool get _canSave => isPortionGrams(_amount);
 
   @override
   void dispose() {
@@ -124,11 +126,11 @@ class _QuickFoodPortionSheetState extends State<QuickFoodPortionSheet> {
                 )),
               ]),
               const SizedBox(height: AppSpacing.md),
-              TextField(
+              NumberField(
                 controller: _grams,
                 enabled: !_saving,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                min: kMinPortionGrams,
+                max: kMaxPortionGrams,
                 decoration: const InputDecoration(
                   labelText: AppStrings.portionGrams,
                   suffixText: AppStrings.grams,

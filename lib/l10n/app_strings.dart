@@ -416,4 +416,8 @@ abstract final class AppStrings {
   // --- Phase 10 strings ---
   static const trainingPlanActive = 'مفعّل في الخطة';
   static const trainingEmptyEditorDay = 'لا تمارين في هذا اليوم';
+  // --- Phase 11 input strings ---
+  static const invalidNumberRange = 'أدخل قيمة رقمية ضمن الحدود المسموحة';
+  static const invalidCatalogMacros =
+      'مجموع المغذيات لكل ١٠٠ غ يجب ألا يتجاوز ١٠٠ غ';
 }

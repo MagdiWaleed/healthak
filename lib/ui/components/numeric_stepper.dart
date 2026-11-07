@@ -6,7 +6,9 @@ import '../feedback/haptics.dart';
 import '../motion/pressable.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../format/number_input.dart';
 import 'ticker_number.dart';
+import 'number_field.dart';
 
 /// Tap-either-arrow-to-step, long-press-to-repeat, tap-the-number-to-type
 /// numeric input. [GramStepper] and the meal editor's scale control are both
@@ -18,6 +20,8 @@ class NumericStepper extends StatefulWidget {
   final double step;
   final double min;
   final double max;
+  final double? inputMin;
+  final double? inputMax;
 
   /// How the current value renders when not being edited, e.g. `'120 غ'`.
   final String Function(double value) format;
@@ -41,6 +45,8 @@ class NumericStepper extends StatefulWidget {
     required this.parse,
     super.key,
     this.editText,
+    this.inputMin,
+    this.inputMax,
   });
 
   @override
@@ -112,9 +118,12 @@ class _NumericStepperState extends State<NumericStepper> {
   }
 
   void _commitEditing() {
-    final parsed = widget.parse(_text.text.trim());
+    final normalized = parseNutritionAmount(_text.text);
+    final parsed =
+        normalized == null ? null : widget.parse(normalized.toString());
+    if (parsed == null || parsed < widget.min || parsed > widget.max) return;
     setState(() => _editing = false);
-    if (parsed != null) _set(parsed);
+    _set(parsed);
   }
 
   @override
@@ -129,12 +138,12 @@ class _NumericStepperState extends State<NumericStepper> {
           SizedBox(
             width: 68,
             child: _editing
-                ? TextField(
+                ? NumberField(
                     controller: _text,
                     autofocus: true,
                     textAlign: TextAlign.center,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    min: widget.inputMin ?? widget.min,
+                    max: widget.inputMax ?? widget.max,
                     style: const TextStyle(
                       fontFamily: AppTypography.family,
                       fontWeight: FontWeight.w700,

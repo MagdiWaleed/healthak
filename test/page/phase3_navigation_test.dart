@@ -6,6 +6,7 @@ import 'package:diet_app2/page/nutrition/nutrition_tab.dart';
 import 'package:diet_app2/page/progress/weight_entry_sheet.dart';
 import 'package:diet_app2/service/session_controller.dart';
 import 'package:diet_app2/domain/profile/user_profile.dart';
+import 'package:diet_app2/ui/components/neon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -74,12 +75,13 @@ void main() {
     final field = find.byType(TextField);
     for (final value in ['', '0', '400']) {
       await tester.enterText(field, value);
-      await tester.tap(find.text(AppStrings.save));
       await tester.pump();
-      expect(find.text(AppStrings.invalidWeight), findsOneWidget);
+      expect(
+          tester.widget<NeonButton>(find.byType(NeonButton)).onPressed, isNull);
       expect(saved, isNull);
     }
     await tester.enterText(field, '72.5');
+    await tester.pump();
     await tester.tap(find.text(AppStrings.save));
     await tester.pump();
     expect(saved, 72.5);
@@ -93,6 +95,7 @@ void main() {
       saveWeight: (_, kg) async => saved = kg,
     ))));
     await tester.enterText(find.byType(TextField), '٧٢٫٥');
+    await tester.pump();
     await tester.tap(find.text(AppStrings.save));
     await tester.pump();
     expect(saved, 72.5);

@@ -5,11 +5,13 @@ import 'package:get/get.dart';
 import '../../data/repositories/market_repository.dart';
 import '../../domain/day/day_log.dart';
 import '../../domain/market/market_meal.dart';
+import '../../domain/nutrition/limits.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/neon_button.dart';
+import '../../ui/components/number_field.dart';
 import '../../ui/components/shimmer_box.dart';
 import '../../ui/format/number_input.dart';
 import '../../ui/glass/glass_card.dart';
@@ -212,7 +214,7 @@ class _MarketDetailState extends State<_MarketDetail> {
     final values = [
       for (final controller in weights) parseNutritionAmount(controller.text)
     ];
-    if (values.any((value) => value == null || value < 1 || value > 2000)) {
+    if (values.any((value) => !isPortionGrams(value))) {
       return null;
     }
     return values.cast<double>();
@@ -415,11 +417,11 @@ class _MarketDetailState extends State<_MarketDetail> {
                 Expanded(child: Text(meal.items[i].name)),
                 SizedBox(
                   width: 80,
-                  child: TextField(
+                  child: NumberField(
                     controller: weights[i],
                     enabled: !saving,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    min: kMinPortionGrams,
+                    max: kMaxPortionGrams,
                     textAlign: TextAlign.center,
                     decoration:
                         const InputDecoration(suffixText: AppStrings.grams),
@@ -493,7 +495,7 @@ class _MarketDetailState extends State<_MarketDetail> {
           ),
           const SizedBox(height: 8),
           NeonButton(
-            onPressed: saving || saved ? null : _copy,
+            onPressed: saving || saved || parsedWeights == null ? null : _copy,
             label: saved
                 ? AppStrings.marketCopied
                 : saving

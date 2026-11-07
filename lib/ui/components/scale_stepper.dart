@@ -22,6 +22,8 @@ class ScaleStepper extends StatelessWidget {
         step: 0.1,
         min: 0.05,
         max: 10,
+        inputMin: 5,
+        inputMax: 1000,
         format: (v) => '${(v * 100).round()}٪',
         editText: (v) => (v * 100).round().toString(),
         parse: (text) {

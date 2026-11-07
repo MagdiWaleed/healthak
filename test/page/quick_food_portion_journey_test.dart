@@ -68,6 +68,19 @@ void main() {
     expect(controller.writes, isEmpty);
     expect(find.text(AppStrings.portionCalories(165)), findsOneWidget);
 
+    await tester.enterText(find.byType(TextField), '250100');
+    await tester.pump();
+    expect(find.text(AppStrings.invalidNumberRange), findsOneWidget);
+    expect(
+        tester.widget<NeonButton>(find.byType(NeonButton)).onPressed, isNull);
+    expect(controller.writes, isEmpty);
+
+    await tester.enterText(find.byType(TextField), '٢٥٠');
+    await tester.pump();
+    expect(find.text(AppStrings.portionCalories(413)), findsOneWidget);
+    expect(tester.widget<NeonButton>(find.byType(NeonButton)).onPressed,
+        isNotNull);
+
     await tester.enterText(find.byType(TextField), '0');
     await tester.pump();
     expect(find.text(AppStrings.invalidPortion), findsOneWidget);

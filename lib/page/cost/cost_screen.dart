@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/nutrition/cost.dart';
+import '../../domain/nutrition/limits.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/components/number_field.dart';
+import '../../ui/format/number_input.dart';
 import '../../ui/components/shimmer_box.dart';
 import '../../ui/components/ticker_number.dart';
 import '../../ui/feedback/haptics.dart';
@@ -362,10 +365,11 @@ class _CostRowState extends State<_CostRow> {
   }
 
   void _commit(String text) {
-    final entered = double.tryParse(text.trim());
-    if (entered == null || entered < 0) return;
+    if (text.trim().isEmpty) return;
+    final entered = parseNutritionAmount(text);
+    if (!isPrice(entered)) return;
     // The field speaks the chosen unit; everything below stores per 100g.
-    final perHundred = pricePer100From(entered, widget.unit);
+    final perHundred = pricePer100From(entered!, widget.unit);
     if (perHundred == widget.item.pricePer100) return;
     HapticPhrase.play(AppHaptics.step);
     widget.onPrice(perHundred);
@@ -412,10 +416,9 @@ class _CostRowState extends State<_CostRow> {
               const Spacer(),
               SizedBox(
                 width: 76,
-                child: TextField(
+                child: NumberField(
                   controller: _price,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  min: kMinPrice,
                   textAlign: TextAlign.center,
                   decoration: const InputDecoration(
                     labelText: 'السعر',

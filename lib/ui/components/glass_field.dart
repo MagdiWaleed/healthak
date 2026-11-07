@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'number_field.dart';
 
 class GlassField extends StatelessWidget {
   final TextEditingController controller;
@@ -7,6 +8,9 @@ class GlassField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? errorText;
   final VoidCallback? onTap;
+  final num? min;
+  final num? max;
+  final bool allowEmpty;
 
   const GlassField({
     required this.controller,
@@ -16,14 +20,25 @@ class GlassField extends StatelessWidget {
     this.keyboardType,
     this.errorText,
     this.onTap,
+    this.min,
+    this.max,
+    this.allowEmpty = false,
   });
 
   @override
-  Widget build(BuildContext context) => TextField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        onTap: onTap,
-        decoration: InputDecoration(labelText: label, errorText: errorText),
-      );
+  Widget build(BuildContext context) => keyboardType == null
+      ? TextField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          onTap: onTap,
+          decoration: InputDecoration(labelText: label, errorText: errorText),
+        )
+      : NumberField(
+          controller: controller,
+          min: min,
+          max: max,
+          allowEmpty: allowEmpty,
+          decoration: InputDecoration(labelText: label, errorText: errorText),
+        );
 }

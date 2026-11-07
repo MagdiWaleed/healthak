@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'numeric_stepper.dart';
+import '../../domain/nutrition/limits.dart';
+import '../format/number_input.dart';
 
 /// Weight input: tap either arrow to step, long-press to repeat, tap the
 /// number to type an exact value.
@@ -23,8 +25,8 @@ class GramStepper extends StatelessWidget {
     required this.onChanged,
     super.key,
     this.step = 5,
-    this.minGrams = 1,
-    this.maxGrams = 5000,
+    this.minGrams = kMinPortionGrams,
+    this.maxGrams = kMaxPortionGrams,
   });
 
   @override
@@ -36,6 +38,6 @@ class GramStepper extends StatelessWidget {
         max: maxGrams,
         format: (v) => '${v.round()} غ',
         editText: (v) => v.round().toString(),
-        parse: (text) => double.tryParse(text),
+        parse: parseNutritionAmount,
       );
 }

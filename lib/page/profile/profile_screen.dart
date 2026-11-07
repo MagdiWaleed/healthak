@@ -9,9 +9,9 @@ import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/components/number_field.dart';
 import '../../ui/components/energy_breakdown_card.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
-import '../../ui/format/body_stat_input.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/theme/app_colors.dart';
@@ -104,10 +104,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: AppSpacing.sm),
                       Row(children: [
                         Expanded(
-                          child: TextField(
+                          child: NumberField(
                             controller: controller.height,
-                            onTap: () => selectAllOnFocus(controller.height),
-                            keyboardType: TextInputType.number,
+                            min: kMinHeightCm,
+                            max: kMaxHeightCm,
                             decoration: InputDecoration(
                                 labelText: 'الطول (سم)',
                                 errorText: controller.fieldError.value ==
@@ -118,10 +118,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
-                          child: TextField(
+                          child: NumberField(
                             controller: controller.weight,
-                            onTap: () => selectAllOnFocus(controller.weight),
-                            keyboardType: TextInputType.number,
+                            min: kMinWeightKg,
+                            max: kMaxWeightKg,
                             decoration: InputDecoration(
                                 labelText: 'الوزن (كغ)',
                                 errorText: controller.fieldError.value ==
@@ -132,10 +132,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ]),
                       const SizedBox(height: AppSpacing.sm),
-                      TextField(
+                      NumberField(
                         controller: controller.birthYear,
-                        onTap: () => selectAllOnFocus(controller.birthYear),
-                        keyboardType: TextInputType.number,
+                        min: DateTime.now().year - kMaxAgeYears,
+                        max: DateTime.now().year - kMinAgeYears,
                         decoration: InputDecoration(
                             labelText: 'سنة الميلاد',
                             errorText: controller.fieldError.value ==

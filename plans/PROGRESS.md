@@ -1,5 +1,17 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 11: numeric input hardening (2026-11-07)
+
+- Added a shared `NumberField` that selects prefilled text on focus entry, accepts Arabic-Indic digits through the shared parser, and shows inline range errors. Migrated numeric input in quick portions, manual entries, catalog components, cost, marketplace, assistant proposals, weight entry, onboarding/profile, balance, and typed steppers.
+- Added pure nutrition bounds for portions, manual macros/kcal, catalog per-100 macros, and prices. Invalid amounts disable primary actions; typed steppers retain the edit until a valid value is entered.
+- Added domain boundary and field selection tests, plus quick portion and manual entry regression coverage. Updated weight-sheet tests for disabled invalid saves. `flutter analyze --no-pub` is clean and all 302 tests pass.
+
+### Phase 11 deviations
+
+| Decision | Reason |
+|---|---|
+| None | Existing data flow and solver bounds remain in place. |
+
 ## Redesign v2 Phase 10: training recovery and device polish (2026-11-07)
 
 - TrainingController waits for the first plan stream emission before ensuring today's training day. The materializer preserves completed items removed from a plan, including their IDs and completion timestamps, while dropping removed incomplete items.
