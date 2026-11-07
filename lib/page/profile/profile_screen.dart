@@ -3,12 +3,15 @@ import 'package:get/get.dart';
 
 import '../../app/app_routes.dart';
 import '../../domain/nutrition/energy.dart';
+import '../../domain/profile/body_stats.dart';
+import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/glass_chip.dart';
 import '../../ui/components/energy_breakdown_card.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
+import '../../ui/format/body_stat_input.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/theme/app_colors.dart';
@@ -92,41 +95,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.md, 88, AppSpacing.md, AppSpacing.xxl),
           children: [
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('البيانات الجسدية',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(children: [
-                    Expanded(
-                      child: TextField(
-                        controller: controller.height,
+            Obx(() => GlassCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('البيانات الجسدية',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(children: [
+                        Expanded(
+                          child: TextField(
+                            controller: controller.height,
+                            onTap: () => selectAllOnFocus(controller.height),
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                                labelText: 'الطول (سم)',
+                                errorText: controller.fieldError.value ==
+                                        BodyStatsError.height
+                                    ? AppStrings.invalidHeight
+                                    : null),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: TextField(
+                            controller: controller.weight,
+                            onTap: () => selectAllOnFocus(controller.weight),
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                                labelText: 'الوزن (كغ)',
+                                errorText: controller.fieldError.value ==
+                                        BodyStatsError.weight
+                                    ? AppStrings.invalidBodyWeight
+                                    : null),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: AppSpacing.sm),
+                      TextField(
+                        controller: controller.birthYear,
+                        onTap: () => selectAllOnFocus(controller.birthYear),
                         keyboardType: TextInputType.number,
-                        decoration:
-                            const InputDecoration(labelText: 'الطول (سم)'),
+                        decoration: InputDecoration(
+                            labelText: 'سنة الميلاد',
+                            errorText: controller.fieldError.value ==
+                                    BodyStatsError.birthYear
+                                ? AppStrings.invalidBirthYear
+                                : null),
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: TextField(
-                        controller: controller.weight,
-                        keyboardType: TextInputType.number,
-                        decoration:
-                            const InputDecoration(labelText: 'الوزن (كغ)'),
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: AppSpacing.sm),
-                  TextField(
-                    controller: controller.birthYear,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'سنة الميلاد'),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                )),
             const SizedBox(height: AppSpacing.md),
             GlassCard(
               child: Column(

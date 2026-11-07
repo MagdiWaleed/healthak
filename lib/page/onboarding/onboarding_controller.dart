@@ -6,10 +6,12 @@ import 'package:get/get.dart';
 import '../../app/app_routes.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/nutrition/energy.dart';
+import '../../domain/profile/body_stats.dart';
 import '../../domain/profile/user_profile.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
+import '../../ui/format/body_stat_input.dart';
 
 class OnboardingController extends GetxController {
   final AuthService _auth;
@@ -25,6 +27,7 @@ class OnboardingController extends GetxController {
   final collectingProfile = false.obs;
   final busy = false.obs;
   final error = RxnString();
+  final fieldError = Rxn<BodyStatsError>();
   final sex = Sex.male.obs;
   final activity = ActivityLevel.moderate.obs;
   final goal = Goal.maintain.obs;
@@ -49,20 +52,21 @@ class OnboardingController extends GetxController {
   }
 
   NutritionTargets? _calculateTargets() {
-    final year = int.tryParse(birthYear.text);
-    final heightCm = double.tryParse(height.text);
-    final weightKg = double.tryParse(weight.text);
-    if (year == null ||
-        heightCm == null ||
-        weightKg == null ||
-        heightCm <= 0 ||
-        weightKg <= 0) {
+    final year = parseBirthYear(birthYear.text);
+    final heightCm = parseBodyStat(height.text);
+    final weightKg = parseBodyStat(weight.text);
+    if (validateBodyStats(
+            birthYear: year,
+            heightCm: heightCm,
+            weightKg: weightKg,
+            now: DateTime.now()) !=
+        null) {
       return null;
     }
     return NutritionTargets.compute(
-      weightKg: weightKg,
-      heightCm: heightCm,
-      ageYears: (DateTime.now().year - year).clamp(13, 100),
+      weightKg: weightKg!,
+      heightCm: heightCm!,
+      ageYears: DateTime.now().year - year!,
       sex: sex.value,
       activity: activity.value,
       goal: goal.value,
@@ -70,7 +74,10 @@ class OnboardingController extends GetxController {
     );
   }
 
-  void recalculatePreview() => previewTargets.value = _calculateTargets();
+  void recalculatePreview() {
+    fieldError.value = null;
+    previewTargets.value = _calculateTargets();
+  }
 
   Future<void> submitAuth() async {
     busy.value = true;
@@ -103,25 +110,26 @@ class OnboardingController extends GetxController {
   Future<void> saveProfile() async {
     final user = _auth.currentUser;
     if (user == null) return;
-    final year = int.tryParse(birthYear.text);
-    final heightCm = double.tryParse(height.text);
-    final weightKg = double.tryParse(weight.text);
-    final goalWeightKg = goalWeight.text.trim().isEmpty
-        ? null
-        : double.tryParse(goalWeight.text.trim().replaceAll('٫', '.'));
-    if (year == null ||
-        heightCm == null ||
-        weightKg == null ||
-        heightCm <= 0 ||
-        weightKg <= 0) {
-      error.value = 'أدخل سنة الميلاد والطول والوزن بشكل صحيح';
+    final year = parseBirthYear(birthYear.text);
+    final heightCm = parseBodyStat(height.text);
+    final weightKg = parseBodyStat(weight.text);
+    final goalWeightKg =
+        goalWeight.text.trim().isEmpty ? null : parseBodyStat(goalWeight.text);
+    final invalid = validateBodyStats(
+        birthYear: year,
+        heightCm: heightCm,
+        weightKg: weightKg,
+        now: DateTime.now());
+    if (invalid != null) {
+      fieldError.value = invalid;
+      error.value = AppStrings.bodyStatsError(invalid);
       return;
     }
     if (goalWeight.text.trim().isNotEmpty &&
         (goalWeightKg == null ||
             !goalWeightKg.isFinite ||
-            goalWeightKg < 25 ||
-            goalWeightKg > 350)) {
+            goalWeightKg < kMinWeightKg ||
+            goalWeightKg > kMaxWeightKg)) {
       error.value = AppStrings.invalidWeight;
       return;
     }
@@ -136,9 +144,9 @@ class OnboardingController extends GetxController {
           : name.text.trim(),
       email: user.email ?? email.text.trim(),
       sex: sex.value,
-      birthYear: year,
-      heightCm: heightCm,
-      weightKg: weightKg,
+      birthYear: year!,
+      heightCm: heightCm!,
+      weightKg: weightKg!,
       goalWeightKg: goalWeightKg,
       activityLevel: activity.value,
       goal: goal.value,

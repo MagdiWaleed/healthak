@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../data/repositories/body_weight_repository.dart';
 import '../../domain/body/body_weight.dart';
+import '../../domain/profile/body_stats.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../service/weigh_in_service.dart';
@@ -37,7 +38,10 @@ class _WeightEntrySheetState extends State<WeightEntrySheet> {
   double? get _parsed =>
       _kg.text.trim().isEmpty ? null : parseNutritionAmount(_kg.text);
   bool get _valid =>
-      _parsed != null && _parsed!.isFinite && _parsed! >= 25 && _parsed! <= 350;
+      _parsed != null &&
+      _parsed!.isFinite &&
+      _parsed! >= kMinWeightKg &&
+      _parsed! <= kMaxWeightKg;
 
   @override
   void dispose() {
@@ -47,7 +51,9 @@ class _WeightEntrySheetState extends State<WeightEntrySheet> {
 
   void _step(int direction) {
     final value = _parsed ?? 70;
-    _kg.text = (((value * 10).round() + direction).clamp(250, 3500) / 10.0)
+    _kg.text = (((value * 10).round() + direction)
+                .clamp(kMinWeightKg * 10, kMaxWeightKg * 10) /
+            10.0)
         .toStringAsFixed(1);
   }
 

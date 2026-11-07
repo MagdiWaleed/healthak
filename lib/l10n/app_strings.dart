@@ -1,3 +1,5 @@
+import '../domain/profile/body_stats.dart';
+
 /// Arabic copy shared by new screens.
 ///
 /// Legacy screens keep their original inline strings until Step 2 replaces
@@ -396,10 +398,19 @@ abstract final class AppStrings {
   static const noTrainingPlan = 'لا خطة';
   static const startStreak = 'ابدأ سلسلتك';
   static String progressDistantGoal(double kg, {bool above = false}) =>
-      'الهدف ${kg.toStringAsFixed(1).replaceAllMapped(RegExp(r'[0-9]'), (match) => '٠١٢٣٤٥٦٧٨٩'[int.parse(match.group(0)!)])} كجم ${above ? '↑' : '↓'}';
+      'الهدف ${kg.toStringAsFixed(1)} كجم ${above ? '↑' : '↓'}';
   static const onboardingGoalHeadline = 'أخبرنا عن هدفك';
   static const nutritionSexLabel = 'الجنس للحساب الغذائي';
   static const activityLevelLabel = 'مستوى النشاط';
   static const goalLabel = 'الهدف';
   static const weeklyRateLabel = 'المعدل الأسبوعي';
+  // --- Phase 9 validation strings ---
+  static const invalidBirthYear = 'أدخل سنة ميلاد صحيحة (العمر بين ١٣ و١٠٠)';
+  static const invalidHeight = 'أدخل طولًا بين ١٠٠ و٢٥٠ سم';
+  static const invalidBodyWeight = 'أدخل وزنًا بين ٢٥ و٣٥٠ كجم';
+  static String bodyStatsError(BodyStatsError error) => switch (error) {
+        BodyStatsError.birthYear => invalidBirthYear,
+        BodyStatsError.height => invalidHeight,
+        BodyStatsError.weight => invalidBodyWeight,
+      };
 }

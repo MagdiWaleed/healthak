@@ -1,5 +1,6 @@
 import 'package:diet_app2/domain/nutrition/energy.dart';
 import 'package:diet_app2/domain/nutrition/macros.dart';
+import 'package:diet_app2/domain/profile/body_stats.dart';
 import 'package:diet_app2/domain/food/food_item.dart';
 import 'package:diet_app2/page/foods/food_detail_screen.dart';
 import 'package:diet_app2/page/guest/guest_preview_screen.dart';
@@ -25,6 +26,8 @@ class _SplashFake extends GetxController implements SplashController {
 }
 
 class _OnboardingFake extends GetxController implements OnboardingController {
+  @override
+  final fieldError = Rxn<BodyStatsError>();
   @override
   final collectingProfile = false.obs;
   @override

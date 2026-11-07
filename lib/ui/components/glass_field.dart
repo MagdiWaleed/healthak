@@ -5,6 +5,8 @@ class GlassField extends StatelessWidget {
   final String label;
   final bool obscureText;
   final TextInputType? keyboardType;
+  final String? errorText;
+  final VoidCallback? onTap;
 
   const GlassField({
     required this.controller,
@@ -12,6 +14,8 @@ class GlassField extends StatelessWidget {
     super.key,
     this.obscureText = false,
     this.keyboardType,
+    this.errorText,
+    this.onTap,
   });
 
   @override
@@ -19,6 +23,7 @@ class GlassField extends StatelessWidget {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        decoration: InputDecoration(labelText: label),
+        onTap: onTap,
+        decoration: InputDecoration(labelText: label, errorText: errorText),
       );
 }

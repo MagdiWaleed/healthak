@@ -3,7 +3,10 @@ import 'package:get/get.dart';
 
 import '../../data/repositories/profile_repository.dart';
 import '../../domain/nutrition/energy.dart';
+import '../../domain/profile/body_stats.dart';
 import '../../domain/profile/user_profile.dart';
+import '../../l10n/app_strings.dart';
+import '../../ui/format/body_stat_input.dart';
 import '../../service/auth_service.dart';
 import '../../service/session_controller.dart';
 
@@ -48,6 +51,17 @@ class ProfileController extends GetxController {
   final saving = false.obs;
   final deleting = false.obs;
   final error = RxnString();
+  final fieldError = Rxn<BodyStatsError>();
+
+  int? get parsedBirthYear => parseBirthYear(birthYear.text);
+  double? get parsedHeight => parseBodyStat(height.text);
+  double? get parsedWeight => parseBodyStat(weight.text);
+
+  BodyStatsError? get validationError => validateBodyStats(
+      birthYear: parsedBirthYear,
+      heightCm: parsedHeight,
+      weightKg: parsedWeight,
+      now: DateTime.now());
 
   UserProfile? get _current => _session.profile.value;
 
@@ -67,9 +81,18 @@ class ProfileController extends GetxController {
     _heightText.value = height.text;
     _weightText.value = weight.text;
     _birthYearText.value = birthYear.text;
-    height.addListener(() => _heightText.value = height.text);
-    weight.addListener(() => _weightText.value = weight.text);
-    birthYear.addListener(() => _birthYearText.value = birthYear.text);
+    height.addListener(() {
+      _heightText.value = height.text;
+      fieldError.value = null;
+    });
+    weight.addListener(() {
+      _weightText.value = weight.text;
+      fieldError.value = null;
+    });
+    birthYear.addListener(() {
+      _birthYearText.value = birthYear.text;
+      fieldError.value = null;
+    });
   }
 
   @override
@@ -83,14 +106,18 @@ class ProfileController extends GetxController {
   /// Reads the `.obs` text mirrors, not the `TextEditingController`s
   /// directly, so an `Obx` wrapping this in the screen reacts to typing.
   NutritionTargets? get previewTargets {
-    final h = double.tryParse(_heightText.value);
-    final w = double.tryParse(_weightText.value);
-    final y = int.tryParse(_birthYearText.value);
-    if (h == null || w == null || y == null || h <= 0 || w <= 0) return null;
+    final h = parseBodyStat(_heightText.value);
+    final w = parseBodyStat(_weightText.value);
+    final y = parseBirthYear(_birthYearText.value);
+    if (validateBodyStats(
+            birthYear: y, heightCm: h, weightKg: w, now: DateTime.now()) !=
+        null) {
+      return null;
+    }
     return NutritionTargets.compute(
-      weightKg: w,
-      heightCm: h,
-      ageYears: DateTime.now().year - y,
+      weightKg: w!,
+      heightCm: h!,
+      ageYears: DateTime.now().year - y!,
       sex: sex.value,
       activity: activity.value,
       goal: goal.value,
@@ -112,15 +139,19 @@ class ProfileController extends GetxController {
   /// Maintenance for the numbers currently typed in, or null while they are
   /// incomplete.
   double? get previewMaintenance {
-    final h = double.tryParse(_heightText.value);
-    final w = double.tryParse(_weightText.value);
-    final y = int.tryParse(_birthYearText.value);
-    if (h == null || w == null || y == null || h <= 0 || w <= 0) return null;
+    final h = parseBodyStat(_heightText.value);
+    final w = parseBodyStat(_weightText.value);
+    final y = parseBirthYear(_birthYearText.value);
+    if (validateBodyStats(
+            birthYear: y, heightCm: h, weightKg: w, now: DateTime.now()) !=
+        null) {
+      return null;
+    }
     return tdee(
       bmr: bmrMifflinStJeor(
-        weightKg: w,
-        heightCm: h,
-        ageYears: DateTime.now().year - y,
+        weightKg: w!,
+        heightCm: h!,
+        ageYears: DateTime.now().year - y!,
         sex: sex.value,
       ),
       activity: activity.value,
@@ -152,9 +183,9 @@ class ProfileController extends GetxController {
     final targets = previewTargets;
     if (profile == null || targets == null) return null;
     return profile.copyWith(
-      heightCm: double.parse(height.text),
-      weightKg: double.parse(weight.text),
-      birthYear: int.parse(birthYear.text),
+      heightCm: parsedHeight!,
+      weightKg: parsedWeight!,
+      birthYear: parsedBirthYear!,
       sex: sex.value,
       activityLevel: activity.value,
       goal: goal.value,
@@ -173,6 +204,12 @@ class ProfileController extends GetxController {
 
   Future<bool> save() async {
     final profile = _current;
+    final invalid = validationError;
+    if (invalid != null) {
+      fieldError.value = invalid;
+      error.value = AppStrings.bodyStatsError(invalid);
+      return false;
+    }
     final preview = previewTargets;
     if (profile == null || preview == null) return false;
 
@@ -180,9 +217,9 @@ class ProfileController extends GetxController {
     error.value = null;
     try {
       await _profiles.save(profile.copyWith(
-        heightCm: double.parse(height.text),
-        weightKg: double.parse(weight.text),
-        birthYear: int.parse(birthYear.text),
+        heightCm: parsedHeight!,
+        weightKg: parsedWeight!,
+        birthYear: parsedBirthYear!,
         sex: sex.value,
         activityLevel: activity.value,
         goal: goal.value,

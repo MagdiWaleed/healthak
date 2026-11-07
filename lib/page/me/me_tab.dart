@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../app/app_routes.dart';
 import '../../data/repositories/profile_repository.dart';
+import '../../domain/profile/body_stats.dart';
 import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
@@ -195,8 +196,8 @@ class _GoalWeightSheetState extends State<GoalWeightSheet> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             NumericStepper(
               value: kg ?? 70,
-              min: 25,
-              max: 350,
+              min: kMinWeightKg.toDouble(),
+              max: kMaxWeightKg.toDouble(),
               step: .1,
               format: (value) => value.toStringAsFixed(1),
               parse: (text) => double.tryParse(text.replaceAll('٫', '.')),

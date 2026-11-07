@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/nutrition/energy.dart';
+import '../../domain/profile/body_stats.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/neon_button.dart';
 import '../../ui/components/energy_breakdown_card.dart';
 import '../../ui/components/glass_field.dart';
+import '../../ui/format/body_stat_input.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/theme/app_colors.dart';
@@ -222,18 +224,32 @@ class _ProfileForm extends StatelessWidget {
               child: GlassField(
                   controller: controller.birthYear,
                   label: AppStrings.birthYear,
+                  onTap: () => selectAllOnFocus(controller.birthYear),
+                  errorText:
+                      controller.fieldError.value == BodyStatsError.birthYear
+                          ? AppStrings.invalidBirthYear
+                          : null,
                   keyboardType: TextInputType.number)),
           const SizedBox(width: 10),
           Expanded(
               child: GlassField(
                   controller: controller.height,
                   label: AppStrings.height,
+                  onTap: () => selectAllOnFocus(controller.height),
+                  errorText:
+                      controller.fieldError.value == BodyStatsError.height
+                          ? AppStrings.invalidHeight
+                          : null,
                   keyboardType: TextInputType.number)),
         ]),
         const SizedBox(height: 12),
         GlassField(
             controller: controller.weight,
             label: AppStrings.weight,
+            onTap: () => selectAllOnFocus(controller.weight),
+            errorText: controller.fieldError.value == BodyStatsError.weight
+                ? AppStrings.invalidBodyWeight
+                : null,
             keyboardType: TextInputType.number),
         const SizedBox(height: 12),
         GlassField(
@@ -316,9 +332,9 @@ class _ProfileForm extends StatelessWidget {
         const SizedBox(height: 16),
         Obx(() {
           final targets = controller.previewTargets.value;
-          final year = int.tryParse(controller.birthYear.text);
-          final height = double.tryParse(controller.height.text);
-          final weight = double.tryParse(controller.weight.text);
+          final year = parseBirthYear(controller.birthYear.text);
+          final height = parseBodyStat(controller.height.text);
+          final weight = parseBodyStat(controller.weight.text);
           return AnimatedSwitcher(
             duration: const Duration(milliseconds: 400),
             child: targets == null

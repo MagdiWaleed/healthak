@@ -5,6 +5,7 @@ import '../domain/body/body_weight.dart';
 import '../domain/day/day_log.dart';
 import '../domain/nutrition/energy.dart';
 import '../domain/profile/user_profile.dart';
+import '../domain/profile/body_stats.dart';
 import 'session_controller.dart';
 
 /// Pure decision used before persisting a new weigh-in.
@@ -48,7 +49,7 @@ class WeighInService {
         clock = clock ?? DateTime.now;
 
   Future<void> logWeight({required DateTime date, required double kg}) async {
-    if (!kg.isFinite || kg < 25 || kg > 350) {
+    if (!kg.isFinite || kg < kMinWeightKg || kg > kMaxWeightKg) {
       throw ArgumentError.value(kg, 'kg');
     }
     final dateKey = DayLog.keyFor(date);

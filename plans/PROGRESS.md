@@ -1,5 +1,17 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 9: body-stat validation (2026-11-07)
+
+- Added pure domain bounds for birth-year age, height, and weight. Onboarding and profile now parse Arabic-Indic numbers through the shared input parser and reject invalid stats before calculating targets or saving; the offending field shows a specific Arabic error.
+- Prefilled onboarding and profile stats select their full value on tap. Weigh-in and goal-weight controls reuse the weight bounds. The distant-goal label uses Western digits like other Progress weights.
+- Added boundary, controller, widget-selection, and progress-format tests; updated the Phase 7 onboarding fake for the new error observable. `flutter analyze --no-pub` is clean and all 294 tests pass.
+
+### Phase 9 deviations
+
+| Decision | Reason |
+|---|---|
+| None | Implemented the requested validation and input behavior. |
+
 ## Redesign v2 Phase 7: restyle sweep and motion polish (2026-11-07)
 
 - Kept the remaining feature screens on the dark palette: replaced the last hardcoded page tint/white rule, made the food detail header wrap at narrow widths, and routed shared primary actions through `NeonButton` with pressed feedback. Loading states in catalog, marketplace, My Meals, history, assistant history, cost, meal editor, Today, Training, Progress, and the quick meal picker now use `ShimmerBox` rows.
