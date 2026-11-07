@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../ui/components/shimmer_box.dart';
 
 import '../../domain/day/day_log.dart';
 import '../../domain/training/exercise.dart';
@@ -146,7 +147,13 @@ class _TrainingTabState extends State<TrainingTab> {
               if (controller.error.value case final error?)
                 Text(error, style: const TextStyle(color: AppPalette.coral)),
               if (controller.loading.value && day == null)
-                const Center(child: CircularProgressIndicator())
+                const Column(children: [
+                  ShimmerBox(height: 80),
+                  SizedBox(height: 12),
+                  ShimmerBox(height: 80),
+                  SizedBox(height: 12),
+                  ShimmerBox(height: 80),
+                ])
               else if (controller.plan.isEmpty && (day?.items.isEmpty ?? true))
                 Padding(
                     padding: const EdgeInsets.symmetric(vertical: 36),

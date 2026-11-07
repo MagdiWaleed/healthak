@@ -1,6 +1,7 @@
 import 'package:diet_app2/ui/components/activity_rings.dart';
 import 'package:diet_app2/ui/components/check_tile.dart';
 import 'package:diet_app2/ui/components/streak_chip.dart';
+import 'package:diet_app2/l10n/app_strings.dart';
 import 'package:diet_app2/ui/motion/motion.dart';
 import 'package:diet_app2/ui/theme/app_colors.dart';
 import 'package:diet_app2/ui/theme/app_theme.dart';
@@ -63,6 +64,15 @@ void main() {
                   (c.decoration! as BoxDecoration).boxShadow != null,
             );
     expect(decorated, isNotEmpty);
+  });
+
+  testWidgets('zero streak uses a motivating label', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: AppTheme.dark,
+      home: const Scaffold(body: StreakChip(count: 0)),
+    ));
+    expect(find.text(AppStrings.startStreak), findsOneWidget);
+    expect(find.text('0'), findsNothing);
   });
 
   testWidgets('motion gate returns child under reduced motion', (tester) async {

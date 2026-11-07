@@ -440,7 +440,17 @@ users/{uid}/meals/{mealId}                # private library: authored AND copied
 
 users/{uid}/schedule/{itemId}
 users/{uid}/days/{yyyy-MM-dd}
-users/{uid}/bodyWeights/{yyyy-MM-dd}
+users/{uid}/bodyWeights/{yyyy-MM-dd}     # one weigh-in per day (redesign-v2)
+  dateKey, date, kg, createdAt, updatedAt
+  # newest-first is sorted client-side: no documentId DESC index is deployed
+users/{uid}/workoutPlan/{itemId}          # weekly plan (redesign-v2)
+  exerciseId, nameAr, muscle, sets, reps, daysOfWeek: [1..7], order, active,
+  createdAt, updatedAt
+users/{uid}/trainingDays/{yyyy-MM-dd}     # frozen daily checklist (redesign-v2)
+  dateKey, date, materializedFromPlanVersion,
+  items: [ {localId, planItemId, exerciseId, nameAr, muscle, sets, reps, order, done, doneAt} ]
+
+# users/{uid}.goalWeightKg (optional) added to the profile doc in redesign-v2.
 
 marketMeals/{marketMealId}                # replaces complete_meals
   authorUid, authorName, name, notes, imageUrl,

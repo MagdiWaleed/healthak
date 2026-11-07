@@ -4,6 +4,7 @@ import '../../data/repositories/meal_repository.dart';
 import '../../domain/meal/meal_definition.dart';
 import '../../domain/meal/meal_math.dart';
 import '../../ui/components/empty_state.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_sheet.dart';
 import '../../ui/motion/navigation.dart';
@@ -156,7 +157,7 @@ class _LibraryMealSheetState extends State<_LibraryMealSheet> {
       child: meals == null
           ? const Padding(
               padding: EdgeInsets.all(AppSpacing.xl),
-              child: CircularProgressIndicator(),
+              child: ShimmerBox(height: 76),
             )
           : meals.isEmpty
               ? const Padding(

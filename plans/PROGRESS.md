@@ -1,5 +1,58 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 7: restyle sweep and motion polish (2026-11-07)
+
+- Kept the remaining feature screens on the dark palette: replaced the last hardcoded page tint/white rule, made the food detail header wrap at narrow widths, and routed shared primary actions through `NeonButton` with pressed feedback. Loading states in catalog, marketplace, My Meals, history, assistant history, cost, meal editor, Today, Training, Progress, and the quick meal picker now use `ShimmerBox` rows.
+- Guarded catalog, library, assistant history, marketplace, and meal editor row entrances by stable IDs so rows do not replay on rebuild or scroll. Marketplace detail uses `pushHealthak`; named routes already use `HealthakTransition`.
+- Added a direction-aware onboarding step slide and progress dots, a motion-gated splash logo with emerald glow, and dark Android launch resources including the Android 12 splash icon. Today shows rest/no-plan training labels with a Training link and a zero-streak prompt. Weight steps follow RTL; the save uses `NeonButton`. Distant weight goals render as a chip and stay out of the chart y-range.
+- Added a parameterized 320px/1.6x smoke test for guest, food detail, Nutrition, home navigation, splash, both onboarding stages, and the weight sheet; added weight-range and zero-streak coverage. The smoke test exposed and resolved onboarding dropdown and food-detail overflows. `dart fix --apply --code=curly_braces_in_flow_control_structures .` reported nothing to fix. `flutter analyze --no-pub` is clean and all 285 tests pass.
+- `flutter build apk --debug --no-pub` stopped before Android compilation because this sandbox cannot find the Android SDK. APK install, launch animation, and device screenshots remain unverified.
+
+### Phase 7 deviations
+
+| Decision | Reason |
+|---|---|
+| Kept the existing `StaggeredEntry` animation for list rows, with one-shot ID guards | It already provides the stagger and avoids replay on recycled rows; replacing it with `entrance()` would add another animation controller per row. |
+| `GlassButton` now delegates its rendering to `NeonButton` | Existing call sites retain their callback interface while all primary actions gain the shared pressed feedback. |
+
+## Redesign v2 — overview (branch `redesign-v2`, 2026-11-07)
+
+Plan: `plans/step6_training_weight.md`. Claude writes specs and reviews; Codex implements
+(`.claude/skills/codex-delegate`). Every phase passes `flutter analyze --no-pub` + `flutter test`,
+then the CLI device gate `tool/cli_smoke.sh` (flutter run on emulator, tap/screenshot, fail on any
+Flutter error in the run log — Dart errors do not reach logcat on this Flutter version).
+
+| Phase | State |
+|---|---|
+| 1 domain/data (weight, training, streaks, goalWeightKg) | done |
+| 2 dark neon design system + components | done |
+| 3 5-tab nav, quick-add, Me tab | done |
+| 4 Today hero (rings, weigh-in, workout) | done |
+| 5 Training tab + plan editor | done |
+| 6 Progress tab (chart, streaks, recap) | done |
+| 7 restyle sweep + polish | done; Android device verification open |
+| 8a assistant tools + web search, 8b assistant UI | done; live check blocked: xAI key lacks Chat/Responses ACL |
+
+Device-found fixes: Training StatTile 2px overflow (FittedBox); Progress load failure from a
+missing `documentId DESC` index (now sorted client-side); `url_launcher_android` 6.3.28 needs
+AGP 8.9.1 (pinned 6.3.23).
+
+Open: weigh-in device journey (log, chart, delete test entry) not yet re-run. The emulator was
+crashing under low host RAM, and a failed `flutter run` install wiped the signed-in app, so it
+needs a manual sign-in first.
+
+### Deviations (redesign-v2)
+
+| Decision | Reason |
+|---|---|
+| Dark theme as the only theme | User chose "bold dark + neon"; reverses the light direction in `ui_refresh.md`. |
+| 5 tabs: Today · Nutrition · Training · Progress · Me | User choice; My Meals + Market merged under Nutrition. |
+| New deps `fl_chart`, `flutter_animate`, `url_launcher` | Charts, user-requested animations, tappable assistant sources. |
+| `dependency_overrides: url_launcher_android: 6.3.23` | Newer versions require AGP 8.9.1; toolchain stays on AGP 8.7.3. |
+| New collections `workoutPlan`, `trainingDays`; profile `goalWeightKg` | Training checklists and weight goal; existing rules wildcard covers them, no deploy. |
+| Newest weights sorted in memory, not `orderBy(documentId, desc)` | That query needs an index that is not deployed; one small doc per day. |
+| Calorie streak day = eaten kcal within ±10% of target | Defined in `isCalorieHit`; the plan did not specify a rule. |
+
 ## Redesign v2 Phase 5: Training tab (2026-11-07)
 
 - Replaced the Training placeholder with a Monday-first day selector, progress ring, daily stats, streak, checklist, history unlock, one-off picker, and completion celebration. The controller watches the selected frozen day, plan, and recent training days; writes go through `TrainingDayRepository`.

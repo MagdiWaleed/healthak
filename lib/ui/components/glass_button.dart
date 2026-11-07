@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import 'neon_button.dart';
 
 class GlassButton extends StatelessWidget {
   final String label;
@@ -16,34 +16,10 @@ class GlassButton extends StatelessWidget {
       this.busy = false});
 
   @override
-  Widget build(BuildContext context) => FilledButton(
+  Widget build(BuildContext context) => NeonButton(
+        label: label,
         onPressed: busy ? null : onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: AppPalette.emerald,
-          foregroundColor: AppPalette.onAccent,
-          disabledBackgroundColor: AppPalette.soft,
-          disabledForegroundColor: AppPalette.muted,
-          minimumSize: const Size(48, 52),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (busy) ...[
-              const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-              const SizedBox(width: 8),
-            ] else if (icon != null) ...[
-              Icon(icon),
-              const SizedBox(width: 8)
-            ],
-            Flexible(child: Text(label, textAlign: TextAlign.center)),
-          ],
-        ),
+        loading: busy,
+        icon: icon,
       );
 }

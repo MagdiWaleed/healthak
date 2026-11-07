@@ -149,7 +149,7 @@ void main() {
     await tester.pumpWidget(_app(
         TodayDashboard(day: _day(), controller: controller, readOnly: true),
         scale: 1.6));
-    expect(find.text(AppStrings.restDay), findsOneWidget);
+    expect(find.text(AppStrings.restDay), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 

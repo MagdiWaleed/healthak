@@ -8,6 +8,7 @@ import 'package:diet_app2/l10n/app_strings.dart';
 import 'package:diet_app2/page/today/quick_food_portion_sheet.dart';
 import 'package:diet_app2/page/today/today_controller.dart';
 import 'package:diet_app2/ui/components/glass_button.dart';
+import 'package:diet_app2/ui/components/neon_button.dart';
 import 'package:diet_app2/ui/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -70,8 +71,8 @@ void main() {
     await tester.enterText(find.byType(TextField), '0');
     await tester.pump();
     expect(find.text(AppStrings.invalidPortion), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull);
+    expect(
+        tester.widget<NeonButton>(find.byType(NeonButton)).onPressed, isNull);
     expect(controller.writes, isEmpty);
 
     await tester.enterText(find.byType(TextField), '150');
@@ -82,8 +83,8 @@ void main() {
     await tester.pump();
     expect(controller.writes.single.grams, 150);
     expect(controller.writes.single.slot, isNull);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull);
+    expect(
+        tester.widget<NeonButton>(find.byType(NeonButton)).onPressed, isNull);
 
     controller.completion.completeError(StateError('network failure'));
     await tester.pumpAndSettle();

@@ -7,6 +7,7 @@ import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../service/weigh_in_service.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
+import '../../ui/components/neon_button.dart';
 import '../../ui/format/number_input.dart';
 import '../../ui/glass/glass_sheet.dart';
 import '../../ui/motion/celebration.dart';
@@ -107,7 +108,8 @@ class _WeightEntrySheetState extends State<WeightEntrySheet> {
   @override
   Widget build(BuildContext context) => GlassSheet(
         title: AppStrings.logWeight,
-        child: Padding(
+        child: SingleChildScrollView(
+            child: Padding(
           padding: EdgeInsetsDirectional.fromSTEB(
               20, 12, 20, MediaQuery.of(context).viewInsets.bottom + 24),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -120,7 +122,7 @@ class _WeightEntrySheetState extends State<WeightEntrySheet> {
                     '${AppStrings.weightDate}: ${_date.day}/${_date.month}/${_date.year}')),
             Row(children: [
               IconButton(
-                  onPressed: () => _step(-1), icon: const Icon(Icons.remove)),
+                  onPressed: () => _step(1), icon: const Icon(Icons.add)),
               Expanded(
                   child: TextField(
                 controller: _kg,
@@ -132,13 +134,14 @@ class _WeightEntrySheetState extends State<WeightEntrySheet> {
                 onChanged: (_) => setState(() => _error = null),
               )),
               IconButton(
-                  onPressed: () => _step(1), icon: const Icon(Icons.add)),
+                  onPressed: () => _step(-1), icon: const Icon(Icons.remove)),
             ]),
             const SizedBox(height: 16),
-            FilledButton(
+            NeonButton(
                 onPressed: _saving ? null : _save,
-                child: Text(_saving ? AppStrings.saving : AppStrings.save)),
+                loading: _saving,
+                label: _saving ? AppStrings.saving : AppStrings.save),
           ]),
-        ),
+        )),
       );
 }

@@ -7,6 +7,7 @@ import 'package:diet_app2/l10n/app_strings.dart';
 import 'package:diet_app2/page/today/manual_entry_sheet.dart';
 import 'package:diet_app2/page/today/today_controller.dart';
 import 'package:diet_app2/ui/components/glass_button.dart';
+import 'package:diet_app2/ui/components/neon_button.dart';
 import 'package:diet_app2/ui/format/number_input.dart';
 import 'package:diet_app2/ui/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -73,16 +74,16 @@ void main() {
       (tester) async {
     final controller = _ManualController();
     await open(tester, controller);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull);
+    expect(
+        tester.widget<NeonButton>(find.byType(NeonButton)).onPressed, isNull);
     await fill(tester);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+    expect(tester.widget<NeonButton>(find.byType(NeonButton)).onPressed,
         isNotNull);
     await tester.enterText(find.byType(TextField).at(1), '-10');
     await tester.pump();
     expect(find.text(AppStrings.invalidNutrition), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull);
+    expect(
+        tester.widget<NeonButton>(find.byType(NeonButton)).onPressed, isNull);
     expect(controller.writes, isEmpty);
   });
 
@@ -95,8 +96,8 @@ void main() {
     await tester.tap(find.text(AppStrings.addToDay));
     await tester.pump();
     expect(find.text(AppStrings.saving), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-        isNull);
+    expect(
+        tester.widget<NeonButton>(find.byType(NeonButton)).onPressed, isNull);
     expect(controller.writes.length, 1);
     expect(controller.writes.single.macros.kcal, 167);
     controller.completion.completeError(StateError('network failure'));

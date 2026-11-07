@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../domain/day/day_log.dart';
 import '../../service/auth_service.dart';
 import '../../ui/components/calorie_ring.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
 import '../../ui/glass/glass_sheet.dart';
@@ -65,7 +66,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
               const SizedBox(height: AppSpacing.sm),
               if (controller.loading.value)
                 const Expanded(
-                    child: Center(child: CircularProgressIndicator()))
+                    child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(children: [
+                    ShimmerBox(height: 78),
+                    SizedBox(height: 12),
+                    ShimmerBox(height: 78),
+                    SizedBox(height: 12),
+                    ShimmerBox(height: 78),
+                  ]),
+                ))
               else
                 Expanded(
                   child: SingleChildScrollView(

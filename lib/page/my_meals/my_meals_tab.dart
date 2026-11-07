@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../ui/components/shimmer_box.dart';
 
 import '../../domain/day/day_log.dart';
 import '../../domain/meal/meal_definition.dart';
@@ -35,6 +36,7 @@ class MyMealsTab extends StatefulWidget {
 }
 
 class _MyMealsTabState extends State<MyMealsTab> {
+  final Set<Object> _enteredMeals = {};
   late final MyMealsController controller =
       MyMealsController(uid: Get.find<AuthService>().currentUser!.uid);
 
@@ -91,7 +93,10 @@ class _MyMealsTabState extends State<MyMealsTab> {
               Expanded(
                 child: TabBarView(
                   children: [
-                    _LibraryView(controller: controller, onOpen: _openEditor),
+                    _LibraryView(
+                        controller: controller,
+                        onOpen: _openEditor,
+                        enteredMeals: _enteredMeals),
                     _ScheduleView(controller: controller),
                   ],
                 ),
@@ -105,13 +110,26 @@ class _MyMealsTabState extends State<MyMealsTab> {
 class _LibraryView extends StatelessWidget {
   final MyMealsController controller;
   final void Function([String? mealId]) onOpen;
+  final Set<Object> enteredMeals;
 
-  const _LibraryView({required this.controller, required this.onOpen});
+  const _LibraryView(
+      {required this.controller,
+      required this.onOpen,
+      required this.enteredMeals});
 
   @override
   Widget build(BuildContext context) => Obx(() {
         if (controller.libraryLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(children: [
+              ShimmerBox(height: 78),
+              SizedBox(height: 12),
+              ShimmerBox(height: 78),
+              SizedBox(height: 12),
+              ShimmerBox(height: 78),
+            ]),
+          );
         }
         final libraryError = controller.libraryError.value;
         if (libraryError != null) {
@@ -146,6 +164,8 @@ class _LibraryView extends StatelessWidget {
             return StaggeredEntry(
               index: index,
               maxStaggered: 6,
+              replayKey: meal.id,
+              replayGuard: enteredMeals,
               child: Dismissible(
                 key: ValueKey(meal.id),
                 direction: DismissDirection.endToStart,
@@ -301,7 +321,16 @@ class _ScheduleView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Obx(() {
         if (controller.scheduleLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(children: [
+              ShimmerBox(height: 78),
+              SizedBox(height: 12),
+              ShimmerBox(height: 78),
+              SizedBox(height: 12),
+              ShimmerBox(height: 78),
+            ]),
+          );
         }
         final scheduleError = controller.scheduleError.value;
         if (scheduleError != null) {

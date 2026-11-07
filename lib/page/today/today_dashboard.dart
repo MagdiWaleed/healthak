@@ -76,8 +76,15 @@ class TodayDashboard extends StatelessWidget {
           AppPalette.ringCalories),
       _Legend(
           AppStrings.training,
-          '${training?.items.where((item) => item.done).length ?? 0}/${training?.items.length ?? 0}',
-          AppPalette.ringTraining),
+          training == null
+              ? AppStrings.noTrainingPlan
+              : training.isRestDay
+                  ? AppStrings.restDay
+                  : '${training.items.where((item) => item.done).length}/${training.items.length}',
+          AppPalette.ringTraining,
+          onTap: training == null
+              ? () => Get.find<HomeController>().goTo(HomeTab.training)
+              : null),
       _Legend(
           AppStrings.protein,
           '${protein.round()}/${proteinTarget.round()} ${AppStrings.grams}',
@@ -169,33 +176,39 @@ class TodayDashboard extends StatelessWidget {
 }
 
 class _Legend extends StatelessWidget {
-  const _Legend(this.label, this.value, this.color);
+  const _Legend(this.label, this.value, this.color, {this.onTap});
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(children: [
-          Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 7),
-          Expanded(
-              child: Text(label,
-                  overflow: TextOverflow.ellipsis,
-                  style:
-                      const TextStyle(color: AppPalette.muted, fontSize: 11))),
-          Flexible(
-              child: Text(value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: AppPalette.text,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700)))
-        ]),
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(children: [
+            Container(
+                width: 7,
+                height: 7,
+                decoration:
+                    BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 7),
+            Expanded(
+                child: Text(label,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: AppPalette.muted, fontSize: 11))),
+            Flexible(
+                child: Text(value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: AppPalette.text,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)))
+          ]),
+        ),
       );
 }
 

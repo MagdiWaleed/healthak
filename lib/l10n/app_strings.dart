@@ -392,4 +392,14 @@ abstract final class AppStrings {
   static const agentSuggestionWeightTrend = 'كيف يتغير وزني؟';
   static const agentSuggestionStartTraining = 'ساعدني أبدأ خطة تمرين';
   static const agentSuggestionStartWeight = 'كيف أبدأ تتبع وزني؟';
+  // --- Phase 7 polish strings ---
+  static const noTrainingPlan = 'لا خطة';
+  static const startStreak = 'ابدأ سلسلتك';
+  static String progressDistantGoal(double kg, {bool above = false}) =>
+      'الهدف ${kg.toStringAsFixed(1).replaceAllMapped(RegExp(r'[0-9]'), (match) => '٠١٢٣٤٥٦٧٨٩'[int.parse(match.group(0)!)])} كجم ${above ? '↑' : '↓'}';
+  static const onboardingGoalHeadline = 'أخبرنا عن هدفك';
+  static const nutritionSexLabel = 'الجنس للحساب الغذائي';
+  static const activityLevelLabel = 'مستوى النشاط';
+  static const goalLabel = 'الهدف';
+  static const weeklyRateLabel = 'المعدل الأسبوعي';
 }

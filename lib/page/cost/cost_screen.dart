@@ -6,6 +6,7 @@ import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/components/ticker_number.dart';
 import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
@@ -43,7 +44,16 @@ class CostScreen extends GetView<CostController> {
             return ErrorState(message: error, onRetry: controller.reload);
           }
           if (controller.loading.value && controller.components.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(children: [
+                ShimmerBox(height: 84),
+                SizedBox(height: 12),
+                ShimmerBox(height: 84),
+                SizedBox(height: 12),
+                ShimmerBox(height: 84),
+              ]),
+            );
           }
 
           final unpriced = controller.unpriced;

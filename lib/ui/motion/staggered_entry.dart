@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/motion_settings.dart';
 
 /// Fades, lifts and settles a list row into place, offset by its position.
 ///
@@ -104,6 +105,7 @@ class _StaggeredEntryState extends State<StaggeredEntry>
 
   @override
   Widget build(BuildContext context) {
+    if (!MotionSettings.enabled(context)) return widget.child;
     // "Start" is a physical right edge in Arabic and physical left in LTR.
     // Resolve it here (not in a stored Offset) so test and locale changes are
     // mirrored by the same entry choreography.

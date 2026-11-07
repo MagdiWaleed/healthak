@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../ui/components/shimmer_box.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/repositories/workout_plan_repository.dart';
@@ -224,7 +225,16 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
           final day = controller.weekday.value;
           final list = controller.forDay(day);
           if (controller.loading.value) {
-            return const Center(child: CircularProgressIndicator());
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(children: [
+                ShimmerBox(height: 76),
+                SizedBox(height: 12),
+                ShimmerBox(height: 76),
+                SizedBox(height: 12),
+                ShimmerBox(height: 76),
+              ]),
+            );
           }
           return Column(children: [
             SizedBox(

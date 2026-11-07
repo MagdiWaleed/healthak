@@ -7,6 +7,7 @@ import '../../l10n/app_strings.dart';
 import '../../service/agent/agent_action_log.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_scaffold.dart';
@@ -29,6 +30,7 @@ class AgentHistoryScreen extends StatefulWidget {
 }
 
 class _AgentHistoryScreenState extends State<AgentHistoryScreen> {
+  final Set<Object> _enteredEntries = {};
   // Plain, screen-scoped controller -- not `Get.put`/a Binding, same
   // pattern as `MealEditorController` and friends elsewhere in the app, so
   // there is no matching `Get.delete` to remember in `dispose()`.
@@ -48,7 +50,16 @@ class _AgentHistoryScreenState extends State<AgentHistoryScreen> {
         appBar: AppBar(title: const Text(AppStrings.agentLogTitle)),
         body: Obx(() {
           if (controller.loading.value) {
-            return const Center(child: CircularProgressIndicator());
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(children: [
+                ShimmerBox(height: 78),
+                SizedBox(height: 12),
+                ShimmerBox(height: 78),
+                SizedBox(height: 12),
+                ShimmerBox(height: 78),
+              ]),
+            );
           }
           final all = controller.entries;
           final filtered = controller.filtered;
@@ -73,7 +84,10 @@ class _AgentHistoryScreenState extends State<AgentHistoryScreen> {
                         title: AppStrings.agentLogEmptyTitle,
                         message: AppStrings.agentLogEmptyMessage,
                       )
-                    : _EntryList(entries: filtered, controller: controller),
+                    : _EntryList(
+                        entries: filtered,
+                        controller: controller,
+                        enteredEntries: _enteredEntries),
               ),
             ],
           );
@@ -110,7 +124,11 @@ class _FilterRow extends StatelessWidget {
 class _EntryList extends StatelessWidget {
   final List<AgentActionLogEntry> entries;
   final AgentHistoryController controller;
-  const _EntryList({required this.entries, required this.controller});
+  final Set<Object> enteredEntries;
+  const _EntryList(
+      {required this.entries,
+      required this.controller,
+      required this.enteredEntries});
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +159,8 @@ class _EntryList extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                 child: StaggeredEntry(
                   index: index,
+                  replayKey: entry.id,
+                  replayGuard: enteredEntries,
                   child: Obx(() => _EntryRow(
                         entry: entry,
                         busy: controller.undoingId.value == entry.id,

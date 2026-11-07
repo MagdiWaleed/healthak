@@ -25,13 +25,12 @@ class FoodDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.end,
+                    spacing: 6,
                     children: [
                       Text('${food.per100.kcal.round()}',
                           style: Theme.of(context).textTheme.displayMedium),
-                      const SizedBox(width: 6),
                       const Text('سعرة / 100غ',
                           style: TextStyle(color: AppPalette.muted)),
                     ],

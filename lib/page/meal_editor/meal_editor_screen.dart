@@ -9,6 +9,7 @@ import '../../service/auth_service.dart';
 import '../../ui/components/glass_button.dart';
 import '../../ui/components/gram_stepper.dart';
 import '../../ui/components/scale_stepper.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/feedback/haptics.dart';
 import '../../ui/glass/glass_card.dart';
@@ -41,6 +42,7 @@ class MealEditorScreen extends StatefulWidget {
 }
 
 class _MealEditorScreenState extends State<MealEditorScreen> {
+  final Set<Object> _enteredEntries = {};
   late final MealEditorController controller = MealEditorController(
     uid: Get.find<AuthService>().currentUser!.uid,
     editingId: widget.mealId,
@@ -215,7 +217,16 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
         ),
         body: Obx(() {
           if (controller.loading.value) {
-            return const Center(child: CircularProgressIndicator());
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(children: [
+                ShimmerBox(height: 72),
+                SizedBox(height: 12),
+                ShimmerBox(height: 72),
+                SizedBox(height: 12),
+                ShimmerBox(height: 72),
+              ]),
+            );
           }
           return Column(
             children: [
@@ -237,7 +248,10 @@ class _MealEditorScreenState extends State<MealEditorScreen> {
               Expanded(
                 child: controller.isEmpty
                     ? _EmptyEditor(onAddFood: _addFood)
-                    : _EntryList(controller: controller, onSnack: _snack),
+                    : _EntryList(
+                        controller: controller,
+                        onSnack: _snack,
+                        enteredEntries: _enteredEntries),
               ),
               _ActionBar(
                 onAddFood: _addFood,
@@ -338,7 +352,7 @@ class _TotalsHeader extends StatelessWidget {
               if (showDay) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Container(
-                    height: 1, color: Colors.white.withValues(alpha: .10)),
+                    height: 1, color: AppPalette.text.withValues(alpha: .10)),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   controller.isNew
@@ -467,8 +481,12 @@ class _EmptyEditor extends StatelessWidget {
 class _EntryList extends StatelessWidget {
   final MealEditorController controller;
   final void Function(String message, {VoidCallback? undo}) onSnack;
+  final Set<Object> enteredEntries;
 
-  const _EntryList({required this.controller, required this.onSnack});
+  const _EntryList(
+      {required this.controller,
+      required this.onSnack,
+      required this.enteredEntries});
 
   @override
   Widget build(BuildContext context) => Obx(() {
@@ -507,6 +525,8 @@ class _EntryList extends StatelessWidget {
               key: ValueKey(entry.localId),
               index: index,
               maxStaggered: 6,
+              replayKey: entry.localId,
+              replayGuard: enteredEntries,
               child: _EntryRow(
                 controller: controller,
                 entry: entry,

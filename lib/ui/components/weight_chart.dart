@@ -8,6 +8,22 @@ import '../../l10n/app_strings.dart';
 import '../theme/app_colors.dart';
 import '../theme/motion_settings.dart';
 
+/// Keeps a distant goal from flattening the measured weight trajectory.
+({double minY, double maxY, bool showGoalLine}) chartYRange(
+    List<double> values, double? goalKg) {
+  if (values.isEmpty) {
+    throw ArgumentError.value(values, 'values', 'Cannot chart empty weights');
+  }
+  final dataLow = values.reduce(math.min);
+  final dataHigh = values.reduce(math.max);
+  final showGoal =
+      goalKg != null && goalKg >= dataLow - 5 && goalKg <= dataHigh + 5;
+  final low = showGoal ? math.min(dataLow, goalKg) : dataLow;
+  final high = showGoal ? math.max(dataHigh, goalKg) : dataHigh;
+  final padding = math.max(1.0, (high - low) * .18);
+  return (minY: low - padding, maxY: high + padding, showGoalLine: showGoal);
+}
+
 class WeightChart extends StatelessWidget {
   const WeightChart({
     required this.entries,
@@ -39,129 +55,137 @@ class WeightChart extends StatelessWidget {
       for (var i = 0; i < trend.entries.length; i++)
         FlSpot(xOf(trend.entries[i]), trend.ema[i]),
     ];
-    final values = <double>[
-      ...trend.entries.map((e) => e.kg),
-      if (goalKg != null) goalKg!,
-    ];
-    final low = values.reduce(math.min);
-    final high = values.reduce(math.max);
-    final padding = math.max(1.0, (high - low) * .18);
-    final minY = low - padding;
-    final maxY = high + padding;
+    final range =
+        chartYRange(trend.entries.map((entry) => entry.kg).toList(), goalKg);
 
     // Dates must advance left to right even though the surrounding Arabic UI
     // is RTL; reversing time would make the weight trajectory misleading.
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: SizedBox(
-        height: 220,
-        child: LineChart(
-          LineChartData(
-            minX: 0,
-            maxX: math.max(1, days - 1).toDouble(),
-            minY: minY,
-            maxY: maxY,
-            gridData: FlGridData(
-              drawVerticalLine: false,
-              getDrawingHorizontalLine: (_) =>
-                  const FlLine(color: AppPalette.outline, strokeWidth: 1),
-            ),
-            borderData: FlBorderData(show: false),
-            titlesData: FlTitlesData(
-              topTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 25,
-                  interval: math.max(1, (days - 1) / 3).toDouble(),
-                  getTitlesWidget: (value, meta) {
-                    final date = DateTime(
-                        start.year, start.month, start.day + value.round());
-                    return SideTitleWidget(
-                      axisSide: meta.axisSide,
-                      child: Text('${date.day}/${date.month}',
-                          style: const TextStyle(
-                              color: AppPalette.muted, fontSize: 10)),
-                    );
-                  },
-                ),
-              ),
-            ),
-            extraLinesData: goalKg == null
-                ? null
-                : ExtraLinesData(horizontalLines: [
-                    HorizontalLine(
-                      y: goalKg!,
-                      color: AppPalette.lime,
-                      strokeWidth: 1.5,
-                      dashArray: [5, 4],
-                      label: HorizontalLineLabel(
-                        show: true,
-                        style: const TextStyle(
-                            color: AppPalette.lime, fontSize: 10),
-                        labelResolver: (_) => AppStrings.progressGoalLine,
-                      ),
-                    ),
-                  ]),
-            lineTouchData: LineTouchData(
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipColor: (_) => AppPalette.raised,
-                getTooltipItems: (spots) => [
-                  for (final spot in spots)
-                    spot.barIndex == 0
-                        ? LineTooltipItem(
-                            '${trend.entries[spot.spotIndex].date.day}/${trend.entries[spot.spotIndex].date.month}/${trend.entries[spot.spotIndex].date.year}\n${spot.y.toStringAsFixed(1)} ${AppStrings.kg}',
-                            const TextStyle(color: AppPalette.text),
-                          )
-                        : null,
-                ],
-              ),
-            ),
-            lineBarsData: [
-              LineChartBarData(
-                spots: raw,
-                color: Colors.transparent,
-                barWidth: 0,
-                dotData: FlDotData(
-                  getDotPainter: (spot, percent, bar, index) =>
-                      FlDotCirclePainter(
-                    radius: 3.5,
-                    color: AppPalette.text,
-                    strokeWidth: 1.5,
-                    strokeColor: AppPalette.emerald,
-                  ),
-                ),
-              ),
-              LineChartBarData(
-                spots: smooth,
-                color: AppPalette.emerald,
-                barWidth: 3,
-                isCurved: smooth.length > 2,
-                preventCurveOverShooting: true,
-                dotData: const FlDotData(show: false),
-                belowBarData: BarAreaData(
-                  show: true,
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppPalette.emerald.withValues(alpha: .24),
-                      AppPalette.emerald.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (goalKg != null && !range.showGoalLine)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: 8),
+            child: Chip(
+                label: Text(AppStrings.progressDistantGoal(goalKg!,
+                    above: goalKg! >
+                        trend.entries
+                            .map((entry) => entry.kg)
+                            .reduce(math.max)))),
           ),
-          duration: MotionSettings.duration(
-              context, const Duration(milliseconds: 280)),
+        ),
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: SizedBox(
+          height: 220,
+          child: LineChart(
+            LineChartData(
+              minX: 0,
+              maxX: math.max(1, days - 1).toDouble(),
+              minY: range.minY,
+              maxY: range.maxY,
+              gridData: FlGridData(
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (_) =>
+                    const FlLine(color: AppPalette.outline, strokeWidth: 1),
+              ),
+              borderData: FlBorderData(show: false),
+              titlesData: FlTitlesData(
+                topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                leftTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 25,
+                    interval: math.max(1, (days - 1) / 3).toDouble(),
+                    getTitlesWidget: (value, meta) {
+                      final date = DateTime(
+                          start.year, start.month, start.day + value.round());
+                      return SideTitleWidget(
+                        axisSide: meta.axisSide,
+                        child: Text('${date.day}/${date.month}',
+                            style: const TextStyle(
+                                color: AppPalette.muted, fontSize: 10)),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              extraLinesData: !range.showGoalLine
+                  ? null
+                  : ExtraLinesData(horizontalLines: [
+                      HorizontalLine(
+                        y: goalKg!,
+                        color: AppPalette.lime,
+                        strokeWidth: 1.5,
+                        dashArray: [5, 4],
+                        label: HorizontalLineLabel(
+                          show: true,
+                          style: const TextStyle(
+                              color: AppPalette.lime, fontSize: 10),
+                          labelResolver: (_) => AppStrings.progressGoalLine,
+                        ),
+                      ),
+                    ]),
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (_) => AppPalette.raised,
+                  getTooltipItems: (spots) => [
+                    for (final spot in spots)
+                      spot.barIndex == 0
+                          ? LineTooltipItem(
+                              '${trend.entries[spot.spotIndex].date.day}/${trend.entries[spot.spotIndex].date.month}/${trend.entries[spot.spotIndex].date.year}\n${spot.y.toStringAsFixed(1)} ${AppStrings.kg}',
+                              const TextStyle(color: AppPalette.text),
+                            )
+                          : null,
+                  ],
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: raw,
+                  color: Colors.transparent,
+                  barWidth: 0,
+                  dotData: FlDotData(
+                    getDotPainter: (spot, percent, bar, index) =>
+                        FlDotCirclePainter(
+                      radius: 3.5,
+                      color: AppPalette.text,
+                      strokeWidth: 1.5,
+                      strokeColor: AppPalette.emerald,
+                    ),
+                  ),
+                ),
+                LineChartBarData(
+                  spots: smooth,
+                  color: AppPalette.emerald,
+                  barWidth: 3,
+                  isCurved: smooth.length > 2,
+                  preventCurveOverShooting: true,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppPalette.emerald.withValues(alpha: .24),
+                        AppPalette.emerald.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            duration: MotionSettings.duration(
+                context, const Duration(milliseconds: 280)),
+          ),
         ),
       ),
-    );
+    ]);
   }
 }

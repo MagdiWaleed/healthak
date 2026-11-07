@@ -8,6 +8,7 @@ import '../../service/auth_service.dart';
 import '../../service/prefs_service.dart';
 import '../../service/session_controller.dart';
 import '../../ui/components/numeric_stepper.dart';
+import '../../ui/components/neon_button.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_sheet.dart';
@@ -202,9 +203,10 @@ class _GoalWeightSheetState extends State<GoalWeightSheet> {
               onChanged: (value) => setState(() => kg = value),
             ),
             const SizedBox(height: 16),
-            FilledButton(
+            NeonButton(
                 onPressed: saving ? null : _save,
-                child: const Text(AppStrings.save)),
+                loading: saving,
+                label: AppStrings.save),
           ]),
         ),
       );

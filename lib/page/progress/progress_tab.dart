@@ -8,6 +8,8 @@ import '../../domain/day/day_log.dart';
 import '../../domain/progress/streaks.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/section_header.dart';
+import '../../ui/components/neon_button.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/components/stat_tile.dart';
 import '../../ui/components/weight_chart.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
@@ -53,7 +55,16 @@ class ProgressTab extends GetView<ProgressController> {
   @override
   Widget build(BuildContext context) => Obx(() {
         if (controller.loading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(children: [
+              ShimmerBox(height: 170),
+              SizedBox(height: 12),
+              ShimmerBox(height: 72),
+              SizedBox(height: 12),
+              ShimmerBox(height: 72),
+            ]),
+          );
         }
         if (controller.error.value != null) {
           return const Center(child: Text(AppStrings.progressLoadFailed));
@@ -88,9 +99,9 @@ class ProgressTab extends GetView<ProgressController> {
                     color: AppPalette.emerald, size: 36),
                 const Text(AppStrings.progressNoWeights),
                 const SizedBox(height: 12),
-                FilledButton(
+                NeonButton(
                   onPressed: () => WeightEntrySheet.show(context),
-                  child: const Text(AppStrings.logWeight),
+                  label: AppStrings.logWeight,
                 ),
               ]),
             )

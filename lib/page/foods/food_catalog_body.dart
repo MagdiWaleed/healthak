@@ -6,6 +6,7 @@ import '../../l10n/app_strings.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/glass_chip.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/feedback/glass_snack_bar.dart';
 import '../../ui/food/food_photo.dart';
 import '../../ui/glass/glass_card.dart';
@@ -45,6 +46,7 @@ class FoodCatalogBody extends StatefulWidget {
 class _FoodCatalogBodyState extends State<FoodCatalogBody> {
   final _scroll = ScrollController();
   final _search = TextEditingController();
+  final Set<Object> _enteredRows = {};
 
   @override
   void initState() {
@@ -150,7 +152,16 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
         Expanded(
           child: Obx(() {
             if (c.loading.value) {
-              return const Center(child: CircularProgressIndicator());
+              return ListView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                children: const [
+                  ShimmerBox(height: 72),
+                  SizedBox(height: 12),
+                  ShimmerBox(height: 72),
+                  SizedBox(height: 12),
+                  ShimmerBox(height: 72),
+                ],
+              );
             }
             final error = c.error.value;
             if (error != null && c.items.isEmpty) {
@@ -190,6 +201,8 @@ class _FoodCatalogBodyState extends State<FoodCatalogBody> {
                   return StaggeredEntry(
                     index: index,
                     maxStaggered: 6,
+                    replayKey: food.id,
+                    replayGuard: _enteredRows,
                     child: _FoodRow(
                       food: food,
                       specularIndex: index,

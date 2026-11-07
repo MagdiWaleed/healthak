@@ -6,6 +6,7 @@ import '../../l10n/app_strings.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
 import '../../ui/components/streak_chip.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/glass/glass_card.dart';
 import '../../ui/food/food_photo.dart';
 import '../../ui/motion/navigation.dart';
@@ -40,9 +41,13 @@ class TodayTab extends GetView<TodayController> {
           _WeekStrip(controller: controller),
           const SizedBox(height: 12),
           if (loading && day == null)
-            const Padding(
-                padding: EdgeInsets.all(40),
-                child: Center(child: CircularProgressIndicator()))
+            const Column(children: [
+              ShimmerBox(height: 160),
+              SizedBox(height: 12),
+              ShimmerBox(height: 80),
+              SizedBox(height: 12),
+              ShimmerBox(height: 80),
+            ])
           else if (error != null && day == null)
             ErrorState(message: error, onRetry: controller.retry)
           else if (day == null)
@@ -255,10 +260,10 @@ class _AssistantEntry extends StatelessWidget {
           key: const ValueKey('today-assistant'),
           borderRadius: BorderRadius.circular(18),
           onTap: () => pushHealthak(() => const AssistantTab()),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
             child: Row(children: [
-              Expanded(
+              const Expanded(
                   child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -273,11 +278,11 @@ class _AssistantEntry extends StatelessWidget {
                           TextStyle(color: AppPalette.onAccent, fontSize: 11)),
                 ],
               )),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               CircleAvatar(
                 radius: 23,
-                backgroundColor: Color(0x2EFFFFFF),
-                child: Icon(Icons.chat_bubble_outline_rounded,
+                backgroundColor: AppPalette.text.withValues(alpha: .18),
+                child: const Icon(Icons.chat_bubble_outline_rounded,
                     color: AppPalette.onAccent, size: 23),
               ),
             ]),

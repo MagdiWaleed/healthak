@@ -9,7 +9,8 @@ class StreakChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-        label: AppStrings.streakDays(count),
+        label:
+            count == 0 ? AppStrings.startStreak : AppStrings.streakDays(count),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
@@ -24,7 +25,7 @@ class StreakChip extends StatelessWidget {
                 color: count >= 3 ? AppPalette.coral : AppPalette.muted,
                 size: 19),
             const SizedBox(width: 5),
-            Text('$count',
+            Text(count == 0 ? AppStrings.startStreak : '$count',
                 style: const TextStyle(
                     color: AppPalette.text, fontWeight: FontWeight.w800)),
           ]),

@@ -9,8 +9,12 @@ import '../../l10n/app_strings.dart';
 import '../../service/auth_service.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
+import '../../ui/components/neon_button.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/format/number_input.dart';
 import '../../ui/glass/glass_card.dart';
+import '../../ui/motion/navigation.dart';
+import '../../ui/motion/staggered_entry.dart';
 import '../../ui/theme/app_colors.dart';
 import '../today/today_controller.dart';
 
@@ -22,6 +26,7 @@ class MarketplaceTab extends StatefulWidget {
 }
 
 class _MarketplaceTabState extends State<MarketplaceTab> {
+  final Set<Object> _enteredMeals = {};
   final repository = MarketRepository();
   MarketSort sort = MarketSort.newest;
   final meals = <MarketMeal>[];
@@ -109,10 +114,13 @@ class _MarketplaceTabState extends State<MarketplaceTab> {
             ]),
             const SizedBox(height: 12),
             if (meals.isEmpty && loading)
-              const Center(
-                  child: Padding(
-                      padding: EdgeInsets.all(40),
-                      child: CircularProgressIndicator()))
+              const Column(children: [
+                ShimmerBox(height: 92),
+                SizedBox(height: 12),
+                ShimmerBox(height: 92),
+                SizedBox(height: 12),
+                ShimmerBox(height: 92),
+              ])
             else if (meals.isEmpty && error != null)
               ErrorState(message: error!, onRetry: () => _load(restart: true))
             else if (meals.isEmpty)
@@ -121,8 +129,13 @@ class _MarketplaceTabState extends State<MarketplaceTab> {
                 title: AppStrings.marketEmptyTitle,
                 message: AppStrings.marketEmptyBody,
               ),
-            for (final meal in meals) ...[
-              _MarketCard(meal: meal),
+            for (final (index, meal) in meals.indexed) ...[
+              StaggeredEntry(
+                index: index,
+                replayKey: meal.id,
+                replayGuard: _enteredMeals,
+                child: _MarketCard(meal: meal),
+              ),
               const SizedBox(height: 10),
             ],
             if (error != null && meals.isNotEmpty)
@@ -145,9 +158,7 @@ class _MarketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GlassCard(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => _MarketDetail(meal: meal),
-        )),
+        onTap: () => pushHealthak(() => _MarketDetail(meal: meal)),
         child: Row(children: [
           Container(
             width: 58,
@@ -475,18 +486,20 @@ class _MarketDetailState extends State<_MarketDetail> {
           if (error != null)
             Text(error!, style: const TextStyle(color: AppPalette.danger)),
           const SizedBox(height: 14),
-          FilledButton(
+          NeonButton(
             onPressed: saving || parsedWeights == null ? null : _addToday,
-            child: Text(saving ? AppStrings.saving : AppStrings.marketAddToday),
+            label: saving ? AppStrings.saving : AppStrings.marketAddToday,
+            loading: saving,
           ),
           const SizedBox(height: 8),
-          FilledButton(
+          NeonButton(
             onPressed: saving || saved ? null : _copy,
-            child: Text(saved
+            label: saved
                 ? AppStrings.marketCopied
                 : saving
                     ? AppStrings.saving
-                    : AppStrings.marketCopy),
+                    : AppStrings.marketCopy,
+            loading: saving,
           ),
           const SizedBox(height: 8),
           OutlinedButton(

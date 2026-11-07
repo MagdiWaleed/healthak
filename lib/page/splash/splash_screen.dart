@@ -5,8 +5,9 @@ import 'package:get/get.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../ui/background/aurora_background.dart';
-import '../../ui/components/glass_button.dart';
+import '../../ui/components/neon_button.dart';
 import '../../ui/theme/app_colors.dart';
+import '../../ui/theme/motion_settings.dart';
 import 'splash_controller.dart';
 
 class SplashScreen extends GetView<SplashController> {
@@ -49,12 +50,24 @@ class _BrandState extends State<_Brand> with TickerProviderStateMixin {
   late final AnimationController _entrance = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 700),
-  )..forward();
+  );
 
   late final AnimationController _spin = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
-  )..repeat();
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MotionSettings.enabled(context)) {
+      if (_entrance.value == 0) _entrance.forward();
+      if (!_spin.isAnimating) _spin.repeat();
+    } else {
+      _entrance.value = 1;
+      _spin.stop();
+    }
+  }
 
   @override
   void dispose() {
@@ -74,20 +87,30 @@ class _BrandState extends State<_Brand> with TickerProviderStateMixin {
       mainAxisSize: MainAxisSize.min,
       children: [
         ScaleTransition(
-          scale: entrance.drive(Tween(begin: .7, end: 1.0)),
+          scale: MotionSettings.enabled(context)
+              ? entrance.drive(Tween(begin: .7, end: 1.0))
+              : const AlwaysStoppedAnimation(1),
           child: FadeTransition(
-            opacity: _entrance,
+            opacity: MotionSettings.enabled(context)
+                ? _entrance
+                : const AlwaysStoppedAnimation(1),
             child: AnimatedBuilder(
               animation: _spin,
               builder: (context, child) => CustomPaint(
                 painter: _MarkPainter(_spin.value),
                 child: child,
               ),
-              child: const SizedBox.square(
+              child: SizedBox.square(
                 dimension: 92,
                 child: Center(
-                  child: Icon(Icons.eco_rounded,
-                      size: 40, color: AppPalette.text),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: AppPalette.glow(AppPalette.emerald),
+                    ),
+                    child: const Icon(Icons.eco_rounded,
+                        size: 40, color: AppPalette.emerald),
+                  ),
                 ),
               ),
             ),
@@ -133,7 +156,7 @@ class _MarkPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
-        ..color = Colors.white.withValues(alpha: .10),
+        ..color = AppPalette.text.withValues(alpha: .10),
     );
 
     final shader = const SweepGradient(
@@ -177,7 +200,8 @@ class _SplashError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off_rounded, size: 40, color: AppPalette.amber),
+            const Icon(Icons.wifi_off_rounded,
+                size: 40, color: AppPalette.amber),
             const SizedBox(height: 14),
             Text(
               message,
@@ -185,7 +209,7 @@ class _SplashError extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 18),
-            GlassButton(label: AppStrings.retry, onPressed: onRetry),
+            NeonButton(label: AppStrings.retry, onPressed: onRetry),
           ],
         ),
       );

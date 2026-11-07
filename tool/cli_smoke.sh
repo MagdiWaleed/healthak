@@ -23,8 +23,12 @@ DEFINE=()
 LABELS=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --define-file) DEFINE=(--dart-define-from-file="$2"); shift ;;
+    --define-file) DEFINE+=(--dart-define-from-file="$2"); shift ;;
     --build) ;; # kept for compatibility: `flutter run` always builds
+    # --apk: reuse build/app/outputs/flutter-apk/app-debug.apk instead of
+    # running Gradle. Build first, then `gradlew --stop`: on a low-RAM host,
+    # Gradle and the emulator together crashed the emulator.
+    --apk) DEFINE+=(--use-application-binary=build/app/outputs/flutter-apk/app-debug.apk) ;;
     *) LABELS+=("$1") ;;
   esac
   shift
@@ -111,6 +115,22 @@ for label in "${LABELS[@]}"; do
     sleep 1
     shot "$(printf %02d $i)-text"
     i=$((i + 1))
+    continue
+  fi
+  # "@tap:X,Y" taps raw device pixels (for controls whose label also
+  # appears in other text on the same screen).
+  if [[ "$label" == @tap:* ]]; then
+    xy="${label#@tap:}"
+    "$ADB" -s "$DEVICE" shell input tap "${xy%,*}" "${xy#*,}"
+    sleep 2
+    shot "$(printf %02d $i)-tapxy"
+    i=$((i + 1))
+    continue
+  fi
+  # "@key:CODE" sends an Android keyevent (4 = back, hides the keyboard).
+  if [[ "$label" == @key:* ]]; then
+    "$ADB" -s "$DEVICE" shell input keyevent "${label#@key:}"
+    sleep 2
     continue
   fi
   if [ "$label" = "@swipe" ]; then
