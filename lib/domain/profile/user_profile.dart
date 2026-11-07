@@ -1,4 +1,5 @@
 import '../nutrition/energy.dart';
+import '../training/exercise.dart';
 
 enum AppThemeMode { dark, light, system }
 
@@ -64,6 +65,10 @@ class UserProfile {
   final double weeklyRateKg;
   final NutritionTargets targets;
   final DeficitMode? deficit;
+
+  /// Training equipment the user has. Null = not set up yet (treated as a
+  /// full gym, so existing users see every exercise as before).
+  final Set<Equipment>? equipment;
   final AppSettings settings;
   final bool onboardingComplete;
   final int schemaVersion;
@@ -84,6 +89,7 @@ class UserProfile {
     required this.weeklyRateKg,
     required this.targets,
     this.deficit,
+    this.equipment,
     required this.createdAt,
     required this.updatedAt,
     this.photoUrl,
@@ -121,6 +127,7 @@ class UserProfile {
     NutritionTargets? targets,
     DeficitMode? deficit,
     bool clearDeficit = false,
+    Set<Equipment>? equipment,
     AppSettings? settings,
     bool? onboardingComplete,
     DateTime? updatedAt,
@@ -141,6 +148,7 @@ class UserProfile {
         weeklyRateKg: weeklyRateKg ?? this.weeklyRateKg,
         targets: targets ?? this.targets,
         deficit: clearDeficit ? null : deficit ?? this.deficit,
+        equipment: equipment ?? this.equipment,
         settings: settings ?? this.settings,
         onboardingComplete: onboardingComplete ?? this.onboardingComplete,
         schemaVersion: schemaVersion,

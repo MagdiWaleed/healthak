@@ -11,6 +11,9 @@ class TrainingItem {
   final int sets;
   final int reps;
   final int order;
+
+  /// Frozen copy of the plan item's target load at materialization.
+  final double? loadKg;
   final bool done;
   final DateTime? doneAt;
 
@@ -23,6 +26,7 @@ class TrainingItem {
     required this.sets,
     required this.reps,
     required this.order,
+    this.loadKg,
     this.done = false,
     this.doneAt,
   });
@@ -36,6 +40,7 @@ class TrainingItem {
         sets: sets,
         reps: reps,
         order: order,
+        loadKg: loadKg,
         done: !done,
         doneAt: done ? null : now,
       );
@@ -128,6 +133,7 @@ class TrainingDay {
             sets: item.sets,
             reps: item.reps,
             order: item.order,
+            loadKg: item.loadKg,
             done: previous[item.id]?.done ?? false,
             doneAt: previous[item.id]?.doneAt,
           ),

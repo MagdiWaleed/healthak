@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/nutrition/energy.dart';
 import '../../domain/profile/user_profile.dart';
+import '../../domain/training/exercise.dart';
 import 'mapper_utils.dart';
 
 class ProfileMapper {
@@ -51,6 +52,13 @@ class ProfileMapper {
                   stringMap(json['deficit'])['level'], DeficitLevel.medium),
               startedAt: dateValue(stringMap(json['deficit'])['startedAt']),
             ),
+      equipment: json['equipment'] is List
+          ? {
+              for (final name in json['equipment'] as List)
+                for (final e in Equipment.values)
+                  if (e.name == name) e,
+            }
+          : null,
       settings: AppSettings(
         themeMode: enumValue(
           AppThemeMode.values,
@@ -103,6 +111,8 @@ class ProfileMapper {
             'level': profile.deficit!.level.name,
             'startedAt': Timestamp.fromDate(profile.deficit!.startedAt),
           },
+        if (profile.equipment != null)
+          'equipment': [for (final e in profile.equipment!) e.name]..sort(),
         'settings': {
           'themeMode': profile.settings.themeMode.name,
           'accent': profile.settings.accent.name,

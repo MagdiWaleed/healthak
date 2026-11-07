@@ -31,6 +31,7 @@ class WorkoutPlanMapper {
             (json['daysOfWeek'] as List? ?? const []).map(intValue).toSet(),
         order: intValue(json['order']),
         active: json['active'] as bool? ?? true,
+        loadKg: (json['loadKg'] as num?)?.toDouble(),
         createdAt: dateValue(json['createdAt']),
         updatedAt: dateValue(json['updatedAt']),
       );
@@ -43,6 +44,7 @@ class WorkoutPlanMapper {
         'daysOfWeek': item.daysOfWeek.toList()..sort(),
         'order': item.order,
         'active': item.active,
+        if (item.loadKg != null) 'loadKg': item.loadKg,
         'createdAt': Timestamp.fromDate(item.createdAt),
         'updatedAt': Timestamp.fromDate(item.updatedAt),
       };

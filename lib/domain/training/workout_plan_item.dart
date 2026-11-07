@@ -10,6 +10,9 @@ class WorkoutPlanItem {
   final Set<int> daysOfWeek;
   final int order;
   final bool active;
+
+  /// Optional target weight per rep (e.g. dumbbell kg). Null = bodyweight / unset.
+  final double? loadKg;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -25,6 +28,7 @@ class WorkoutPlanItem {
     required this.createdAt,
     required this.updatedAt,
     this.active = true,
+    this.loadKg,
   });
 
   static const Set<int> everyDay = {1, 2, 3, 4, 5, 6, 7};
@@ -39,6 +43,8 @@ class WorkoutPlanItem {
     Set<int>? daysOfWeek,
     int? order,
     bool? active,
+    double? loadKg,
+    bool clearLoad = false,
     DateTime? updatedAt,
   }) =>
       WorkoutPlanItem(
@@ -51,6 +57,7 @@ class WorkoutPlanItem {
         daysOfWeek: daysOfWeek ?? this.daysOfWeek,
         order: order ?? this.order,
         active: active ?? this.active,
+        loadKg: clearLoad ? null : (loadKg ?? this.loadKg),
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -65,7 +72,8 @@ int workoutPlanVersionOf(Iterable<WorkoutPlanItem> items, int weekday) {
   final canonical = sorted
       .map(
         (e) =>
-            '${e.id.length}:${e.id}|${e.sets}|${e.reps}|${e.nameAr.length}:${e.nameAr}|${e.order}',
+            '${e.id.length}:${e.id}|${e.sets}|${e.reps}|${e.nameAr.length}:${e.nameAr}|${e.order}'
+            '${e.loadKg == null ? '' : '|${e.loadKg}'}',
       )
       .join(';');
   var hash = 5381;

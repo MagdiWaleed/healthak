@@ -39,6 +39,7 @@ class TrainingDayMapper {
         sets: intValue(json['sets']),
         reps: intValue(json['reps']),
         order: intValue(json['order']),
+        loadKg: (json['loadKg'] as num?)?.toDouble(),
         done: json['done'] as bool? ?? false,
         doneAt: json['doneAt'] == null ? null : dateValue(json['doneAt']),
       );
@@ -51,6 +52,7 @@ class TrainingDayMapper {
         'sets': item.sets,
         'reps': item.reps,
         'order': item.order,
+        if (item.loadKg != null) 'loadKg': item.loadKg,
         'done': item.done,
         'doneAt': item.doneAt == null ? null : Timestamp.fromDate(item.doneAt!),
       };
