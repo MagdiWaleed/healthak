@@ -10,6 +10,13 @@ enum DigitStyle { western, arabicIndic }
 
 enum UnitSystem { metric, imperial }
 
+class DeficitMode {
+  final DeficitLevel level;
+  final DateTime startedAt;
+
+  const DeficitMode({required this.level, required this.startedAt});
+}
+
 class AppSettings {
   final AppThemeMode themeMode;
   final AccentChoice accent;
@@ -56,6 +63,7 @@ class UserProfile {
   final Goal goal;
   final double weeklyRateKg;
   final NutritionTargets targets;
+  final DeficitMode? deficit;
   final AppSettings settings;
   final bool onboardingComplete;
   final int schemaVersion;
@@ -75,6 +83,7 @@ class UserProfile {
     required this.goal,
     required this.weeklyRateKg,
     required this.targets,
+    this.deficit,
     required this.createdAt,
     required this.updatedAt,
     this.photoUrl,
@@ -84,6 +93,17 @@ class UserProfile {
   });
 
   int ageAt(DateTime date) => (date.year - birthYear).clamp(0, 130);
+
+  NutritionTargets get effectiveTargets => deficit == null
+      ? targets
+      : NutritionTargets.deficit(
+          weightKg: weightKg,
+          heightCm: heightCm,
+          ageYears: ageAt(DateTime.now()),
+          sex: sex,
+          activity: activityLevel,
+          level: deficit!.level,
+        );
 
   UserProfile copyWith({
     String? displayName,
@@ -99,6 +119,8 @@ class UserProfile {
     Goal? goal,
     double? weeklyRateKg,
     NutritionTargets? targets,
+    DeficitMode? deficit,
+    bool clearDeficit = false,
     AppSettings? settings,
     bool? onboardingComplete,
     DateTime? updatedAt,
@@ -118,6 +140,7 @@ class UserProfile {
         goal: goal ?? this.goal,
         weeklyRateKg: weeklyRateKg ?? this.weeklyRateKg,
         targets: targets ?? this.targets,
+        deficit: clearDeficit ? null : deficit ?? this.deficit,
         settings: settings ?? this.settings,
         onboardingComplete: onboardingComplete ?? this.onboardingComplete,
         schemaVersion: schemaVersion,

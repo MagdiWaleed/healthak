@@ -105,7 +105,7 @@ class ProfileController extends GetxController {
 
   /// Reads the `.obs` text mirrors, not the `TextEditingController`s
   /// directly, so an `Obx` wrapping this in the screen reacts to typing.
-  NutritionTargets? get previewTargets {
+  NutritionTargets? get _normalPreviewTargets {
     final h = parseBodyStat(_heightText.value);
     final w = parseBodyStat(_weightText.value);
     final y = parseBirthYear(_birthYearText.value);
@@ -125,7 +125,21 @@ class ProfileController extends GetxController {
     );
   }
 
-  NutritionTargets? get currentTargets => _current?.targets;
+  NutritionTargets? get previewTargets {
+    final normal = _normalPreviewTargets;
+    final active = _current?.deficit;
+    if (normal == null || active == null) return normal;
+    return NutritionTargets.deficit(
+      weightKg: parsedWeight!,
+      heightCm: parsedHeight!,
+      ageYears: DateTime.now().year - parsedBirthYear!,
+      sex: sex.value,
+      activity: activity.value,
+      level: active.level,
+    );
+  }
+
+  NutritionTargets? get currentTargets => _current?.effectiveTargets;
 
   /// The rate expressed the way the user asked to set it: kcal cut (or
   /// added) per day. Stored as a weekly kilogram rate because that is what
@@ -180,7 +194,7 @@ class ProfileController extends GetxController {
   /// profile-shaped input they need while this edit form is still unsaved.
   UserProfile? get previewProfile {
     final profile = _current;
-    final targets = previewTargets;
+    final targets = _normalPreviewTargets;
     if (profile == null || targets == null) return null;
     return profile.copyWith(
       heightCm: parsedHeight!,
@@ -210,7 +224,7 @@ class ProfileController extends GetxController {
       error.value = AppStrings.bodyStatsError(invalid);
       return false;
     }
-    final preview = previewTargets;
+    final preview = _normalPreviewTargets;
     if (profile == null || preview == null) return false;
 
     saving.value = true;

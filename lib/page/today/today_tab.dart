@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/day/day_log.dart';
+import '../../domain/nutrition/energy.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/empty_state.dart';
 import '../../ui/components/error_state.dart';
@@ -13,6 +14,7 @@ import '../../ui/motion/navigation.dart';
 import '../../ui/theme/motion_settings.dart';
 import '../../ui/theme/app_colors.dart';
 import '../assistant/assistant_tab.dart';
+import '../deficit/deficit_mode_sheet.dart';
 import '../home/quick_add_sheet.dart';
 import 'add_food_flow.dart';
 import 'edit_entry_sheet.dart';
@@ -75,7 +77,7 @@ class TodayTab extends GetView<TodayController> {
                 label: const Text(AppStrings.addMeal),
               ),
             ]),
-            if (day.isEmpty)
+            if (controller.visibleEntries(day).isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 28),
                 child: EmptyState(
@@ -84,7 +86,8 @@ class TodayTab extends GetView<TodayController> {
                     message: AppStrings.startWithMeal),
               ),
             for (final slot in day.activeSlots) ...[
-              for (final entry in day.entriesForSlot(slot))
+              for (final entry in day.entriesForSlot(slot).where(
+                  (entry) => controller.visibleEntries(day).contains(entry)))
                 _MealEntrance(
                   key: ValueKey('entry-${entry.entryId}'),
                   index: day.entries.indexOf(entry),
@@ -104,7 +107,8 @@ class TodayTab extends GetView<TodayController> {
             ],
             const SizedBox(height: 14),
             _AssistantEntry(),
-            TodayPlannedDetails(day: day),
+            if (day.targets.mode != TargetMode.deficit)
+              TodayPlannedDetails(day: day),
           ],
         ];
         final indexes = <Key, int>{
@@ -213,12 +217,23 @@ class _TodayHeader extends StatelessWidget {
           ),
           PositionedDirectional(
             end: 0,
-            child: IconButton(
-              tooltip: AppStrings.askAssistant,
-              onPressed: () => pushHealthak(() => const AssistantTab()),
-              icon: const Icon(Icons.chat_bubble_outline_rounded,
-                  color: AppPalette.emerald, size: 21),
-            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              PopupMenuButton<String>(
+                  tooltip: AppStrings.deficitMode,
+                  icon: const Icon(Icons.tune_rounded,
+                      color: AppPalette.emerald, size: 21),
+                  onSelected: (_) => DeficitModeSheet.show(context),
+                  itemBuilder: (_) => const [
+                        PopupMenuItem<String>(
+                            value: 'deficit',
+                            child: Text(AppStrings.deficitMode)),
+                      ]),
+              IconButton(
+                  tooltip: AppStrings.askAssistant,
+                  onPressed: () => pushHealthak(() => const AssistantTab()),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded,
+                      color: AppPalette.emerald, size: 21)),
+            ]),
           ),
         ]),
       ),

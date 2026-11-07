@@ -1,5 +1,6 @@
 import '../body/body_weight.dart';
 import '../day/day_log.dart';
+import '../nutrition/energy.dart';
 import '../training/training_day.dart';
 
 class StreakResult {
@@ -38,13 +39,14 @@ StreakResult computeStreak(Set<String> hitDateKeys, DateTime today) {
   return StreakResult(current: current, best: best);
 }
 
-/// A day "hits" its calorie target when something was eaten and the total is
-/// within ±[tolerance] of the target. Over-eating does not extend a streak.
+/// A normal day hits within ±[tolerance]; a deficit day hits with any positive
+/// intake no higher than its frozen budget.
 /// Shared by Today's streak chip and the Progress tab so they always agree.
 bool isCalorieHit(DayLog day, {double tolerance = .10}) {
   final target = day.targets.kcal;
   final eaten = day.consumedKcal;
   if (target <= 0 || eaten <= 0) return false;
+  if (day.targets.mode == TargetMode.deficit) return eaten <= target;
   return (eaten - target).abs() <= target * tolerance;
 }
 

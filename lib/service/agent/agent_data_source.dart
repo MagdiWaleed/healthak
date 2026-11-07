@@ -159,8 +159,13 @@ class HealthakAgentDataSource
   Future<List<FoodItem>> getPersonalFoods() => _foods.listPersonal();
 
   @override
-  Future<DayLog> ensureDay(DateTime date, NutritionTargets targets) =>
-      _days.ensureDay(date: date, targets: targets);
+  Future<DayLog> ensureDay(DateTime date, NutritionTargets targets) async {
+    final profile = await getProfile();
+    return _days.ensureDay(
+        date: date,
+        targets: targets,
+        includeSchedule: profile?.deficit == null);
+  }
 
   @override
   Future<void> upsertDayEntry(String dateKey, DayEntry entry) =>

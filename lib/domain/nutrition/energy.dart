@@ -55,6 +55,18 @@ enum TargetMode {
 
   /// The user typed their own kcal and macro split. Skips every calculation.
   manual,
+
+  /// A maintenance-based calorie budget with protein as the only macro goal.
+  deficit,
+}
+
+enum DeficitLevel {
+  light(0.10),
+  medium(0.15),
+  strong(0.20);
+
+  const DeficitLevel(this.fraction);
+  final double fraction;
 }
 
 /// Roughly 7700 kcal per kilogram of body mass.
@@ -291,6 +303,28 @@ class NutritionTargets {
     required Macros macros,
   }) =>
       NutritionTargets(mode: TargetMode.manual, kcal: kcal, macros: macros);
+
+  /// Carbs and fat are zero because deficit mode tracks protein only. Kcal is
+  /// an independent budget, not the energy derived from these macro targets.
+  factory NutritionTargets.deficit({
+    required double weightKg,
+    required double heightCm,
+    required int ageYears,
+    required Sex sex,
+    required ActivityLevel activity,
+    required DeficitLevel level,
+    double proteinPerKg = kDefaultProteinPerKg,
+  }) {
+    final bmr = bmrMifflinStJeor(
+        weightKg: weightKg, heightCm: heightCm, ageYears: ageYears, sex: sex);
+    final budget = math.max(energyFloor(bmr: bmr, sex: sex),
+        tdee(bmr: bmr, activity: activity) * (1 - level.fraction));
+    return NutritionTargets(
+      mode: TargetMode.deficit,
+      kcal: budget,
+      macros: Macros(protein: proteinPerKg * weightKg, carbs: 0, fat: 0),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'mode': mode.name,

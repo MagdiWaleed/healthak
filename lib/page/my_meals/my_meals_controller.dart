@@ -170,7 +170,10 @@ class MyMealsController extends GetxController {
     if (profile == null) return false;
 
     final now = DateTime.now();
-    final day = await _days.ensureDay(date: now, targets: profile.targets);
+    final day = await _days.ensureDay(
+        date: now,
+        targets: profile.effectiveTargets,
+        includeSchedule: profile.deficit == null);
     await _days.upsertEntry(
       day.dateKey,
       DayEntry(

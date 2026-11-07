@@ -432,4 +432,25 @@ abstract final class AppStrings {
   // --- Google sign-in strings ---
   static const continueWithGoogle = 'المتابعة باستخدام Google';
   static const orDivider = 'أو';
+
+  // --- Phase 13 deficit strings ---
+  static const deficitMode = 'وضع العجز';
+  static const deficitExplanation = 'بدل الخطة: كُل أقل من المعتاد';
+  static const deficitOff = 'متوقف';
+  static const deficitLight = 'خفيف ١٠٪';
+  static const deficitMedium = 'متوسط ١٥٪';
+  static const deficitStrong = 'قوي ٢٠٪';
+  static const deficitLightPercent = '١٠٪';
+  static const deficitMediumPercent = '١٥٪';
+  static const deficitStrongPercent = '٢٠٪';
+  static const deficitFloorNote = 'طُبّق الحد الأدنى الآمن للسعرات';
+  static const deficitBudget = 'ميزانية السعرات';
+  static const deficitOverBudget = 'تجاوزت الميزانية بـ';
+  static String deficitEatLess(int kcal) => 'كُل أقل من $kcal سعرة';
+  static String deficitLevel(int percent) =>
+      'وضع العجز ${percent == 10 ? '١٠' : percent == 15 ? '١٥' : '٢٠'}٪';
+  static String deficitPreview(int maintenance, int budget) =>
+      'المعتاد $maintenance ← الميزانية $budget سعرة';
+  static String deficitAssistantContext(int budget) =>
+      'وضع العجز، الميزانية $budget سعرة؛ ';
 }

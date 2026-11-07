@@ -26,6 +26,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _TodayFixture extends GetxController implements TodayController {
   @override
+  List<DayEntry> visibleEntries(DayLog value) => value.entries;
+  @override
   final today = DateTime(2026, 10, 23).obs;
   @override
   final selectedDate = DateTime(2026, 10, 23).obs;

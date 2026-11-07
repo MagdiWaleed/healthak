@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/day/day_log.dart';
+import '../../domain/nutrition/energy.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/activity_rings.dart';
 import '../../ui/components/check_tile.dart';
@@ -13,6 +14,7 @@ import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/motion_settings.dart';
 import '../home/home_controller.dart';
 import '../progress/weight_entry_sheet.dart';
+import '../deficit/deficit_mode_sheet.dart';
 import 'today_controller.dart';
 
 class TodayDashboard extends StatelessWidget {
@@ -33,14 +35,17 @@ class TodayDashboard extends StatelessWidget {
     final weight = controller.weightToday.value;
     final trend = controller.weightTrend.value;
     final target = day.targets.kcal;
+    final isDeficit = day.targets.mode == TargetMode.deficit;
     final eaten = day.consumedKcal;
     final protein = day.consumedTotals.protein;
     final proteinTarget = day.targets.macros.protein;
     final rings = [
       RingSpec(
           progress: target <= 0 ? 0 : eaten / target,
-          color: AppPalette.ringCalories,
-          label: AppStrings.todayEnergy),
+          color: isDeficit && eaten > target
+              ? AppPalette.coral
+              : AppPalette.ringCalories,
+          label: isDeficit ? AppStrings.deficitBudget : AppStrings.todayEnergy),
       RingSpec(
           progress: training?.progress ?? 0,
           color: AppPalette.ringTraining,
@@ -62,10 +67,15 @@ class TodayDashboard extends StatelessWidget {
               TickerNumber(
                   value: (target - eaten).abs().round(),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: AppPalette.text, fontWeight: FontWeight.w900)),
+                      color: isDeficit && eaten > target
+                          ? AppPalette.coral
+                          : AppPalette.text,
+                      fontWeight: FontWeight.w900)),
               Text(
                   eaten > target
-                      ? AppStrings.aboveTarget
+                      ? (isDeficit
+                          ? AppStrings.deficitOverBudget
+                          : AppStrings.aboveTarget)
                       : AppStrings.remaining,
                   style:
                       const TextStyle(color: AppPalette.muted, fontSize: 11)),
@@ -74,8 +84,8 @@ class TodayDashboard extends StatelessWidget {
         ));
     final legend =
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      _Legend(AppStrings.todayEnergy, '${eaten.round()}/${target.round()}',
-          AppPalette.ringCalories),
+      _Legend(isDeficit ? AppStrings.deficitBudget : AppStrings.todayEnergy,
+          '${eaten.round()}/${target.round()}', AppPalette.ringCalories),
       _Legend(
           AppStrings.training,
           training == null
@@ -93,6 +103,18 @@ class TodayDashboard extends StatelessWidget {
           AppPalette.ringProtein),
     ]);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (isDeficit) ...[
+        Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: ActionChip(
+              label: Text(AppStrings.deficitLevel(
+                  ((controller.deficit?.level.fraction ?? .15) * 100).round())),
+              onPressed: () => DeficitModeSheet.show(context),
+            )),
+        Text(AppStrings.deficitEatLess(target.round()),
+            style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+      ],
       GlassCard(child: LayoutBuilder(builder: (context, constraints) {
         if (constraints.maxWidth < 330 ||
             MediaQuery.textScalerOf(context).scale(14) > 20) {
@@ -224,8 +246,10 @@ class _Macros extends StatelessWidget {
     final cards = [
       _Macro(AppStrings.protein, eaten.protein, target.protein,
           AppPalette.protein),
-      _Macro(AppStrings.carbs, eaten.carbs, target.carbs, AppPalette.carbs),
-      _Macro(AppStrings.fat, eaten.fat, target.fat, AppPalette.fat),
+      if (day.targets.mode != TargetMode.deficit) ...[
+        _Macro(AppStrings.carbs, eaten.carbs, target.carbs, AppPalette.carbs),
+        _Macro(AppStrings.fat, eaten.fat, target.fat, AppPalette.fat),
+      ],
     ];
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth < 300 ||

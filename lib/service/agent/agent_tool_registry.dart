@@ -114,7 +114,8 @@ class AgentToolRegistry {
     final latest = (await _trainingData.getWeightHistory(
         now.subtract(const Duration(days: 180)), now));
     final weight = latest.isEmpty ? null : WeightTrend(latest).latestKg;
-    return 'لقطة اليوم: المتبقي من السعرات ${day == null ? 'غير متاح' : (day.targets.kcal - day.consumedKcal).toStringAsFixed(0)}؛ '
+    return 'لقطة اليوم: ${profile?.deficit == null ? '' : AppStrings.deficitAssistantContext(profile!.effectiveTargets.kcal.round())}'
+        'المتبقي من السعرات ${day == null ? 'غير متاح' : (day.targets.kcal - day.consumedKcal).toStringAsFixed(0)}؛ '
         'البروتين ${day == null ? 'غير متاح' : (day.targets.macros.protein - day.consumedTotals.protein).toStringAsFixed(0)} جم؛ '
         'التمرين ${training.items.where((e) => e.done).length}/${training.items.length}؛ '
         'آخر وزن ${weight ?? 'غير متاح'} كجم؛ الهدف ${profile?.goalWeightKg ?? 'غير محدد'} كجم.';
@@ -664,7 +665,7 @@ class AgentToolRegistry {
     final profile = await _data.getProfile();
     return _data.ensureDay(
         dateKey == null ? _now().toLocal() : DateTime.parse(dateKey),
-        profile?.targets ?? NutritionTargets.empty);
+        profile?.effectiveTargets ?? NutritionTargets.empty);
   }
 
   Proposal _removeEntryProposal(DayEntry entry, String dateKey) => Proposal(
@@ -1199,8 +1200,8 @@ class AgentToolRegistry {
       'goal': profile.goal.name,
       'weekly_rate_kg': profile.weeklyRateKg,
       'targets': {
-        'kcal': profile.targets.kcal,
-        ..._macros(profile.targets.macros),
+        'kcal': profile.effectiveTargets.kcal,
+        ..._macros(profile.effectiveTargets.macros),
       },
     };
   }

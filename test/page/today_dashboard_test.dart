@@ -8,12 +8,15 @@ import 'package:diet_app2/domain/body/body_weight.dart';
 import 'package:diet_app2/domain/day/day_log.dart';
 import 'package:diet_app2/domain/nutrition/energy.dart';
 import 'package:diet_app2/domain/nutrition/macros.dart';
+import 'package:diet_app2/domain/profile/user_profile.dart';
 import 'package:diet_app2/domain/training/exercise.dart';
 import 'package:diet_app2/domain/training/training_day.dart';
 import 'package:diet_app2/domain/training/workout_plan_item.dart';
 import 'package:diet_app2/l10n/app_strings.dart';
 import 'package:diet_app2/page/today/today_controller.dart';
 import 'package:diet_app2/page/today/today_dashboard.dart';
+import 'package:diet_app2/page/deficit/deficit_mode_sheet.dart';
+import 'package:diet_app2/page/me/me_tab.dart';
 import 'package:diet_app2/page/training/training_controller.dart';
 import 'package:diet_app2/service/session_controller.dart';
 import 'package:diet_app2/ui/components/activity_rings.dart';
@@ -23,7 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 
-class _Session implements SessionController {
+class _Session extends GetxController implements SessionController {
   @override
   final profile = Rxn();
   @override
@@ -90,6 +93,33 @@ class _LiveWeights implements BodyWeightRepository {
   @override
   Stream<List<BodyWeightEntry>> watchRange(DateTime from, DateTime to) =>
       Stream.value([]);
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingDays implements DayRepository {
+  final calls = <({NutritionTargets targets, bool includeSchedule})>[];
+  final updates = StreamController<DayLog?>.broadcast();
+  @override
+  Stream<DayLog?> watch(DateTime date) => updates.stream;
+  @override
+  Future<DayLog> ensureDay(
+      {required DateTime date,
+      required NutritionTargets targets,
+      bool includeSchedule = true}) async {
+    calls.add((targets: targets, includeSchedule: includeSchedule));
+    final result = DayLog.empty(date, targets);
+    updates.add(result);
+    return result;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _QuietTraining implements TrainingDayRepository {
+  @override
+  Stream<TrainingDay?> watch(DateTime date) => Stream.value(null);
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -180,6 +210,226 @@ Widget _app(Widget child, {double scale = 1}) => MaterialApp(
             child: Scaffold(body: SingleChildScrollView(child: child)))));
 
 void main() {
+  testWidgets('deficit dashboard shows budget and protein without other macros',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = _controller(_Training());
+    final deficit = NutritionTargets.deficit(
+        weightKg: 80,
+        heightCm: 180,
+        ageYears: 30,
+        sex: Sex.male,
+        activity: ActivityLevel.moderate,
+        level: DeficitLevel.medium);
+    final day = _day().copyWith(targets: deficit);
+    await tester.pumpWidget(_app(
+        TodayDashboard(day: day, controller: controller, readOnly: true),
+        scale: 1.6));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.text(AppStrings.deficitEatLess(deficit.kcal.round())),
+        findsOneWidget);
+    expect(find.text(AppStrings.protein), findsWidgets);
+    expect(find.text(AppStrings.carbs), findsNothing);
+    expect(find.text(AppStrings.fat), findsNothing);
+    controller.onClose();
+  });
+
+  testWidgets('deficit sheet previews each level at narrow large text',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final now = DateTime.now();
+    final session = _Session();
+    session.profile.value = UserProfile(
+        uid: 'u',
+        displayName: '',
+        email: '',
+        sex: Sex.male,
+        birthYear: now.year - 30,
+        heightCm: 180,
+        weightKg: 80,
+        activityLevel: ActivityLevel.moderate,
+        goal: Goal.maintain,
+        weeklyRateKg: 0,
+        targets: NutritionTargets.empty,
+        createdAt: now,
+        updatedAt: now);
+    Get.put<SessionController>(session);
+    await tester.pumpWidget(const MaterialApp(
+        home: MediaQuery(
+      data: MediaQueryData(
+          textScaler: TextScaler.linear(1.6), disableAnimations: true),
+      child: Scaffold(body: DeficitModeSheet()),
+    )));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final medium = NutritionTargets.deficit(
+            weightKg: 80,
+            heightCm: 180,
+            ageYears: 30,
+            sex: Sex.male,
+            activity: ActivityLevel.moderate,
+            level: DeficitLevel.medium)
+        .kcal
+        .round();
+    expect(find.text(AppStrings.deficitPreview(2759, medium)), findsOneWidget);
+    await tester.tap(find.text(AppStrings.deficitStrongPercent));
+    await tester.pumpAndSettle();
+    final strong = NutritionTargets.deficit(
+            weightKg: 80,
+            heightCm: 180,
+            ageYears: 30,
+            sex: Sex.male,
+            activity: ActivityLevel.moderate,
+            level: DeficitLevel.strong)
+        .kcal
+        .round();
+    expect(find.text(AppStrings.deficitPreview(2759, strong)), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await Get.delete<SessionController>();
+  });
+
+  testWidgets('Me shows active deficit level and budget', (tester) async {
+    final now = DateTime.now();
+    final session = _Session();
+    session.profile.value = UserProfile(
+        uid: 'u',
+        displayName: '',
+        email: '',
+        sex: Sex.male,
+        birthYear: now.year - 30,
+        heightCm: 180,
+        weightKg: 80,
+        activityLevel: ActivityLevel.moderate,
+        goal: Goal.maintain,
+        weeklyRateKg: 0,
+        targets: NutritionTargets.empty,
+        deficit: DeficitMode(level: DeficitLevel.medium, startedAt: now),
+        createdAt: now,
+        updatedAt: now);
+    Get.put<SessionController>(session);
+    await tester.pumpWidget(const MaterialApp(
+        home: MediaQuery(
+      data: MediaQueryData(
+          textScaler: TextScaler.linear(1.6), disableAnimations: true),
+      child: Scaffold(body: MeTab()),
+    )));
+    await tester.pumpAndSettle();
+    expect(find.textContaining(AppStrings.deficitLevel(15)), findsOneWidget);
+    expect(
+        find.textContaining(
+            session.profile.value!.effectiveTargets.kcal.round().toString()),
+        findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await Get.delete<SessionController>();
+  });
+  test('Today materializes deficit without schedule and restores normal target',
+      () async {
+    final now = DateTime.now();
+    const normal = NutritionTargets(
+        mode: TargetMode.manual,
+        kcal: 2100,
+        macros: Macros(protein: 140, carbs: 200, fat: 70));
+    final session = _Session();
+    final base = UserProfile(
+        uid: 'u',
+        displayName: '',
+        email: '',
+        sex: Sex.male,
+        birthYear: now.year - 30,
+        heightCm: 180,
+        weightKg: 80,
+        activityLevel: ActivityLevel.moderate,
+        goal: Goal.maintain,
+        weeklyRateKg: 0,
+        targets: normal,
+        createdAt: now,
+        updatedAt: now);
+    session.profile.value = base.copyWith(
+        deficit: DeficitMode(level: DeficitLevel.medium, startedAt: now));
+    final days = _RecordingDays();
+    final controller = TodayController(
+        uid: 'u',
+        days: days,
+        weights: _LiveWeights(),
+        trainingDays: _QuietTraining(),
+        plans: _Plans(),
+        session: session);
+    await controller.selectDate(now);
+    await Future<void>.delayed(Duration.zero);
+    expect(days.calls.last.includeSchedule, isFalse);
+    expect(days.calls.last.targets.mode, TargetMode.deficit);
+    session.profile.value = base;
+    await controller.selectDate(now);
+    await Future<void>.delayed(Duration.zero);
+    expect(days.calls.last.includeSchedule, isTrue);
+    expect(days.calls.last.targets, normal);
+    controller.onClose();
+    await days.updates.close();
+  });
+
+  test('Today hides only uneaten scheduled entries in deficit mode', () {
+    final now = DateTime.now();
+    final session = _Session();
+    session.profile.value = UserProfile(
+        uid: 'u',
+        displayName: '',
+        email: '',
+        sex: Sex.male,
+        birthYear: now.year - 30,
+        heightCm: 180,
+        weightKg: 80,
+        activityLevel: ActivityLevel.moderate,
+        goal: Goal.maintain,
+        weeklyRateKg: 0,
+        targets: NutritionTargets.empty,
+        deficit: DeficitMode(level: DeficitLevel.light, startedAt: now),
+        createdAt: now,
+        updatedAt: now);
+    final controller = TodayController(
+        uid: 'u',
+        days: _Days(),
+        weights: _Weights(),
+        trainingDays: _Training(),
+        plans: _Plans(),
+        session: session);
+    final day = DayLog.empty(now, session.profile.value!.effectiveTargets)
+        .copyWith(entries: const [
+      DayEntry(
+          entryId: 'hidden',
+          origin: DayEntryOrigin.scheduled,
+          name: 'planned',
+          slot: MealSlot.lunch,
+          order: 0,
+          items: []),
+      DayEntry(
+          entryId: 'shown',
+          origin: DayEntryOrigin.scheduled,
+          name: 'eaten',
+          slot: MealSlot.lunch,
+          order: 1,
+          eaten: true,
+          items: []),
+      DayEntry(
+          entryId: 'manual',
+          origin: DayEntryOrigin.quickAdd,
+          name: 'manual',
+          slot: MealSlot.lunch,
+          order: 2,
+          items: []),
+    ]);
+    expect(controller.visibleEntries(day).map((e) => e.entryId),
+        ['shown', 'manual']);
+    session.profile.value = session.profile.value!.copyWith(clearDeficit: true);
+    expect(controller.visibleEntries(day).length, 3);
+    controller.onClose();
+  });
   test('Today streak chip selects the largest current streak', () {
     final controller = _controller(_Training());
     controller.calorieStreak.value = 0;

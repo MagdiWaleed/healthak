@@ -44,6 +44,13 @@ class ProfileMapper {
       goal: enumValue(Goal.values, json['goal'], Goal.maintain),
       weeklyRateKg: doubleValue(json['weeklyRateKg']),
       targets: NutritionTargets.fromJson(stringMap(json['targets'])),
+      deficit: json['deficit'] == null
+          ? null
+          : DeficitMode(
+              level: enumValue(DeficitLevel.values,
+                  stringMap(json['deficit'])['level'], DeficitLevel.medium),
+              startedAt: dateValue(stringMap(json['deficit'])['startedAt']),
+            ),
       settings: AppSettings(
         themeMode: enumValue(
           AppThemeMode.values,
@@ -91,6 +98,11 @@ class ProfileMapper {
         'goal': profile.goal.name,
         'weeklyRateKg': profile.weeklyRateKg,
         'targets': profile.targets.toJson(),
+        if (profile.deficit != null)
+          'deficit': {
+            'level': profile.deficit!.level.name,
+            'startedAt': Timestamp.fromDate(profile.deficit!.startedAt),
+          },
         'settings': {
           'themeMode': profile.settings.themeMode.name,
           'accent': profile.settings.accent.name,
@@ -109,5 +121,10 @@ class ProfileMapper {
         'uid': profile.uid,
         'createdAt': profile.createdAt.toIso8601String(),
         'updatedAt': profile.updatedAt.toIso8601String(),
+        if (profile.deficit != null)
+          'deficit': {
+            'level': profile.deficit!.level.name,
+            'startedAt': profile.deficit!.startedAt.toIso8601String(),
+          },
       };
 }

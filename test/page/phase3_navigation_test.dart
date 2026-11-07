@@ -117,6 +117,8 @@ void main() {
       AppStrings.budget,
       AppStrings.signOut
     ]) {
+      await tester.scrollUntilVisible(find.text(label), 200,
+          scrollable: find.byType(Scrollable).first);
       expect(find.text(label), findsOneWidget);
     }
   });

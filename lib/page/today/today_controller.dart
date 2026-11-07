@@ -62,6 +62,15 @@ class TodayController extends GetxController with WidgetsBindingObserver {
   /// day, is selected).
   bool get isViewingToday => _isToday(selectedDate.value);
   double? get goalWeightKg => _session.profile.value?.goalWeightKg;
+  DeficitMode? get deficit => _session.profile.value?.deficit;
+
+  List<DayEntry> visibleEntries(DayLog value) =>
+      deficit == null || !isViewingToday
+          ? value.entries
+          : value.entries
+              .where((entry) =>
+                  entry.origin != DayEntryOrigin.scheduled || entry.eaten)
+              .toList();
 
   /// The real current date, as a **reactive** value rather than a bare
   /// `DateTime.now()` read at build time.
@@ -385,13 +394,19 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     // Compare before writing: the day stream re-emits on every eat toggle,
     // and an unconditional `ensureDay` here would be a transaction per
     // profile emission for no change at all.
-    if (day.value?.targets == profile.targets) return;
+    if (day.value?.targets == profile.effectiveTargets &&
+        _lastDeficitEnabled == (profile.deficit != null)) {
+      return;
+    }
+    _lastDeficitEnabled = profile.deficit != null;
     unawaited(_materializeToday(
       date: selectedDate.value,
-      targets: profile.targets,
+      targets: profile.effectiveTargets,
       epoch: _selectionEpoch,
     ));
   }
+
+  bool? _lastDeficitEnabled;
 
   void ensureCurrentDay() {
     if (_followingToday && !_isToday(selectedDate.value)) {
@@ -496,7 +511,7 @@ class TodayController extends GetxController with WidgetsBindingObserver {
       if (profile != null) {
         unawaited(_materializeToday(
           date: date,
-          targets: profile.targets,
+          targets: profile.effectiveTargets,
           epoch: epoch,
         ));
       }
@@ -509,7 +524,10 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     required int epoch,
   }) async {
     try {
-      await _days.ensureDay(date: date, targets: targets);
+      await _days.ensureDay(
+          date: date,
+          targets: targets,
+          includeSchedule: _session.profile.value?.deficit == null);
     } catch (e) {
       if (epoch == _selectionEpoch) error.value = e.toString();
     } finally {
@@ -694,7 +712,10 @@ class TodayController extends GetxController with WidgetsBindingObserver {
     final profile = _session.profile.value;
     if (profile == null) throw StateError('profile_missing');
     final date = DateTime.now();
-    final current = await _days.ensureDay(date: date, targets: profile.targets);
+    final current = await _days.ensureDay(
+        date: date,
+        targets: profile.effectiveTargets,
+        includeSchedule: profile.deficit == null);
     await _days.upsertEntry(
       current.dateKey,
       DayEntry(

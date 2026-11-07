@@ -1,5 +1,18 @@
 # PROGRESS — handoff
 
+## Redesign v2 Phase 13: deficit mode (2026-11-07)
+
+- Added maintenance-based 10/15/20% deficit budgets with the existing energy floor, protein-only targets, profile persistence, and frozen-day calorie streak rules. Normal targets remain stored for restoration.
+- Today skips schedule materialization while deficit mode is active, hides uneaten scheduled entries already present in today's document, and shows the budget, protein, and training progress. Today and Me open one shared settings sheet; the assistant snapshot includes the active budget.
+- Added domain, mapper, controller, and narrow large-text widget tests. `flutter analyze --no-pub` is clean and all 323 tests pass. `flutter build apk --debug --no-pub` could not start because this sandbox has no Android SDK; install, drive, screenshot, and logcat checks remain open.
+
+### Phase 13 deviations
+
+| Decision | Reason |
+|---|---|
+| Added profile `deficit` field and `TargetMode.deficit` | Persist the switch while keeping the normal target intact and freeze the applicable streak rule in each day. |
+
+
 ## Redesign v2 Phase 12: device-found UI polish (2026-11-07)
 
 - Split meal editor entries into a two-line name/kcal heading and a separate controls row. Unfocused the meal name around ingredient pickers; unified displayed gram suffixes with `AppStrings.grams`.

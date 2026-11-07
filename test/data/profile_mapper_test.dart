@@ -4,6 +4,33 @@ import 'package:diet_app2/domain/profile/user_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('deficit profile mapper round trips and absent field stays off', () {
+    final now = DateTime(2026, 11, 7);
+    final base = UserProfile(
+      uid: 'u',
+      displayName: '',
+      email: '',
+      sex: Sex.female,
+      birthYear: 1990,
+      heightCm: 165,
+      weightKg: 65,
+      activityLevel: ActivityLevel.light,
+      goal: Goal.maintain,
+      weeklyRateKg: 0,
+      targets: NutritionTargets.empty,
+      createdAt: now,
+      updatedAt: now,
+    );
+    final off = ProfileMapper.fromJson(ProfileMapper.toJson(base), uid: 'u');
+    expect(off.deficit, isNull);
+    final on = base.copyWith(
+        deficit: DeficitMode(level: DeficitLevel.strong, startedAt: now));
+    final restored =
+        ProfileMapper.fromJson(ProfileMapper.toCacheJson(on), uid: 'u');
+    expect(restored.deficit?.level, DeficitLevel.strong);
+    expect(restored.deficit?.startedAt, now);
+    expect(restored.targets, NutritionTargets.empty);
+  });
   test('same user snapshots with changed fields are distinct', () {
     final now = DateTime(2026, 8, 29);
     final original = UserProfile(

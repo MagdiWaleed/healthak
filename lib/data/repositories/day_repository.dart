@@ -62,8 +62,10 @@ class DayRepository {
   Future<DayLog> ensureDay({
     required DateTime date,
     required NutritionTargets targets,
+    bool includeSchedule = true,
   }) async {
-    final scheduled = await _schedule.getActiveFor(date);
+    final scheduled =
+        includeSchedule ? await _schedule.getActiveFor(date) : <ScheduleItem>[];
     // Fingerprinted from the same fetch, not a stored counter -- see
     // scheduleVersionOf's doc comment.
     final scheduleVersion = scheduleVersionOf(scheduled);
@@ -71,6 +73,13 @@ class DayRepository {
     return _refs.firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(ref);
       final current = snapshot.data();
+      if (!includeSchedule) {
+        final day = current ?? DayLog.empty(date, targets);
+        if (current != null && current.targets == targets) return current;
+        final refreshed = day.copyWith(targets: targets);
+        transaction.set(ref, refreshed);
+        return refreshed;
+      }
       // Equality, not `>=`. This is a content fingerprint, not a counter --
       // it has no ordering, so "greater or equal" was never a meaningful test
       // of freshness: roughly half the time a *stale* stored value compared
