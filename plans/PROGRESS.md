@@ -104,6 +104,15 @@ Open: weigh-in device journey (log, chart, delete test entry) not yet re-run. Th
 crashing under low host RAM, and a failed `flutter run` install wiped the signed-in app, so it
 needs a manual sign-in first.
 
+### Home training + deficit mode (2026-11-07)
+
+- Deficit mode (`plans/step7_deficit_mode.md`): budget = max(floor, TDEE × (1 − 10/15/20%)),
+  protein-only, schedule not materialized, streak = under budget. Verified on emulator.
+- Home training (`plans/step8_home_training.md`): equipment tags on all 74 exercises, home
+  templates, equipment setup, week-overview editor with per-exercise sheet and load, unsaved
+  guard, compact Training header, upcoming-day preview, RTL-safe "4 × 8" via LRI/PDI isolates.
+  Codex hit its usage limit mid-phase; Claude finished the phase directly. Verified on emulator.
+
 ### Deviations (redesign-v2)
 
 | Decision | Reason |
@@ -114,6 +123,8 @@ needs a manual sign-in first.
 | `dependency_overrides: url_launcher_android: 6.3.23` | Newer versions require AGP 8.9.1; toolchain stays on AGP 8.7.3. |
 | New collections `workoutPlan`, `trainingDays`; profile `goalWeightKg` | Training checklists and weight goal; existing rules wildcard covers them, no deploy. |
 | Newest weights sorted in memory, not `orderBy(documentId, desc)` | That query needs an index that is not deployed; one small doc per day. |
+| Profile `equipment` (null = full gym) and plan/training `loadKg` | Home training filter and per-exercise weight; absent fields keep old behavior. |
+| Template apply replaces only chosen weekdays | The old "replace all" flow silently emptied days the user had not picked. |
 | Calorie streak day = eaten kcal within ±10% of target | Defined in `isCalorieHit`; the plan did not specify a rule. |
 
 ## Redesign v2 Phase 5: Training tab (2026-11-07)

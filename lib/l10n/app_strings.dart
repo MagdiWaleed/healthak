@@ -57,7 +57,20 @@ abstract final class AppStrings {
   static const todayWorkout = 'تمرين اليوم';
   static const restDay = 'يوم راحة';
   static const viewFullWorkout = 'عرض التمرين كاملًا';
-  static String setsReps(int sets, int reps) => '$sets × $reps';
+  /// "4 × 8" kept left-to-right inside Arabic text (LRI ... PDI isolate),
+  /// otherwise the bidi algorithm shows it as "8 × 4". Optional load and
+  /// extra detail follow: "4 × 8 · 12 كجم · الصدر".
+  static String setsReps(int sets, int reps, {double? loadKg, String? extra}) {
+    final parts = ['\u2066$sets × $reps\u2069'];
+    if (loadKg != null && loadKg > 0) {
+      final kg = loadKg == loadKg.roundToDouble()
+          ? loadKg.round().toString()
+          : loadKg.toStringAsFixed(1);
+      parts.add('$kg كجم');
+    }
+    if (extra != null && extra.isNotEmpty) parts.add(extra);
+    return parts.join(' · ');
+  }
   static String weightDelta7(double delta) =>
       '${delta >= 0 ? '↑' : '↓'} ${delta.abs().toStringAsFixed(1)} كجم خلال 7 أيام';
   static const startWorkout = 'ابدأ التمرين';
@@ -510,4 +523,8 @@ abstract final class AppStrings {
     'machine': 'أجهزة',
     'cardioMachine': 'أجهزة كارديو',
   };
+  static const upcomingWorkout = 'التمرين القادم';
+  static String trainingSummary(int done, int total, int sets) =>
+      '$done من $total تمارين · $sets مجموعة';
+  static const previewNote = 'معاينة — يمكنك تسجيل التمرين في يومه';
 }

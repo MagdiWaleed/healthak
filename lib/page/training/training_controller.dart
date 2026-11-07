@@ -31,6 +31,17 @@ class TrainingController extends GetxController {
   final editingPast = false.obs;
   final day = Rxn<TrainingDay>();
   final plan = <WorkoutPlanItem>[].obs;
+
+  /// An upcoming day the user is peeking at. Never materialized or ticked:
+  /// the preview is derived from the plan, so editing the plan updates it.
+  final preview = Rxn<DateTime>();
+
+  List<WorkoutPlanItem> planFor(DateTime date) =>
+      plan.where((item) => item.appliesTo(date)).toList()
+        ..sort((a, b) => a.order.compareTo(b.order));
+
+  void showPreview(DateTime date) =>
+      preview.value = DateTime(date.year, date.month, date.day);
   final recentDays = <TrainingDay>[].obs;
   final loading = true.obs;
   final error = RxnString();
@@ -85,6 +96,7 @@ class TrainingController extends GetxController {
 
   Future<void> selectDate(DateTime date) async {
     final epoch = ++_epoch;
+    preview.value = null;
     selectedDate.value = DateTime(date.year, date.month, date.day);
     editingPast.value = false;
     day.value = null;

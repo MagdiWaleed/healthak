@@ -174,7 +174,8 @@ class TodayDashboard extends StatelessWidget {
             CheckTile(
                 key: ValueKey('training-${item.localId}'),
                 title: item.nameAr,
-                subtitle: AppStrings.setsReps(item.sets, item.reps),
+                subtitle: AppStrings.setsReps(item.sets, item.reps,
+                    loadKg: item.loadKg),
                 checked: item.done,
                 enabled: !readOnly,
                 onChanged: (_) => controller.toggleTraining(item.localId)),

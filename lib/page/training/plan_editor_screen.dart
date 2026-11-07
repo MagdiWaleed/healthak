@@ -169,15 +169,8 @@ class PlanEditorController extends GetxController {
   }
 }
 
-String _setsReps(WorkoutPlanItem item) {
-  final load = item.loadKg;
-  final base = '${item.sets} × ${item.reps}';
-  if (load == null || load <= 0) return base;
-  final kg = load == load.roundToDouble()
-      ? load.round().toString()
-      : load.toStringAsFixed(1);
-  return '$base · $kg ${AppStrings.kgUnit}';
-}
+String _setsReps(WorkoutPlanItem item) =>
+    AppStrings.setsReps(item.sets, item.reps, loadKg: item.loadKg);
 
 class PlanEditorScreen extends StatefulWidget {
   const PlanEditorScreen({super.key});
@@ -509,7 +502,6 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
                       borderRadius: BorderRadius.circular(99),
                     ),
                     child: Text(_setsReps(item),
-                        textDirection: TextDirection.ltr,
                         style: const TextStyle(
                             color: AppPalette.emerald,
                             fontWeight: FontWeight.w800)),

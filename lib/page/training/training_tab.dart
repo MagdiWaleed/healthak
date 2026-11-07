@@ -4,12 +4,12 @@ import '../../ui/components/shimmer_box.dart';
 
 import '../../domain/day/day_log.dart';
 import '../../domain/training/exercise.dart';
+import '../../domain/training/training_day.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/activity_rings.dart';
 import '../../ui/components/check_tile.dart';
 import '../../ui/components/neon_button.dart';
 import '../../ui/components/section_header.dart';
-import '../../ui/components/stat_tile.dart';
 import '../../ui/motion/celebration.dart';
 import '../../ui/motion/motion.dart';
 import '../../ui/glass/glass_card.dart';
@@ -56,6 +56,7 @@ class _TrainingTabState extends State<TrainingTab> {
         final monday = selected.subtract(Duration(days: selected.weekday - 1));
         final today = controller.today;
         final readOnly = !controller.canEdit;
+        final preview = controller.preview.value;
         return ListView(
             padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 110),
             children: [
@@ -75,7 +76,7 @@ class _TrainingTabState extends State<TrainingTab> {
                         width: width,
                         selected:
                             DayLog.keyFor(monday.add(Duration(days: i))) ==
-                                DayLog.keyFor(selected),
+                                DayLog.keyFor(preview ?? selected),
                         isToday: DayLog.keyFor(monday.add(Duration(days: i))) ==
                             DayLog.keyFor(today),
                         logged: controller.recentDays.any((d) =>
@@ -83,7 +84,8 @@ class _TrainingTabState extends State<TrainingTab> {
                             DayLog.keyFor(monday.add(Duration(days: i)))),
                         onTap: monday.add(Duration(days: i)).isAfter(
                                 DateTime(today.year, today.month, today.day))
-                            ? null
+                            ? () => controller
+                                .showPreview(monday.add(Duration(days: i)))
                             : () => controller
                                 .selectDate(monday.add(Duration(days: i)))),
                   ]
@@ -105,108 +107,145 @@ class _TrainingTabState extends State<TrainingTab> {
                     child: TextButton(
                         onPressed: controller.toggleEditingPast,
                         child: const Text(AppStrings.done))),
-              const SizedBox(height: 20),
-              Center(
-                  child: ActivityRings(
-                      size: 196,
-                      stroke: 18,
-                      rings: [
-                        RingSpec(
-                            progress: day?.progress ?? 0,
-                            color: AppPalette.emerald,
-                            label: AppStrings.training)
-                      ],
-                      center: Column(mainAxisSize: MainAxisSize.min, children: [
-                        if (day?.isRestDay ?? true)
-                          Text(AppStrings.trainingRest,
-                              style: Theme.of(context).textTheme.titleMedium)
-                        else ...[
-                          Text('${((day?.progress ?? 0) * 100).round()}%',
-                              style: Theme.of(context).textTheme.headlineLarge),
-                          Text(AppStrings.trainingProgress(
-                              controller.doneCount, day!.items.length)),
-                        ],
-                      ]))),
-              const SizedBox(height: 18),
-              Row(children: [
-                Expanded(
-                    child: StatTile(
-                        label: AppStrings.trainingDoneTotal,
-                        value: day?.isRestDay ?? true
-                            ? AppStrings.trainingRest
-                            : AppStrings.trainingProgress(
-                                controller.doneCount, day!.items.length))),
-                const SizedBox(width: 6),
-                Expanded(
-                    child: StatTile(
-                        label: AppStrings.trainingTotalSets,
-                        value: '${controller.totalSets}')),
-                const SizedBox(width: 6),
-                Expanded(
-                    child: StatTile(
-                        label: AppStrings.trainingStreak,
-                        value: controller.streak == 0
-                            ? AppStrings.startStreak
-                            : '${controller.streak}')),
-              ]),
-              const SizedBox(height: 22),
-              SectionHeader(
-                  title: AppStrings.todayWorkout,
-                  actionText: readOnly ? null : AppStrings.trainingAddExercise,
-                  onAction: readOnly ? null : _pick),
-              if (controller.error.value case final error?)
-                Text(error, style: const TextStyle(color: AppPalette.coral)),
-              if (controller.loading.value && day == null)
-                const Column(children: [
-                  ShimmerBox(height: 80),
-                  SizedBox(height: 12),
-                  ShimmerBox(height: 80),
-                  SizedBox(height: 12),
-                  ShimmerBox(height: 80),
-                ])
-              else if (controller.plan.isEmpty && (day?.items.isEmpty ?? true))
-                Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 36),
-                    child: Column(children: [
-                      const Icon(Icons.fitness_center_outlined,
-                          size: 56, color: AppPalette.emerald),
-                      const SizedBox(height: 10),
-                      const Text(AppStrings.trainingRest),
-                      const SizedBox(height: 14),
-                      NeonButton(
-                          label: AppStrings.trainingStart,
-                          onPressed: () => Get.toNamed(AppRoutes.trainingEditor,
-                                  arguments: (
-                                    weekday: selected.weekday,
-                                    showTemplates: true
-                                  ))),
-                    ]))
-              else if (day?.items.isEmpty ?? true)
-                const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: Text(AppStrings.trainingRest)))
-              else
-                for (var i = 0; i < day!.items.length; i++)
-                  entrance(
-                      Padding(
-                          padding: const EdgeInsets.only(bottom: 7),
-                          child: GlassCard(
-                              padding: EdgeInsets.zero,
-                              child: CheckTile(
-                                  key: ValueKey(day.items[i].localId),
-                                  title: day.items[i].nameAr,
-                                  subtitle: AppStrings.setsReps(
-                                      day.items[i].sets, day.items[i].reps),
-                                  trailing: Chip(
-                                      label: Text(
-                                          muscleLabelAr(day.items[i].muscle),
-                                          style: const TextStyle(fontSize: 10)),
-                                      visualDensity: VisualDensity.compact),
-                                  checked: day.items[i].done,
-                                  enabled: !readOnly,
-                                  onChanged: (_) => controller
-                                      .toggle(day.items[i].localId)))),
-                      index: i),
+              const SizedBox(height: 14),
+              if (preview != null)
+                ..._preview(context, preview)
+              else ...[
+                _summary(context, day),
+                const SizedBox(height: 22),
+                SectionHeader(
+                    title: AppStrings.todayWorkout,
+                    actionText:
+                        readOnly ? null : AppStrings.trainingAddExercise,
+                    onAction: readOnly ? null : _pick),
+                if (controller.error.value case final error?)
+                  Text(error, style: const TextStyle(color: AppPalette.coral)),
+                if (controller.loading.value && day == null)
+                  const Column(children: [
+                    ShimmerBox(height: 80),
+                    SizedBox(height: 12),
+                    ShimmerBox(height: 80),
+                    SizedBox(height: 12),
+                    ShimmerBox(height: 80),
+                  ])
+                else if (controller.plan.isEmpty &&
+                    (day?.items.isEmpty ?? true))
+                  Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 36),
+                      child: Column(children: [
+                        const Icon(Icons.fitness_center_outlined,
+                            size: 56, color: AppPalette.emerald),
+                        const SizedBox(height: 10),
+                        const Text(AppStrings.trainingRest),
+                        const SizedBox(height: 14),
+                        NeonButton(
+                            label: AppStrings.trainingStart,
+                            onPressed: () => Get.toNamed(
+                                    AppRoutes.trainingEditor,
+                                    arguments: (
+                                      weekday: selected.weekday,
+                                      showTemplates: true
+                                    ))),
+                      ]))
+                else if (day?.items.isEmpty ?? true)
+                  const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: Text(AppStrings.trainingRest)))
+                else
+                  for (var i = 0; i < day!.items.length; i++)
+                    entrance(
+                        Padding(
+                            padding: const EdgeInsets.only(bottom: 7),
+                            child: GlassCard(
+                                padding: EdgeInsets.zero,
+                                child: CheckTile(
+                                    key: ValueKey(day.items[i].localId),
+                                    title: day.items[i].nameAr,
+                                    subtitle: AppStrings.setsReps(
+                                        day.items[i].sets, day.items[i].reps,
+                                        loadKg: day.items[i].loadKg,
+                                        extra:
+                                            muscleLabelAr(day.items[i].muscle)),
+                                    checked: day.items[i].done,
+                                    enabled: !readOnly,
+                                    onChanged: (_) => controller
+                                        .toggle(day.items[i].localId)))),
+                        index: i),
+              ],
             ]);
       });
+
+  Widget _summary(BuildContext context, TrainingDay? day) {
+    final rest = day?.isRestDay ?? true;
+    final progress = day?.progress ?? 0.0;
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(children: [
+        ActivityRings(
+            size: 64,
+            stroke: 8,
+            rings: [
+              RingSpec(
+                  progress: progress,
+                  color: AppPalette.emerald,
+                  label: AppStrings.training)
+            ],
+            center: Text(rest ? '' : '${(progress * 100).round()}%',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 13))),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                  rest
+                      ? AppStrings.trainingRest
+                      : AppStrings.trainingSummary(controller.doneCount,
+                          day!.items.length, controller.totalSets),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15)),
+              const SizedBox(height: 4),
+              Text(
+                  '${AppStrings.trainingStreak}: ${controller.streak == 0 ? AppStrings.startStreak : controller.streak}',
+                  style: const TextStyle(color: AppPalette.muted)),
+            ],
+          ),
+        ),
+      ]),
+    );
+  }
+
+  List<Widget> _preview(BuildContext context, DateTime date) {
+    final items = controller.planFor(date);
+    return [
+      SectionHeader(
+          title:
+              '${AppStrings.upcomingWorkout} · ${AppStrings.weekdays[date.weekday - 1]}'),
+      const Text(AppStrings.previewNote,
+          style: TextStyle(color: AppPalette.muted)),
+      const SizedBox(height: 10),
+      if (items.isEmpty)
+        const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: Text(AppStrings.trainingRest)))
+      else
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 7),
+            child: GlassCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(children: [
+                Expanded(
+                    child: Text(item.nameAr,
+                        style: const TextStyle(fontWeight: FontWeight.w700))),
+                Text(
+                    AppStrings.setsReps(item.sets, item.reps,
+                        loadKg: item.loadKg),
+                    style: const TextStyle(color: AppPalette.emerald)),
+              ]),
+            ),
+          ),
+    ];
+  }
 }

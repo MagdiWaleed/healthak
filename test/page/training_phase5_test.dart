@@ -187,4 +187,60 @@ void main() {
     expect(find.text(AppStrings.trainingTemplates), findsOneWidget);
     expect(AppStrings.trainingProgress(0, 2), '0/2');
   });
+
+  test('sets x reps stays left-to-right inside Arabic text', () {
+    final text = AppStrings.setsReps(4, 8, loadKg: 12, extra: 'الصدر');
+    expect(text, startsWith('\u20664 × 8\u2069'));
+    expect(text, contains('12 كجم'));
+    expect(text, endsWith('الصدر'));
+    expect(AppStrings.setsReps(3, 10, loadKg: 0), '\u20663 × 10\u2069');
+  });
+
+  testWidgets('compact summary keeps the checklist on the first screen',
+      (tester) async {
+    final controller = Get.put<TrainingController>(_StaticController());
+    controller.day.value = _day(_now);
+    controller.loading.value = false;
+    await tester.pumpWidget(GetMaterialApp(
+        theme: AppTheme.dark,
+        home: const MediaQuery(
+            data: MediaQueryData(disableAnimations: true),
+            child: Scaffold(body: TrainingTab()))));
+    await tester.pump();
+    expect(find.text(AppStrings.trainingSummary(0, 1, 3)), findsOneWidget);
+    final tile = tester.getRect(find.byType(CheckTile));
+    expect(tile.top, lessThan(600), reason: 'first exercise visible');
+  });
+
+  testWidgets('tapping an upcoming day previews the plan read-only',
+      (tester) async {
+    final controller = Get.put<TrainingController>(_StaticController());
+    controller.day.value = _day(_now);
+    controller.loading.value = false;
+    final tomorrow = _now.add(const Duration(days: 1));
+    controller.plan.assignAll([
+      WorkoutPlanItem(
+        id: 'p',
+        exerciseId: 'pull_up',
+        nameAr: 'عقلة',
+        muscle: MuscleGroup.back,
+        sets: 4,
+        reps: 6,
+        daysOfWeek: {tomorrow.weekday},
+        order: 0,
+        createdAt: _now,
+        updatedAt: _now,
+      )
+    ]);
+    controller.showPreview(tomorrow);
+    await tester.pumpWidget(GetMaterialApp(
+        theme: AppTheme.dark,
+        home: const MediaQuery(
+            data: MediaQueryData(disableAnimations: true),
+            child: Scaffold(body: TrainingTab()))));
+    await tester.pump();
+    expect(find.text(AppStrings.previewNote), findsOneWidget);
+    expect(find.text('عقلة'), findsOneWidget);
+    expect(find.byType(CheckTile), findsNothing);
+  });
 }
