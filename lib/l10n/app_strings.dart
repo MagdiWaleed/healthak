@@ -453,4 +453,61 @@ abstract final class AppStrings {
       'المعتاد $maintenance ← الميزانية $budget سعرة';
   static String deficitAssistantContext(int budget) =>
       'وضع العجز، الميزانية $budget سعرة؛ ';
+
+  // --- Phase 14 training strings ---
+  static const myWeekPlan = 'خطتي الأسبوعية';
+  static const restDayShort = 'راحة';
+  static String exercisesCount(int n) => n == 1 ? 'تمرين واحد' : '$n تمارين';
+  static const kgUnit = 'كجم';
+  static const trainingLoad = 'الوزن (كجم)';
+  static const trainingNoLoad = 'بدون وزن';
+  static const trainingPaused = 'موقوف';
+  static const trainingEditExercise = 'تعديل التمرين';
+  static const trainingDays = 'أيام التمرين';
+  static const unsavedTitle = 'لديك تعديلات غير محفوظة';
+  static const unsavedBody = 'هل تريد حفظ خطتك قبل الخروج؟';
+  static const discard = 'تجاهل';
+  static const keepEditing = 'متابعة التعديل';
+  static const templatesHome = 'للتمرين في المنزل';
+  static const templatesGym = 'للنادي';
+  static String templateMeta(int days, int minutes) =>
+      '$days أيام · حوالي $minutes دقيقة';
+  static String pickTemplateDays(int n) => 'اختر $n أيام للتمرين';
+  static const applyTemplate = 'تطبيق الخطة';
+  static String templateReplaceDays(String days) =>
+      'سيتم استبدال تمارين: $days. باقي الأيام لن تتغير.';
+  static const templateTitles = {
+    'home_full_body_3': 'منزلي — جسم كامل 3 أيام',
+    'home_upper_lower_4': 'منزلي — علوي وسفلي 4 أيام',
+    'bodyweight_beginner_3': 'مبتدئ — بدون معدات',
+    'gym_push_pull_legs': 'نادي — دفع / سحب / أرجل',
+    'gym_upper_lower': 'نادي — علوي وسفلي',
+  };
+  static const templateDescriptions = {
+    'home_full_body_3':
+        'كل الجسم في كل جلسة بالعقلة والدمبل. مناسب للبداية والاستمرار.',
+    'home_upper_lower_4':
+        'يومان للجزء العلوي ويومان للأرجل، بالعقلة والدمبل.',
+    'bodyweight_beginner_3': 'تمارين بوزن الجسم فقط، بدون أي أدوات.',
+    'gym_push_pull_legs': 'يحتاج بار وبنش وكابل وأجهزة.',
+    'gym_upper_lower': 'يحتاج بار وبنش وأجهزة.',
+  };
+  static const myEquipment = 'معداتي';
+  static const allExercises = 'الكل';
+  static const whereTrain = 'أين تتمرن؟';
+  static const trainHome = 'المنزل';
+  static const trainGym = 'النادي';
+  static const equipmentHint = 'اختر ما لديك ليقترح التطبيق تمارين تناسبك.';
+  static const equipmentSaved = 'تم حفظ معداتك';
+  static const equipmentGymAll = 'كل المعدات';
+  static const equipmentLabels = {
+    'bodyweight': 'بدون معدات',
+    'pullUpBar': 'عقلة',
+    'dumbbells': 'دمبل',
+    'barbell': 'بار',
+    'bench': 'بنش',
+    'cable': 'كابل',
+    'machine': 'أجهزة',
+    'cardioMachine': 'أجهزة كارديو',
+  };
 }

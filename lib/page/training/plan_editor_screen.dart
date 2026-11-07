@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../ui/components/shimmer_box.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../data/repositories/workout_plan_repository.dart';
 import '../../domain/training/exercise.dart';
 import '../../domain/training/training_plan_edit.dart';
 import '../../domain/training/workout_plan_item.dart';
+import '../../domain/training/workout_templates.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/components/neon_button.dart';
 import '../../ui/components/numeric_stepper.dart';
+import '../../ui/components/shimmer_box.dart';
 import '../../ui/glass/glass_card.dart';
+import '../../ui/glass/glass_sheet.dart';
 import '../../ui/theme/app_colors.dart';
+import 'equipment_sheet.dart';
 import 'exercise_picker_sheet.dart';
+import 'template_picker_sheet.dart';
+
+/// Week order shown to the user: Saturday first, the usual week start here.
+const kWeekOrder = [6, 7, 1, 2, 3, 4, 5];
 
 class PlanEditorController extends GetxController {
   PlanEditorController({required this.uid, WorkoutPlanRepository? repository})
@@ -21,9 +28,15 @@ class PlanEditorController extends GetxController {
   final WorkoutPlanRepository _repository;
   final items = <WorkoutPlanItem>[].obs;
   final originalIds = <String>{};
+
+  /// The day being edited; null shows the week overview.
+  final selectedDay = RxnInt();
+
+  /// The weekday the user came from (highlighted in the overview).
   final weekday = 1.obs;
   final loading = true.obs;
   final saving = false.obs;
+  final dirty = false.obs;
   final error = RxnString();
 
   @override
@@ -50,13 +63,29 @@ class PlanEditorController extends GetxController {
     }
   }
 
+  int get _day => selectedDay.value ?? weekday.value;
+
   List<WorkoutPlanItem> forDay(int day) =>
       items.where((e) => e.daysOfWeek.contains(day)).toList()
         ..sort((a, b) => a.order.compareTo(b.order));
 
+  /// "صدر · ظهر" from the day's active exercises, most frequent first.
+  List<MuscleGroup> focusOf(int day) {
+    final counts = <MuscleGroup, int>{};
+    for (final item in forDay(day).where((e) => e.active)) {
+      counts[item.muscle] = (counts[item.muscle] ?? 0) + 1;
+    }
+    final sorted = counts.keys.toList()
+      ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+    return sorted.take(3).toList();
+  }
+
   void replace(WorkoutPlanItem item) {
     final index = items.indexWhere((e) => e.id == item.id);
-    if (index >= 0) items[index] = item.copyWith(updatedAt: DateTime.now());
+    if (index >= 0) {
+      items[index] = item.copyWith(updatedAt: DateTime.now());
+      dirty.value = true;
+    }
   }
 
   void add(Exercise exercise) {
@@ -68,19 +97,26 @@ class PlanEditorController extends GetxController {
         muscle: exercise.muscle,
         sets: 3,
         reps: 10,
-        daysOfWeek: {weekday.value},
-        order: forDay(weekday.value).length,
+        daysOfWeek: {_day},
+        order: forDay(_day).length,
         createdAt: now,
         updatedAt: now));
+    dirty.value = true;
   }
 
-  void reorder(int oldIndex, int newIndex) => items.assignAll(
-      reorderWorkoutDay(items.toList(), weekday.value, oldIndex, newIndex));
+  void reorder(int oldIndex, int newIndex) {
+    items
+        .assignAll(reorderWorkoutDay(items.toList(), _day, oldIndex, newIndex));
+    dirty.value = true;
+  }
 
-  void remove(String id) => items.removeWhere((e) => e.id == id);
+  void remove(String id) {
+    items.removeWhere((e) => e.id == id);
+    dirty.value = true;
+  }
 
   void copyTo(Set<int> days) {
-    final source = forDay(weekday.value);
+    final source = forDay(_day);
     final now = DateTime.now();
     for (final day in days) {
       for (final item in source) {
@@ -91,6 +127,7 @@ class PlanEditorController extends GetxController {
             muscle: item.muscle,
             sets: item.sets,
             reps: item.reps,
+            loadKg: item.loadKg,
             daysOfWeek: {day},
             order: forDay(day).length,
             active: item.active,
@@ -98,10 +135,18 @@ class PlanEditorController extends GetxController {
             updatedAt: now));
       }
     }
+    dirty.value = true;
   }
 
-  void template(StarterTemplate template) => items.assignAll(
-      expandStarterTemplate(template, DateTime.now(), const Uuid().v4));
+  /// Replaces only [days]; every other day keeps its exercises.
+  void applyTemplate(WorkoutTemplate template, List<int> days) {
+    final now = DateTime.now();
+    final incoming = expandTemplate(template, days, now, const Uuid().v4);
+    final result =
+        applyTemplateToDays(items.toList(), incoming, days.toSet(), now);
+    items.assignAll(result.plan);
+    dirty.value = true;
+  }
 
   Future<bool> save() async {
     if (saving.value) return false;
@@ -110,6 +155,10 @@ class PlanEditorController extends GetxController {
     try {
       final kept = items.map((e) => e.id).toSet();
       await _repository.saveAll(items, deleteIds: originalIds.difference(kept));
+      originalIds
+        ..clear()
+        ..addAll(kept);
+      dirty.value = false;
       return true;
     } catch (e) {
       error.value = e.toString();
@@ -120,6 +169,16 @@ class PlanEditorController extends GetxController {
   }
 }
 
+String _setsReps(WorkoutPlanItem item) {
+  final load = item.loadKg;
+  final base = '${item.sets} × ${item.reps}';
+  if (load == null || load <= 0) return base;
+  final kg = load == load.roundToDouble()
+      ? load.round().toString()
+      : load.toStringAsFixed(1);
+  return '$base · $kg ${AppStrings.kgUnit}';
+}
+
 class PlanEditorScreen extends StatefulWidget {
   const PlanEditorScreen({super.key});
 
@@ -128,55 +187,64 @@ class PlanEditorScreen extends StatefulWidget {
 }
 
 class _PlanEditorScreenState extends State<PlanEditorScreen> {
+  PlanEditorController get c => Get.find<PlanEditorController>();
+
   @override
   void initState() {
     super.initState();
-    if (Get.arguments == true ||
-        (Get.arguments is ({int weekday, bool showTemplates}) &&
-            (Get.arguments as ({int weekday, bool showTemplates}))
-                .showTemplates)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _templates(context, Get.find<PlanEditorController>());
-      });
-    }
+    final args = Get.arguments;
+    final wantsTemplates = args == true ||
+        (args is ({int weekday, bool showTemplates}) && args.showTemplates);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      // First visit: ask once where they train, so suggestions fit.
+      if (!userHasSetEquipment() && profileLoaded()) {
+        await EquipmentSheet.show(context);
+      }
+      if (wantsTemplates && mounted) await _templates(context);
+    });
   }
 
-  Future<void> _add(
-      BuildContext context, PlanEditorController controller) async {
+  Future<void> _add(BuildContext context) async {
     final exercise = await ExercisePickerSheet.show(context);
-    if (exercise != null) controller.add(exercise);
+    if (exercise != null) c.add(exercise);
   }
 
-  Future<void> _delete(
-      BuildContext context, PlanEditorController controller, String id) async {
+  Future<void> _templates(BuildContext context) async {
+    final choice = await TemplatePickerSheet.show(context);
+    if (choice == null || !context.mounted) return;
+    final names = choice.days.map((d) => AppStrings.weekdays[d - 1]).join('، ');
     final yes = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-                title: const Text(AppStrings.trainingDeleteConfirm),
+                title: const Text(AppStrings.trainingApplyTemplate),
+                content: Text(AppStrings.templateReplaceDays(names)),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(context, false),
                       child: const Text(AppStrings.assistantCancel)),
                   TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text(AppStrings.delete)),
+                      child: const Text(AppStrings.assistantConfirm)),
                 ]));
-    if (yes == true) controller.remove(id);
+    if (yes == true) {
+      c.applyTemplate(choice.template, choice.days);
+      c.selectedDay.value = null;
+    }
   }
 
-  Future<void> _copy(
-      BuildContext context, PlanEditorController controller) async {
+  Future<void> _copy(BuildContext context) async {
     final days = <int>{};
     final result = await showDialog<Set<int>>(
         context: context,
         builder: (context) => StatefulBuilder(
             builder: (context, setState) => AlertDialog(
                   title: const Text(AppStrings.trainingSelectDays),
-                  content: Wrap(spacing: 5, children: [
-                    for (var day = 1; day <= 7; day++)
-                      if (day != controller.weekday.value)
+                  content: Wrap(spacing: 6, runSpacing: 6, children: [
+                    for (final day in kWeekOrder)
+                      if (day != c.selectedDay.value)
                         FilterChip(
-                            label: Text(AppStrings.weekdayShort[day - 1]),
+                            label: Text(AppStrings.weekdays[day - 1]),
                             selected: days.contains(day),
                             onSelected: (selected) => setState(() =>
                                 selected ? days.add(day) : days.remove(day))),
@@ -190,206 +258,421 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
                         child: const Text(AppStrings.trainingCopyDays)),
                   ],
                 )));
-    if (result != null) controller.copyTo(result);
+    if (result != null && result.isNotEmpty) c.copyTo(result);
   }
 
-  Future<void> _templates(
-      BuildContext context, PlanEditorController controller) async {
-    final template = await showModalBottomSheet<StarterTemplate>(
-        context: context,
-        builder: (context) => SafeArea(
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-              for (final entry in const [
-                (StarterTemplate.pushPullLegs, AppStrings.trainingPushPullLegs),
-                (StarterTemplate.upperLower, AppStrings.trainingUpperLower),
-                (StarterTemplate.fullBodyThree, AppStrings.trainingFullBody),
-              ])
-                ListTile(
-                    title: Text(entry.$2),
-                    onTap: () => Navigator.pop(context, entry.$1)),
-            ])));
-    if (template == null || !context.mounted) return;
-    final yes = await showDialog<bool>(
+  Future<void> _edit(BuildContext context, WorkoutPlanItem item) async {
+    final result = await GlassSheet.show<Object>(context,
+        builder: (_) => _ExerciseEditSheet(item: item));
+    if (result is WorkoutPlanItem) c.replace(result);
+    if (result == #delete) c.remove(item.id);
+  }
+
+  Future<bool> _confirmLeave(BuildContext context) async {
+    final choice = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
-                title: const Text(AppStrings.trainingApplyTemplate),
-                content: const Text(AppStrings.trainingReplaceWarning),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text(AppStrings.assistantCancel)),
-                  TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text(AppStrings.assistantConfirm)),
-                ]));
-    if (yes == true) controller.template(template);
+              title: const Text(AppStrings.unsavedTitle),
+              content: const Text(AppStrings.unsavedBody),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, 'keep'),
+                    child: const Text(AppStrings.keepEditing)),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, 'discard'),
+                    child: const Text(AppStrings.discard,
+                        style: TextStyle(color: AppPalette.coral))),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, 'save'),
+                    child: const Text(AppStrings.save)),
+              ],
+            ));
+    if (choice == 'discard') return true;
+    if (choice == 'save') return c.save();
+    return false;
+  }
+
+  Future<void> _back(BuildContext context) async {
+    if (c.selectedDay.value != null) {
+      c.selectedDay.value = null;
+      return;
+    }
+    if (!c.dirty.value || await _confirmLeave(context)) {
+      if (context.mounted) Navigator.of(context).pop();
+    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.find<PlanEditorController>();
-    return Scaffold(
-        appBar: AppBar(title: const Text(AppStrings.trainingPlanEdit)),
-        body: Obx(() {
-          final day = controller.weekday.value;
-          final list = controller.forDay(day);
-          if (controller.loading.value) {
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(children: [
-                ShimmerBox(height: 76),
-                SizedBox(height: 12),
-                ShimmerBox(height: 76),
-                SizedBox(height: 12),
-                ShimmerBox(height: 76),
-              ]),
-            );
-          }
-          return Column(children: [
-            SizedBox(
-                height: 54,
-                child: ListView(scrollDirection: Axis.horizontal, children: [
-                  for (var i = 1; i <= 7; i++)
-                    Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 3),
-                        child: ChoiceChip(
-                            label: Text(AppStrings.weekdayShort[i - 1]),
-                            selected: i == day,
-                            onSelected: (_) => controller.weekday.value = i))
-                ])),
-            Expanded(
-                child: list.isEmpty
-                    ? Center(
-                        child:
-                            Column(mainAxisSize: MainAxisSize.min, children: [
-                        const Text(AppStrings.trainingEmptyEditorDay),
-                        const SizedBox(height: 12),
-                        OutlinedButton(
-                            onPressed: () => _add(context, controller),
-                            child: const Text(AppStrings.trainingAddExercise)),
-                        OutlinedButton(
-                            onPressed: () => _templates(context, controller),
-                            child: const Text(AppStrings.trainingTemplates)),
-                      ]))
-                    : ReorderableListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                        itemCount: list.length,
-                        onReorder: controller.reorder,
-                        itemBuilder: (context, index) {
-                          final item = list[index];
-                          return Padding(
-                              key: ValueKey(item.id),
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: GlassCard(
-                                  padding: const EdgeInsets.all(10),
-                                  child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(children: [
-                                          Expanded(
-                                              child: Text(item.nameAr,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium)),
-                                          IconButton(
-                                              icon: const Icon(
-                                                  Icons.delete_outline),
-                                              onPressed: () => _delete(
-                                                  context, controller, item.id))
-                                        ]),
-                                        Text(muscleLabelAr(item.muscle)),
-                                        Row(children: [
-                                          const Expanded(
-                                              child: Text(
-                                                  AppStrings.trainingSets)),
-                                          NumericStepper(
-                                              value: item.sets.toDouble(),
-                                              step: 1,
-                                              min: 1,
-                                              max: 20,
-                                              format: (v) => '${v.round()}',
-                                              parse: (v) => double.tryParse(v),
-                                              onChanged: (v) => controller
-                                                  .replace(item.copyWith(
-                                                      sets: v.round()))),
-                                        ]),
-                                        Row(children: [
-                                          const Expanded(
-                                              child: Text(
-                                                  AppStrings.trainingReps)),
-                                          NumericStepper(
-                                              value: item.reps.toDouble(),
-                                              step: 1,
-                                              min: 1,
-                                              max: 100,
-                                              format: (v) => '${v.round()}',
-                                              parse: (v) => double.tryParse(v),
-                                              onChanged: (v) => controller
-                                                  .replace(item.copyWith(
-                                                      reps: v.round()))),
-                                        ]),
-                                        SwitchListTile(
-                                            contentPadding: EdgeInsets.zero,
-                                            title: const Text(
-                                                AppStrings.trainingPlanActive),
-                                            value: item.active,
-                                            onChanged: (v) =>
-                                                controller.replace(
-                                                    item.copyWith(active: v))),
-                                        Wrap(spacing: 4, children: [
-                                          for (var i = 1; i <= 7; i++)
-                                            FilterChip(
-                                                label: Text(AppStrings
-                                                    .weekdayShort[i - 1]),
-                                                selected:
-                                                    item.daysOfWeek.contains(i),
-                                                onSelected: (selected) {
-                                                  final days = {
-                                                    ...item.daysOfWeek
-                                                  };
-                                                  if (selected) {
-                                                    days.add(i);
-                                                  } else if (days.length > 1) {
-                                                    days.remove(i);
-                                                  }
-                                                  controller.replace(
-                                                      item.copyWith(
-                                                          daysOfWeek: days));
-                                                })
-                                        ]),
-                                      ])));
-                        })),
-            if (controller.error.value case final error?)
-              Text(error, style: const TextStyle(color: AppPalette.coral)),
-            SafeArea(
-                top: false,
-                child: Padding(
-                    padding: const EdgeInsets.all(12),
+  Widget build(BuildContext context) => Obx(() {
+        final day = c.selectedDay.value;
+        return PopScope(
+          canPop: day == null && !c.dirty.value,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _back(context);
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                  icon: const BackButtonIcon(),
+                  onPressed: () => _back(context)),
+              title: Text(day == null
+                  ? AppStrings.myWeekPlan
+                  : AppStrings.weekdays[day - 1]),
+              actions: [
+                PopupMenuButton<String>(
+                  onSelected: (v) => switch (v) {
+                    'templates' => _templates(context),
+                    'copy' => _copy(context),
+                    'equipment' => EquipmentSheet.show(context),
+                    _ => null,
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                        value: 'templates',
+                        child: Text(AppStrings.trainingTemplates)),
+                    if (day != null && c.forDay(day).isNotEmpty)
+                      const PopupMenuItem(
+                          value: 'copy',
+                          child: Text(AppStrings.trainingCopyDays)),
+                    const PopupMenuItem(
+                        value: 'equipment',
+                        child: Text(AppStrings.myEquipment)),
+                  ],
+                ),
+              ],
+            ),
+            body: c.loading.value
+                ? const Padding(
+                    padding: EdgeInsets.all(16),
                     child: Column(children: [
-                      Wrap(spacing: 8, children: [
-                        OutlinedButton(
-                            onPressed: () => _add(context, controller),
-                            child: const Text(AppStrings.trainingAddExercise)),
-                        OutlinedButton(
-                            onPressed: () => _copy(context, controller),
-                            child: const Text(AppStrings.trainingCopyDays)),
-                        OutlinedButton(
-                            onPressed: () => _templates(context, controller),
-                            child: const Text(AppStrings.trainingTemplates)),
-                      ]),
-                      const SizedBox(height: 8),
-                      NeonButton(
-                          label: AppStrings.save,
-                          loading: controller.saving.value,
-                          onPressed: () async {
-                            if (await controller.save() && context.mounted) {
-                              Navigator.pop(context);
-                            }
-                          }),
-                    ]))),
-          ]);
-        }));
+                      ShimmerBox(height: 64),
+                      SizedBox(height: 10),
+                      ShimmerBox(height: 64),
+                      SizedBox(height: 10),
+                      ShimmerBox(height: 64),
+                    ]),
+                  )
+                : Column(children: [
+                    Expanded(
+                        child: day == null
+                            ? _week(context)
+                            : _dayView(context, day)),
+                    if (c.error.value case final error?)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(error,
+                            style: const TextStyle(color: AppPalette.coral)),
+                      ),
+                    _bottomBar(context, day),
+                  ]),
+          ),
+        );
+      });
+
+  Widget _week(BuildContext context) => ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        children: [
+          for (final d in kWeekOrder) _weekRow(context, d),
+        ],
+      );
+
+  Widget _weekRow(BuildContext context, int d) {
+    final list = c.forDay(d);
+    final rest = list.isEmpty;
+    final focus = c.focusOf(d).map(muscleLabelAr).join(' · ');
+    final highlight = d == c.weekday.value;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => c.selectedDay.value = d,
+        child: GlassCard(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: rest
+                    ? AppPalette.raised
+                    : AppPalette.emerald.withValues(alpha: .16),
+                border: highlight
+                    ? Border.all(color: AppPalette.emerald, width: 1.5)
+                    : null,
+              ),
+              child: Text(AppStrings.weekdayShort[d - 1],
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: rest ? AppPalette.muted : AppPalette.emerald)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(AppStrings.weekdays[d - 1],
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 16)),
+                  const SizedBox(height: 2),
+                  Text(
+                    rest
+                        ? AppStrings.restDayShort
+                        : '${focus.isEmpty ? '' : '$focus · '}${AppStrings.exercisesCount(list.length)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppPalette.muted),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left, color: AppPalette.muted),
+          ]),
+        ),
+      ),
+    );
   }
+
+  Widget _dayView(BuildContext context, int day) {
+    final list = c.forDay(day);
+    if (list.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.self_improvement,
+                size: 48, color: AppPalette.muted),
+            const SizedBox(height: 10),
+            const Text(AppStrings.trainingEmptyEditorDay,
+                style: TextStyle(color: AppPalette.muted)),
+            const SizedBox(height: 14),
+            TextButton.icon(
+                onPressed: () => _templates(context),
+                icon: const Icon(Icons.auto_awesome),
+                label: const Text(AppStrings.trainingTemplates)),
+          ]),
+        ),
+      );
+    }
+    return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      itemCount: list.length,
+      onReorder: c.reorder,
+      itemBuilder: (context, index) {
+        final item = list[index];
+        return Padding(
+          key: ValueKey(item.id),
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Opacity(
+            opacity: item.active ? 1 : .5,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => _edit(context, item),
+              child: GlassCard(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(children: [
+                  ReorderableDragStartListener(
+                    index: index,
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child:
+                          Icon(Icons.drag_indicator, color: AppPalette.muted),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.nameAr,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 15)),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.active
+                              ? muscleLabelAr(item.muscle)
+                              : '${muscleLabelAr(item.muscle)} · ${AppStrings.trainingPaused}',
+                          style: const TextStyle(
+                              color: AppPalette.muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppPalette.emerald.withValues(alpha: .14),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(_setsReps(item),
+                        textDirection: TextDirection.ltr,
+                        style: const TextStyle(
+                            color: AppPalette.emerald,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _bottomBar(BuildContext context, int? day) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Row(children: [
+            if (day != null) ...[
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _add(context),
+                  style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      shape: const StadiumBorder()),
+                  icon: const Icon(Icons.add),
+                  label: const Text(AppStrings.trainingAddExercise),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: NeonButton(
+                label: AppStrings.save,
+                loading: c.saving.value,
+                onPressed: c.dirty.value
+                    ? () async {
+                        if (await c.save() && context.mounted) {
+                          Navigator.pop(context);
+                        }
+                      }
+                    : null,
+              ),
+            ),
+          ]),
+        ),
+      );
+}
+
+/// Everything about one exercise, in one calm sheet instead of inline.
+class _ExerciseEditSheet extends StatefulWidget {
+  const _ExerciseEditSheet({required this.item});
+  final WorkoutPlanItem item;
+
+  @override
+  State<_ExerciseEditSheet> createState() => _ExerciseEditSheetState();
+}
+
+class _ExerciseEditSheetState extends State<_ExerciseEditSheet> {
+  late WorkoutPlanItem item = widget.item;
+
+  Widget _row(String label, Widget control) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(children: [
+          Expanded(
+              child: Text(label,
+                  style: const TextStyle(fontWeight: FontWeight.w600))),
+          control,
+        ]),
+      );
+
+  @override
+  Widget build(BuildContext context) => GlassSheet(
+        title: item.nameAr,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(muscleLabelAr(item.muscle),
+                  style: const TextStyle(color: AppPalette.muted)),
+              const SizedBox(height: 8),
+              _row(
+                  AppStrings.trainingSets,
+                  NumericStepper(
+                      value: item.sets.toDouble(),
+                      step: 1,
+                      min: 1,
+                      max: 20,
+                      format: (v) => '${v.round()}',
+                      parse: double.tryParse,
+                      onChanged: (v) => setState(
+                          () => item = item.copyWith(sets: v.round())))),
+              _row(
+                  AppStrings.trainingReps,
+                  NumericStepper(
+                      value: item.reps.toDouble(),
+                      step: 1,
+                      min: 1,
+                      max: 100,
+                      format: (v) => '${v.round()}',
+                      parse: double.tryParse,
+                      onChanged: (v) => setState(
+                          () => item = item.copyWith(reps: v.round())))),
+              _row(
+                  AppStrings.trainingLoad,
+                  NumericStepper(
+                      value: item.loadKg ?? 0,
+                      step: 1,
+                      min: 0,
+                      max: 200,
+                      format: (v) =>
+                          v <= 0 ? AppStrings.trainingNoLoad : '${v.round()}',
+                      parse: double.tryParse,
+                      onChanged: (v) => setState(() => item = v <= 0
+                          ? item.copyWith(clearLoad: true)
+                          : item.copyWith(loadKg: v)))),
+              const SizedBox(height: 6),
+              const Text(AppStrings.trainingDays,
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final d in kWeekOrder)
+                  FilterChip(
+                    label: Text(AppStrings.weekdayShort[d - 1]),
+                    selected: item.daysOfWeek.contains(d),
+                    onSelected: (on) {
+                      final days = {...item.daysOfWeek};
+                      if (on) {
+                        days.add(d);
+                      } else if (days.length > 1) {
+                        days.remove(d);
+                      }
+                      setState(() => item = item.copyWith(daysOfWeek: days));
+                    },
+                  ),
+              ]),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(AppStrings.trainingPlanActive),
+                value: item.active,
+                onChanged: (v) =>
+                    setState(() => item = item.copyWith(active: v)),
+              ),
+              const SizedBox(height: 6),
+              Row(children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.pop<Object>(context, #delete),
+                  icon:
+                      const Icon(Icons.delete_outline, color: AppPalette.coral),
+                  label: const Text(AppStrings.delete,
+                      style: TextStyle(color: AppPalette.coral)),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: NeonButton(
+                      label: AppStrings.done,
+                      onPressed: () => Navigator.pop<Object>(context, item)),
+                ),
+              ]),
+            ],
+          ),
+        ),
+      );
 }

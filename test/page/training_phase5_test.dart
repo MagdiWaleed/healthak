@@ -177,9 +177,14 @@ void main() {
     await tester.pumpWidget(
         GetMaterialApp(theme: AppTheme.dark, home: const PlanEditorScreen()));
     await tester.pump();
-    expect(find.text(AppStrings.trainingPlanEdit), findsOneWidget);
-    expect(find.text(AppStrings.trainingTemplates), findsWidgets);
+    // Week overview first: seven calm rows, empty days read "rest".
+    expect(find.text(AppStrings.myWeekPlan), findsOneWidget);
+    expect(find.text(AppStrings.restDayShort), findsAtLeastNWidgets(5));
+    // Tapping a day opens its compact view with a single empty state.
+    await tester.tap(find.text(AppStrings.weekdays[5]));
+    await tester.pumpAndSettle();
     expect(find.text(AppStrings.trainingEmptyEditorDay), findsOneWidget);
+    expect(find.text(AppStrings.trainingTemplates), findsOneWidget);
     expect(AppStrings.trainingProgress(0, 2), '0/2');
   });
 }

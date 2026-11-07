@@ -18,6 +18,7 @@ import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/glass_tokens.dart';
 import '../deficit/deficit_mode_sheet.dart';
+import '../training/equipment_sheet.dart';
 
 class MeTab extends StatelessWidget {
   const MeTab({super.key});
@@ -83,6 +84,13 @@ class MeTab extends StatelessWidget {
               label:
                   '${AppStrings.deficitMode}: ${profile?.deficit == null ? AppStrings.deficitOff : AppStrings.deficitLevel((profile!.deficit!.level.fraction * 100).round())} ${profile?.deficit == null ? '' : '· ${profile!.effectiveTargets.kcal.round()} ${AppStrings.kcal}'}',
               onTap: () => DeficitModeSheet.show(context),
+              index: 2),
+          _MeRow(
+              icon: Icons.fitness_center,
+              label: profile?.equipment == null
+                  ? AppStrings.myEquipment
+                  : '${AppStrings.myEquipment}: ${needsLabel(profile!.equipment!)}',
+              onTap: () => EquipmentSheet.show(context),
               index: 2),
           _MeRow(
               icon: Icons.calendar_month_outlined,

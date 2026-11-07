@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../../domain/training/arabic_normalize.dart';
 import '../../domain/training/exercise.dart';
 import '../../l10n/app_strings.dart';
+import '../../ui/theme/app_colors.dart';
+import 'equipment_sheet.dart';
 
 class ExercisePickerSheet extends StatefulWidget {
   const ExercisePickerSheet({super.key});
@@ -22,6 +24,13 @@ class ExercisePickerSheet extends StatefulWidget {
 
 class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
   String query = '';
+
+  /// Defaults to the user's equipment when they have set it up.
+  bool onlyMine = userHasSetEquipment();
+
+  bool _matches(Exercise e, String normalized, String lower) =>
+      normalizeArabic(e.nameAr).contains(normalized) ||
+      e.aliasesEn.any((a) => a.contains(lower));
 
   Future<void> _custom() async {
     final name = TextEditingController();
@@ -78,8 +87,11 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final normalized = normalizeArabic(query);
+    final lower = query.trim().toLowerCase();
+    final have = userEquipmentOrAll();
     final matches = kExerciseLibrary
-        .where((e) => normalizeArabic(e.nameAr).contains(normalized))
+        .where((e) => _matches(e, normalized, lower))
+        .where((e) => !onlyMine || canDo(e, have))
         .toList();
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * .82,
@@ -92,6 +104,21 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
                   labelText: AppStrings.trainingSearch),
               onChanged: (value) => setState(() => query = value),
             )),
+        if (userHasSetEquipment())
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(children: [
+              ChoiceChip(
+                  label: const Text(AppStrings.myEquipment),
+                  selected: onlyMine,
+                  onSelected: (_) => setState(() => onlyMine = true)),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                  label: const Text(AppStrings.allExercises),
+                  selected: !onlyMine,
+                  onSelected: (_) => setState(() => onlyMine = false)),
+            ]),
+          ),
         ListTile(
             leading: const Icon(Icons.add_circle_outline),
             title: const Text(AppStrings.trainingCustom),
@@ -112,6 +139,9 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
                             in matches.where((e) => e.muscle == group))
                           ListTile(
                               title: Text(exercise.nameAr),
+                              subtitle: Text(needsLabel(exercise.needs),
+                                  style:
+                                      const TextStyle(color: AppPalette.muted)),
                               onTap: () => Navigator.pop(context, exercise)),
                       ]
                   ])),
