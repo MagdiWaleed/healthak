@@ -15,6 +15,7 @@ import '../../ui/glass/glass_card.dart';
 import '../../ui/glass/glass_sheet.dart';
 import '../../ui/theme/app_colors.dart';
 import 'equipment_sheet.dart';
+import 'exercise_guide_sheet.dart';
 import 'exercise_picker_sheet.dart';
 import 'template_picker_sheet.dart';
 
@@ -582,8 +583,20 @@ class _ExerciseEditSheetState extends State<_ExerciseEditSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(muscleLabelAr(item.muscle),
-                  style: const TextStyle(color: AppPalette.muted)),
+              Row(children: [
+                Expanded(
+                  child: Text(muscleLabelAr(item.muscle),
+                      style: const TextStyle(color: AppPalette.muted)),
+                ),
+                if (exerciseById(item.exerciseId) != null)
+                  TextButton.icon(
+                    onPressed: () => ExerciseGuideSheet.show(
+                        context, item.exerciseId,
+                        nameAr: item.nameAr),
+                    icon: const Icon(Icons.play_circle_outline),
+                    label: const Text(AppStrings.exerciseGuide),
+                  ),
+              ]),
               const SizedBox(height: 8),
               _row(
                   AppStrings.trainingSets,

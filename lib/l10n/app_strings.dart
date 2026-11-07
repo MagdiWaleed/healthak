@@ -527,4 +527,7 @@ abstract final class AppStrings {
   static String trainingSummary(int done, int total, int sets) =>
       '$done من $total تمارين · $sets مجموعة';
   static const previewNote = 'معاينة — يمكنك تسجيل التمرين في يومه';
+  static const howToDoIt = 'طريقة الأداء';
+  static const watchVideo = 'شاهد فيديو للتمرين';
+  static const exerciseGuide = 'شرح التمرين';
 }

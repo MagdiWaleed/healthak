@@ -16,6 +16,7 @@ import '../../ui/glass/glass_card.dart';
 import '../../ui/theme/app_colors.dart';
 import '../today/today_tab.dart' show DayChip;
 import '../../app/app_routes.dart';
+import 'exercise_guide_sheet.dart';
 import 'exercise_picker_sheet.dart';
 import 'training_controller.dart';
 
@@ -166,10 +167,19 @@ class _TrainingTabState extends State<TrainingTab> {
                                         loadKg: day.items[i].loadKg,
                                         extra:
                                             muscleLabelAr(day.items[i].muscle)),
+                                    trailing: exerciseById(day.items[i].exerciseId) != null
+                                        ? IconButton(
+                                            tooltip: AppStrings.exerciseGuide,
+                                            icon: const Icon(Icons.info_outline,
+                                                color: AppPalette.muted),
+                                            onPressed: () => ExerciseGuideSheet.show(
+                                                context, day.items[i].exerciseId,
+                                                nameAr: day.items[i].nameAr))
+                                        : null,
                                     checked: day.items[i].done,
                                     enabled: !readOnly,
-                                    onChanged: (_) => controller
-                                        .toggle(day.items[i].localId)))),
+                                    onChanged: (_) =>
+                                        controller.toggle(day.items[i].localId)))),
                         index: i),
               ],
             ]);
@@ -233,17 +243,23 @@ class _TrainingTabState extends State<TrainingTab> {
         for (final item in items)
           Padding(
             padding: const EdgeInsets.only(bottom: 7),
-            child: GlassCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(children: [
-                Expanded(
-                    child: Text(item.nameAr,
-                        style: const TextStyle(fontWeight: FontWeight.w700))),
-                Text(
-                    AppStrings.setsReps(item.sets, item.reps,
-                        loadKg: item.loadKg),
-                    style: const TextStyle(color: AppPalette.emerald)),
-              ]),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => ExerciseGuideSheet.show(context, item.exerciseId,
+                  nameAr: item.nameAr),
+              child: GlassCard(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(children: [
+                  Expanded(
+                      child: Text(item.nameAr,
+                          style: const TextStyle(fontWeight: FontWeight.w700))),
+                  Text(
+                      AppStrings.setsReps(item.sets, item.reps,
+                          loadKg: item.loadKg),
+                      style: const TextStyle(color: AppPalette.emerald)),
+                ]),
+              ),
             ),
           ),
     ];

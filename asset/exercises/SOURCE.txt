@@ -1,0 +1,4 @@
+Exercise photos from free-exercise-db
+https://github.com/yuhonas/free-exercise-db
+License: The Unlicense (public domain). Resized to 480px.
+Files: <exerciseId>_0.jpg (start) and <exerciseId>_1.jpg (end).

@@ -6,6 +6,7 @@ import '../../domain/training/exercise.dart';
 import '../../l10n/app_strings.dart';
 import '../../ui/theme/app_colors.dart';
 import 'equipment_sheet.dart';
+import 'exercise_guide_sheet.dart';
 
 class ExercisePickerSheet extends StatefulWidget {
   const ExercisePickerSheet({super.key});
@@ -139,6 +140,12 @@ class _ExercisePickerSheetState extends State<ExercisePickerSheet> {
                             in matches.where((e) => e.muscle == group))
                           ListTile(
                               title: Text(exercise.nameAr),
+                              trailing: IconButton(
+                                  tooltip: AppStrings.exerciseGuide,
+                                  icon: const Icon(Icons.info_outline,
+                                      color: AppPalette.muted),
+                                  onPressed: () => ExerciseGuideSheet.show(
+                                      context, exercise.id)),
                               subtitle: Text(needsLabel(exercise.needs),
                                   style:
                                       const TextStyle(color: AppPalette.muted)),
